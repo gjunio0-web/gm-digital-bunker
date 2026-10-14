@@ -1,0 +1,49 @@
+---
+// Contact dialog: every "Agendar conversa" link points to /contato; with JavaScript the click
+// opens this dialog over the current page instead. Not rendered on the Contato page itself.
+import ContactForm from './ContactForm.astro';
+---
+<dialog class="dialog" id="dialogo-contato" aria-labelledby="dialogo-contato-titulo">
+  <div class="dialog__panel">
+    <div class="dialog__head">
+      <h2 id="dialogo-contato-titulo">Agendar conversa</h2>
+      <button type="button" class="btn btn--icon" data-fechar aria-label="Fechar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <p class="dialog__lead">A conversa inicial serve para entender o momento do negócio e onde a IA já aparece na operação.</p>
+    <ContactForm idPrefix="d" />
+    <p class="dialog__foot">Prefere outro canal? <a href="/contato">Ver a página de contato</a></p>
+  </div>
+</dialog>
+
+<style>
+  .dialog { padding: 0; border: 0; background: transparent; max-width: min(600px, calc(100vw - 32px)); width: 100%; max-height: calc(100vh - 32px); overflow: visible; }
+  .dialog::backdrop { background: rgba(11, 13, 16, 0.82); }
+  .dialog__panel { max-height: calc(100vh - 32px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: #808792 transparent; padding: clamp(24px, 4vw, 40px); background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55); color: var(--ink-body); font-family: var(--sans); }
+  html[data-theme="light"] .dialog__panel { box-shadow: 0 16px 40px rgba(17, 20, 24, 0.14); }
+  .dialog__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+  .dialog__head h2 { font-size: 28px; line-height: 1.2; }
+  .dialog__lead { margin: 0 0 24px; font-size: 16px; line-height: 1.5; }
+  .dialog__foot { margin: 24px 0 0; padding-top: 16px; border-top: 1px solid var(--line); font-size: 15px; line-height: 1.5; color: var(--muted); }
+  .dialog__foot a { color: var(--ink-body); }
+</style>
+
+<script>
+  const dlg = document.getElementById('dialogo-contato') as HTMLDialogElement | null;
+  if (dlg && typeof dlg.showModal === 'function') {
+    let gatilho: HTMLElement | null = null;
+    document.querySelectorAll<HTMLAnchorElement>('[data-abrir-contato]').forEach((a) => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        gatilho = a;
+        dlg.showModal();
+        dlg.querySelector<HTMLInputElement>('input:not([type="hidden"]):not([disabled])')?.focus();
+      });
+    });
+    dlg.querySelector('[data-fechar]')?.addEventListener('click', () => dlg.close());
+    // Click on the backdrop closes
+    dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
+    dlg.addEventListener('close', () => { gatilho?.focus(); });
+  }
+</script>

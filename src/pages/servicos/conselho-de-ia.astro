@@ -1,0 +1,45 @@
+---
+import Base from '../../layouts/Base.astro';
+import Opening from '../../components/Opening.astro';
+import Invite from '../../components/Invite.astro';
+---
+<Base
+  title="Conselho de IA por assinatura"
+  description="Executivo de IA em tempo parcial para empresas de pequeno e médio porte: revisão trimestral das ferramentas de IA, triagem de fornecedores e apoio às decisões."
+  current="servicos"
+  path="/servicos/conselho-de-ia"
+>
+  <Opening
+    crumbs={[{ label: 'Início', href: '/' }, { label: 'Serviços', href: '/servicos' }, { label: 'Conselho de IA por assinatura' }]}
+    eyebrow="Serviço"
+    title="Conselho de IA por assinatura"
+    lead="Executivo de IA fracionado: revisão trimestral do portfólio de ferramentas de IA, triagem de propostas de fornecedores de IA e apoio a decisões, com mensalidade e teto de horas."
+  />
+
+  <section class="section container">
+    <div class="block">
+      <h2 class="text" style="margin-bottom: 24px;">O que é</h2>
+      <p class="lead">Um executivo de IA em tempo parcial: alguém que cuida das decisões de inteligência artificial da sua empresa sem que você precise contratar esse profissional em tempo integral.</p>
+    </div>
+
+    <div class="block">
+      <h2 class="text" style="margin-bottom: 24px;">Benefícios para a empresa</h2>
+      <ul class="list text">
+        <li>Uma revisão regular das ferramentas de IA que a empresa paga e usa, para saber o que vale manter.</li>
+        <li>Uma segunda opinião independente antes de fechar com um fornecedor de IA. A GM Digital Bunker™ não recebe comissão de fornecedores.</li>
+        <li>Apoio nas decisões de IA no momento em que elas aparecem, e não só quando um projeto é contratado.</li>
+        <li>Custo previsível: mensalidade fixa com limite de horas definido em contrato.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="band-indigo" aria-labelledby="funciona-titulo">
+    <div class="section container">
+      <p class="eyebrow">Como funciona</p>
+      <h2 id="funciona-titulo" class="text" style="margin-bottom: 24px;">Mensalidade, revisão trimestral e teto de horas</h2>
+      <p class="lead text">A empresa paga uma mensalidade. A cada trimestre, o portfólio de ferramentas de IA é revisado. Entre as revisões, propostas de fornecedores e dúvidas de decisão são analisadas dentro do teto de horas do contrato.</p>
+    </div>
+  </section>
+
+  <Invite />
+</Base>

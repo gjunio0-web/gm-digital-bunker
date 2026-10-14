@@ -1,0 +1,23 @@
+---
+import Base from '../layouts/Base.astro';
+import Opening from '../components/Opening.astro';
+// Structure only: the text depends on legal review and on the legal entity responsible for the data
+const secoes = [
+  'Quem é responsável pelos dados',
+  'Quais dados o formulário coleta (nome, empresa, e-mail, mensagem)',
+  'Para que servem',
+  'Por quanto tempo ficam guardados',
+  'Quem mais tem acesso (o serviço que recebe o formulário)',
+  'Como pedir acesso, correção ou exclusão',
+  'Contato',
+];
+---
+<Base title="Privacidade" description="Como a GM Digital Bunker™ trata os dados enviados pelo formulário de contato." path="/privacidade" ctaSecondary>
+  <Opening crumbs={[{ label: 'Início', href: '/' }, { label: 'Privacidade' }]} eyebrow="Utilitária" title="Privacidade" lead="Esta página será publicada com o texto revisado juridicamente. Até lá, o formulário de contato fica desativado." />
+  <section class="section container" aria-label="Estrutura da página">
+    <p class="meta" style="margin-bottom: 16px;">Estrutura prevista</p>
+    <ol class="chapters text">
+      {secoes.map((s) => <li>{s}</li>)}
+    </ol>
+  </section>
+</Base>

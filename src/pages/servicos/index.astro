@@ -1,0 +1,97 @@
+---
+import Base from '../../layouts/Base.astro';
+import Opening from '../../components/Opening.astro';
+import Invite from '../../components/Invite.astro';
+---
+<Base
+  title="Serviços"
+  description="Os serviços da GM Digital Bunker™ para empresas de pequeno e médio porte: estratégia e plataforma digital com IA e Conselho de IA por assinatura."
+  current="servicos"
+  path="/servicos"
+>
+  <Opening
+    crumbs={[{ label: 'Início', href: '/' }, { label: 'Serviços' }]}
+    eyebrow="Serviços"
+    title="Estratégia sênior até o artefato pronto, sem pirâmide de equipe"
+    lead="Uma prática independente de estratégia tecnológica, da análise estratégica à produção de artefatos técnicos e de comunicação."
+  />
+
+  <section class="section container" aria-labelledby="como-titulo">
+    <p class="eyebrow">Como trabalhamos</p>
+    <h2 id="como-titulo" class="text" style="margin-bottom: 32px;">Quem diagnostica é quem entrega</h2>
+    <div class="compare">
+      <div class="card">
+        <span class="eyebrow eyebrow--muted" style="margin: 0;">Consultoria tradicional</span>
+        <div>
+          <div class="compare__tier"><b>Sócio</b><span>decide</span></div>
+          <div class="compare__tier"><b>Gerente</b><span>coordena</span></div>
+          <div class="compare__tier"><b>Consultores</b><span>analisam</span></div>
+          <div class="compare__tier"><b>Analistas</b><span>pesquisam e produzem</span></div>
+        </div>
+        <p class="small" style="margin-top: 8px;">Alavancagem por pessoas: custo e prazo de uma equipe inteira.</p>
+      </div>
+      <div class="card" style="border-color: var(--accent);">
+        <span class="eyebrow" style="margin: 0;">GM Digital Bunker</span>
+        <div>
+          <div class="compare__tier"><b>Sênior</b><span>decide e valida</span></div>
+          <div class="compare__tier"><b aria-hidden="true"></b><span class="meta">dirige ↓ &nbsp; propõe ↑</span></div>
+          <div class="compare__tier"><b>IA sob direção do sênior</b><span>pesquisa, curadoria, síntese, redação, código, design e artefatos prontos</span></div>
+        </div>
+        <p class="small" style="margin-top: 8px;">Alavancagem por ferramentas: estrutura enxuta, sem custo de pirâmide.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band-indigo" aria-labelledby="servicos-titulo">
+    <div class="section container">
+      <p class="eyebrow">Os serviços</p>
+      <h2 id="servicos-titulo" class="text" style="margin-bottom: 32px;">O que a empresa pode contratar</h2>
+      <div class="grid grid--2">
+        <a class="card" href="/servicos/estrategia-e-plataforma-digital-com-ia">
+          <span class="eyebrow eyebrow--muted" style="margin: 0;">Serviço</span>
+          <span class="h4" style="font-size: 24px;">Estratégia e plataforma digital com IA</span>
+          <span class="small" style="flex: 1;">Projeto sob medida, do diagnóstico à plataforma em produção; Elite 90 Pro como caso.</span>
+          <span class="more">Ver o serviço <span aria-hidden="true">→</span></span>
+        </a>
+        <a class="card" href="/servicos/conselho-de-ia">
+          <span class="eyebrow eyebrow--muted" style="margin: 0;">Serviço</span>
+          <span class="h4" style="font-size: 24px;">Conselho de IA por assinatura</span>
+          <span class="small" style="flex: 1;">Executivo de IA fracionado: revisão trimestral, triagem de fornecedores e teto de horas.</span>
+          <span class="more">Ver o serviço <span aria-hidden="true">→</span></span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section container" aria-labelledby="comecar-titulo">
+    <p class="eyebrow">Como começar</p>
+    <h2 id="comecar-titulo" class="text" style="margin-bottom: 32px;">Três etapas, da conversa ao artefato</h2>
+    <ol class="steps">
+      <li class="card"><span class="meta step__n">01</span><h3>Conversa inicial</h3><p class="small">Entender o momento do negócio e onde a IA já aparece na operação.</p></li>
+      <li class="steps__arrow" aria-hidden="true">→</li>
+      <li class="card"><span class="meta step__n">02</span><h3>Diagnóstico</h3><p class="small">Escopo fechado, com critério de decisão e prioridades definidas.</p></li>
+      <li class="steps__arrow" aria-hidden="true">→</li>
+      <li class="card"><span class="meta step__n">03</span><h3>Projeto de artefatos</h3><p class="small">Construção do que foi decidido, pronto para a equipe usar.</p></li>
+    </ol>
+    <!-- "Formatos, prazos e honorários" is still [a definir]; left out at launch, per the content doc -->
+
+    <h2 class="text sub" style="margin-top: 80px;">Para quem</h2>
+    <dl class="criteria">
+      <div><dt>Porte</dt><dd>Média empresa (receita anual de R$ 4,8 mi a R$ 300 mi) e pequena empresa em crescimento</dd></div>
+      <div><dt>Tecnologia</dt><dd>Sem diretor dedicado a tecnologia (CIO ou CTO); TI enxuta, terceirizada ou operacional</dd></div>
+      <div><dt>Decisor</dt><dd>CEO, sócio ou diretor de área, que compra resultado de negócio</dd></div>
+      <div><dt>Momento</dt><dd>IA ainda não adotada ou já em uso espontâneo, sem critério comum para decidir onde e quando investir</dd></div>
+      <div><dt>Expectativa</dt><dd>Decisão fundamentada e algo utilizável no fim do projeto</dd></div>
+    </dl>
+    <p class="meta" style="margin: 12px 0 0;">Faixa de porte pela classificação do BNDES.</p>
+
+    <h2 class="text sub" style="margin-top: 80px;">O que a GM Digital Bunker não faz</h2>
+    <div class="grid grid--3">
+      <div class="card"><h3 class="h4">Operação em larga escala</h3><p class="small">Implantações com dezenas de pessoas ou operação 24 horas pedem outro tipo de fornecedor.</p></div>
+      <div class="card"><h3 class="h4">Revenda de ferramentas</h3><p class="small">Sem vínculo comercial com fornecedores: a recomendação parte do problema do negócio.</p></div>
+      <div class="card"><h3 class="h4">Promessas sem fonte</h3><p class="small">Ganhos são medidos ou declarados como estimativa, nunca apresentados como garantia.</p></div>
+    </div>
+  </section>
+
+  <Invite />
+</Base>

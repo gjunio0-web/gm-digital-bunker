@@ -1,0 +1,72 @@
+---
+import Base from '../../layouts/Base.astro';
+import Opening from '../../components/Opening.astro';
+import Invite from '../../components/Invite.astro';
+---
+<Base
+  title="Elite 90 Pro: do WhatsApp a um sistema completo"
+  description="Como a GM Digital Bunker™ desenhou o ecossistema digital do programa Elite 90 Pro e conduz sua construção por módulos."
+  current="casos"
+  path="/casos/elite-90-pro"
+>
+  <Opening
+    crumbs={[{ label: 'Início', href: '/' }, { label: 'Casos', href: '/casos/elite-90-pro' }, { label: 'Elite 90 Pro' }]}
+    eyebrow="Caso de sucesso GM Digital Bunker"
+    title="Elite 90 Pro: do WhatsApp a um sistema completo"
+    lead="Programa de 90 dias de transformação física para executivos, conduzido pelo Coach Ruiz. A GM Digital Bunker desenhou o ecossistema digital do programa e conduz sua construção por módulos."
+  />
+
+  <section class="section container">
+    <div class="side">
+      <div>
+        <div class="block">
+          <h2 class="text" style="margin-bottom: 16px;">O ponto de partida</h2>
+          <p class="lead">O Coach Ruiz não tinha área de tecnologia.</p>
+        </div>
+        <div class="block">
+          <h2 class="text" style="margin-bottom: 16px;">Em produção</h2>
+          <p class="lead">100% em produção: o site público bilíngue e o módulo de triagem de leads com IA do painel do Coach. Na triagem, a IA pontua os candidatos e redige o rascunho da avaliação, sempre revisado pelo Coach antes do envio.</p>
+        </div>
+        <div class="block">
+          <h2 class="text" style="margin-bottom: 16px;">Em construção</h2>
+          <p class="lead">15 de 51 funcionalidades prontas, da captação à conformidade; as demais em construção por módulos. Acompanhamento dos atletas e delegação aos profissionais parceiros em andamento; portal do atleta e pagamentos no roteiro.</p>
+          <p class="meta" style="margin-top: 12px;">Situação em 21/09/2026.</p>
+        </div>
+        <div class="block">
+          <h2 class="text" style="margin-bottom: 16px;">Proteção de dados</h2>
+          <p class="lead">90 dias para excluir dados de recusados: regra da Lei Geral de Proteção de Dados (LGPD) proposta e implementada pela GM Digital Bunker.</p>
+        </div>
+      </div>
+      <aside>
+        <figure style="margin: 0;">
+          <img src="/imagens/elite-90-pro-site.jpg" alt="Página inicial do site do programa Coach Ruiz: Construa um corpo de atleta em 90 dias" width="1920" height="1080" loading="lazy" class="proof-img" />
+          <figcaption class="meta" style="margin-top: 12px;"><a href="https://coachruiz.com.br">coachruiz.com.br <span aria-hidden="true">↗</span><span class="visually-hidden">site externo</span></a></figcaption>
+        </figure>
+      </aside>
+    </div>
+  </section>
+
+  <section class="band-indigo" aria-label="Citação do dossiê de entregas">
+    <div class="section container">
+      <blockquote class="quote" style="border-left-color: currentColor;">
+        <p>"O sistema não substitui a curadoria clínica; ele eleva o coach diretamente para a fase de validação."</p>
+        <cite>Dossiê de entregas do projeto, 2026</cite>
+      </blockquote>
+    </div>
+  </section>
+
+  <section class="section container" aria-labelledby="servico-titulo">
+    <p class="eyebrow">Serviço relacionado</p>
+    <h2 id="servico-titulo" class="text" style="margin-bottom: 32px;">O serviço por trás deste caso</h2>
+    <div class="grid grid--2">
+      <a class="card" href="/servicos/estrategia-e-plataforma-digital-com-ia">
+        <span class="eyebrow eyebrow--muted" style="margin: 0;">Serviço</span>
+        <span class="h4" style="font-size: 24px;">Estratégia e plataforma digital com IA</span>
+        <span class="small" style="flex: 1;">Projeto sob medida, do diagnóstico à plataforma em produção; Elite 90 Pro como caso.</span>
+        <span class="more">Ver o serviço <span aria-hidden="true">→</span></span>
+      </a>
+    </div>
+  </section>
+
+  <Invite />
+</Base>

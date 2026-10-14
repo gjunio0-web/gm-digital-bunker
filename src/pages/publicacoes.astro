@@ -1,0 +1,46 @@
+---
+import Base from '../layouts/Base.astro';
+import Opening from '../components/Opening.astro';
+import Invite from '../components/Invite.astro';
+// Most recent first, per the content doc
+const artigos = [
+  {
+    titulo: 'Cem livros, três levantamentos, uma pergunta',
+    resumo: 'Pedi a três IAs que levantassem, cada uma por conta própria, tudo o que já se publicou sobre IA. Elas divergiram – e foi na divergência que apareceu a pergunta que nenhum livro responde.',
+    url: 'https://ai-strat-hub.netlify.app/?tab=articles&artigo=cem-livros',
+  },
+  {
+    titulo: 'O advogado brilhante que não entrega a petição.',
+    resumo: 'O fio do argumento de "Quando é Melhor com IA": por que potência e eficiência são eixos independentes, e não dois pontos da mesma régua.',
+    url: 'https://ai-strat-hub.netlify.app/?tab=articles&artigo=fio-do-argumento',
+  },
+];
+---
+<Base
+  title="Publicações"
+  description="Artigos sobre o método Quando é Melhor com IA, publicados no AI Strategy Hub."
+  current="publicacoes"
+  path="/publicacoes"
+>
+  <Opening
+    crumbs={[{ label: 'Início', href: '/' }, { label: 'Publicações' }]}
+    eyebrow="Publicações"
+    title="Publicações"
+    lead="Textos sobre o método, publicados no AI Strategy Hub."
+  />
+
+  <section class="section container" aria-label="Artigos">
+    <div class="grid grid--2">
+      {artigos.map((a) => (
+        <a class="card" href={a.url}>
+          <span class="eyebrow eyebrow--muted" style="margin: 0;">Artigo</span>
+          <span class="h4" style="font-size: 24px;">{a.titulo}</span>
+          <span class="small" style="flex: 1;">{a.resumo}</span>
+          <span class="more">Ler no AI Strategy Hub <span aria-hidden="true">↗</span><span class="visually-hidden">site externo</span></span>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <Invite />
+</Base>

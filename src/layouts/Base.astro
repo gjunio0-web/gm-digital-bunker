@@ -1,0 +1,58 @@
+---
+// Base layout: head, header, main, footer, phone action bar and the contact dialog.
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import ActionBar from '../components/ActionBar.astro';
+import ContactDialog from '../components/ContactDialog.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  current?: string;
+  path?: string;        // canonical path, e.g. "/casos/elite-90-pro"
+  ctaSecondary?: boolean;
+  noActionBar?: boolean;
+  noDialog?: boolean;
+  jsonLd?: Record<string, unknown>;
+}
+const { title, description, current = '', path = '/', ctaSecondary = false, noActionBar = false, noDialog = false, jsonLd } = Astro.props;
+import { DOMINIO } from '../config';
+const fullTitle = title === 'GM Digital Bunker™' ? title : `${title} – GM Digital Bunker™`;
+---
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{fullTitle}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={`${DOMINIO}${path}`} />
+  <link rel="alternate" hreflang="pt-BR" href={`${DOMINIO}${path}`} />
+  <link rel="alternate" hreflang="en" href={`${DOMINIO}/en${path === '/' ? '/' : path}`} />
+  <link rel="alternate" hreflang="x-default" href={`${DOMINIO}${path}`} />
+  <meta property="og:title" content={fullTitle} />
+  <meta property="og:description" content={description} />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="pt_BR" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" />
+  <script is:inline>
+    // Apply the remembered theme before paint to avoid a flash
+    try { if (localStorage.getItem('tema') === 'claro') document.documentElement.dataset.theme = 'light'; } catch (e) {}
+  </script>
+  {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+</head>
+<body>
+  <a class="skip" href="#conteudo">Pular para o conteúdo</a>
+  <Header current={current} ctaSecondary={ctaSecondary} />
+  <main id="conteudo">
+    <slot />
+  </main>
+  <Footer />
+  {!noActionBar && <ActionBar secondary={ctaSecondary} />}
+  {!noDialog && <ContactDialog />}
+</body>
+</html>

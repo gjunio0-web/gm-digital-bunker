@@ -1,0 +1,54 @@
+---
+import Base from '../../layouts/Base.astro';
+import Opening from '../../components/Opening.astro';
+import Invite from '../../components/Invite.astro';
+---
+<Base
+  title="O método"
+  description="O método da GM Digital Bunker™: quando a IA de fato melhora um trabalho, como reconhecer a exigência de cada tarefa e como conferir o que a IA produz."
+  current="metodo"
+  path="/metodo"
+>
+  <Opening
+    crumbs={[{ label: 'Início', href: '/' }, { label: 'Método' }]}
+    eyebrow="Método"
+    title="O método"
+    lead="Quando a IA de fato melhora um trabalho, como reconhecer a exigência de cada tarefa e como conferir o que a IA produz. O livro explica o critério; o AI Strategy Hub o coloca em prática."
+  />
+
+  <section class="section container" aria-labelledby="ideias-titulo">
+    <h2 id="ideias-titulo" class="text" style="margin-bottom: 32px;">O que organiza o método</h2>
+    <div class="grid grid--4">
+      <div class="card"><span class="meta step__n">01</span><h3 class="h4">Funções transversais</h3><p class="small">Quatro padrões de raciocínio presentes em qualquer tarefa</p></div>
+      <div class="card"><span class="meta step__n">02</span><h3 class="h4">Economia da fricção</h3><p class="small">Potência da IA versus o quanto dela chega à entrega</p></div>
+      <div class="card"><span class="meta step__n">03</span><h3 class="h4">Sete arquétipos</h3><p class="small">Qual a melhor IA para cada perfil de trabalho</p></div>
+      <div class="card"><span class="meta step__n">04</span><h3 class="h4">Governança</h3><p class="small">Zero alucinação, validação humana, privacidade e propriedade intelectual</p></div>
+    </div>
+  </section>
+
+  <section class="band-indigo" aria-labelledby="pecas-titulo">
+    <div class="section container">
+      <p class="eyebrow">Duas peças</p>
+      <h2 id="pecas-titulo" class="text" style="margin-bottom: 32px;">O livro e o aplicativo</h2>
+      <div class="grid grid--2">
+        <a class="card" href="/metodo/livro">
+          <span class="proof-frame"><img src="/imagens/capa-quando-e-melhor-com-ia.jpg" alt="Capa do livro Quando é Melhor com IA, de Gonçalo Marques" width="1000" height="1600" loading="lazy" /></span>
+          <span class="eyebrow eyebrow--muted" style="margin: 0;">O livro</span>
+          <span class="h4" style="font-size: 24px;">Quando é Melhor com&nbsp;IA</span>
+          <span class="small" style="flex: 1;">Como aplicar IA com rigor e método na produção técnica, na análise complexa e no apoio à decisão estratégica.</span>
+          <span class="more">Conhecer o livro <span aria-hidden="true">→</span></span>
+        </a>
+        <a class="card" href="https://ai-strat-hub.netlify.app">
+          <span class="proof-placeholder">[captura do AI Strategy Hub]</span>
+          <span class="eyebrow eyebrow--muted" style="margin: 0;">Aplicativo gratuito</span>
+          <span class="h4" style="font-size: 24px;">AI Strategy Hub <span aria-hidden="true">↗</span></span>
+          <span class="small" style="flex: 1;">Painel gratuito na web que indica a IA mais adequada a cada perfil de trabalho. Não existe a melhor IA, existe a melhor IA para o seu trabalho, com notas abertas para auditoria. Disponível em português, inglês e alemão.</span>
+          <span class="more">Abrir o AI Strategy Hub <span aria-hidden="true">↗</span><span class="visually-hidden">site externo</span></span>
+        </a>
+      </div>
+      <p class="lead text" style="margin-top: 48px;">O livro não cataloga ferramentas: trata as capacidades de forma abstrata e traça os perfis de trabalho com a combinação de capacidades que cada um exige. É esse mapa de perfis que o AI Strategy Hub, uma ferramenta gratuita à parte do livro, usa para recomendar qual IA específica se aplica a cada perfil.</p>
+    </div>
+  </section>
+
+  <Invite />
+</Base>

@@ -1,0 +1,11 @@
+---
+// Closing invitation on the indigo background. [data-convite] tells the phone action bar to hide.
+interface Props { title?: string; }
+const { title = 'Vamos conversar sobre onde e quando é melhor com IA no seu negócio.' } = Astro.props;
+---
+<section class="band-indigo" aria-labelledby="convite-titulo" data-convite>
+  <div class="section container">
+    <h2 id="convite-titulo" class="h1" style="max-width: 20ch; margin-bottom: 32px;">{title}</h2>
+    <a class="btn btn--on-indigo" href="/contato" data-abrir-contato>Agendar conversa</a>
+  </div>
+</section>

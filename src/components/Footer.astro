@@ -1,0 +1,55 @@
+---
+// Site footer: brand line, page links and external destinations.
+---
+<footer class="footer">
+  <div class="container footer__inner">
+    <div class="footer__cols">
+      <div class="footer__brand">
+        <a href="/">GM Digital Bunker™</a>
+        <p>Estratégia de tecnologia e IA para o mundo real.</p>
+      </div>
+      <nav aria-label="Rodapé – páginas">
+        <p class="eyebrow eyebrow--muted">Páginas</p>
+        <ul>
+          <li><a href="/servicos">Serviços</a></li>
+          <li><a href="/casos/elite-90-pro">Casos</a></li>
+          <li><a href="/metodo">Método</a></li>
+          <li><a href="/publicacoes">Publicações</a></li>
+          <li><a href="/sobre">Sobre</a></li>
+          <li><a href="/contato">Contato</a></li>
+        </ul>
+      </nav>
+      <nav aria-label="Rodapé – destinos externos">
+        <p class="eyebrow eyebrow--muted">Também</p>
+        <ul>
+          <li><a href="https://www.amazon.com.br/dp/B0H7QR7DZ7">Livro na Amazon <span aria-hidden="true">↗</span><span class="visually-hidden">site externo</span></a></li>
+          <li><a href="https://ai-strat-hub.netlify.app">AI Strategy Hub <span aria-hidden="true">↗</span><span class="visually-hidden">site externo</span></a></li>
+          <li><a href="https://www.linkedin.com/in/gjunio0">LinkedIn <span aria-hidden="true">↗</span><span class="visually-hidden">site externo</span></a></li>
+          <li><a href="/privacidade">Privacidade</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer__base">
+      <p class="meta">GM Digital Bunker™ · © 2026</p>
+      <p class="meta"><span aria-current="true" class="footer__pt">PT</span> · <a href="/en/" lang="en" hreflang="en">EN</a></p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer { border-top: 1px solid var(--line); }
+  .footer__inner { padding-top: 64px; padding-bottom: 32px; display: flex; flex-direction: column; gap: 48px; }
+  .footer__cols { display: flex; flex-wrap: wrap; gap: 48px; }
+  .footer__brand { flex: 2 1 280px; display: flex; flex-direction: column; gap: 12px; }
+  .footer__brand a { font-family: var(--serif); font-weight: 600; font-size: 20px; line-height: 1; color: var(--ink); text-decoration: none; }
+  .footer__brand p { margin: 0; max-width: 28rem; font-size: 15px; line-height: 1.5; }
+  .footer nav { flex: 1 1 160px; }
+  .footer nav .eyebrow { margin-bottom: 12px; }
+  .footer ul { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 15px; line-height: 1.5; }
+  .footer ul a { display: inline-block; padding: 6px 0; color: var(--ink-body); text-decoration: none; }
+  .footer ul a:hover { color: var(--ink); text-decoration: underline; }
+  .footer__base { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; padding-top: 24px; border-top: 1px solid var(--line); }
+  .footer__base p { margin: 0; }
+  .footer__pt { color: var(--ink); }
+  .footer__base a { color: var(--muted); }
+</style>

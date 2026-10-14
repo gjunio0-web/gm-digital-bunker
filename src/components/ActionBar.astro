@@ -1,0 +1,29 @@
+---
+// Phone-only action bar pinned to the bottom of the screen. Hidden once the closing
+// invitation (an element with [data-convite]) is on screen or already passed.
+interface Props { secondary?: boolean; }
+const { secondary = false } = Astro.props;
+---
+<div class="action-bar" data-action-bar>
+  <a class={`btn ${secondary ? 'btn--secondary' : 'btn--primary'}`} href="/contato" data-abrir-contato>Agendar conversa</a>
+</div>
+
+<style>
+  .action-bar { display: none; position: sticky; bottom: 0; z-index: 20; padding: 12px 16px; background: var(--bg); border-top: 1px solid var(--line); transition: opacity 180ms ease-out, visibility 0s linear 0s; }
+  .action-bar .btn { width: 100%; min-height: 48px; }
+  .action-bar.is-hidden { opacity: 0; visibility: hidden; transition: opacity 180ms ease-out, visibility 0s linear 180ms; }
+  @media (max-width: 767px) { .action-bar { display: block; } }
+</style>
+
+<script>
+  const bar = document.querySelector<HTMLElement>('[data-action-bar]');
+  const convite = document.querySelector<HTMLElement>('[data-convite]');
+  if (bar && convite && 'IntersectionObserver' in window) {
+    new IntersectionObserver((entradas) => {
+      const e = entradas[0];
+      // Reached once the invitation's top rises above the bar, or has already scrolled past
+      const alcancado = e.boundingClientRect.top < window.innerHeight - 80;
+      bar.classList.toggle('is-hidden', alcancado);
+    }, { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] }).observe(convite);
+  }
+</script>

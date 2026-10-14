@@ -1,0 +1,10 @@
+---
+import Base from '../layouts/Base.astro';
+import Opening from '../components/Opening.astro';
+---
+<Base title="Página não encontrada" description="O endereço pode ter mudado ou não existir mais." path="/404" noActionBar>
+  <Opening crumbs={[{ label: 'Início', href: '/' }, { label: '404' }]} eyebrow="Erro 404" title="Página não encontrada" lead="O endereço pode ter mudado ou não existir mais." />
+  <section class="section container">
+    <a class="btn btn--primary" href="/">Ir para a página inicial</a>
+  </section>
+</Base>

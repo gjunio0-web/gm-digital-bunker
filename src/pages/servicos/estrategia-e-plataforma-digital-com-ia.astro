@@ -1,0 +1,65 @@
+---
+import Base from '../../layouts/Base.astro';
+import Opening from '../../components/Opening.astro';
+import Invite from '../../components/Invite.astro';
+const path = '/servicos/estrategia-e-plataforma-digital-com-ia';
+---
+<Base
+  title="Estratégia e plataforma digital com IA"
+  description="Projeto sob medida que vai do diagnóstico estratégico à plataforma digital em produção, com IA onde ela de fato reduz trabalho."
+  current="servicos"
+  path={path}
+>
+  <Opening
+    crumbs={[{ label: 'Início', href: '/' }, { label: 'Serviços', href: '/servicos' }, { label: 'Estratégia e plataforma digital com IA' }]}
+    eyebrow="Serviço"
+    title="Estratégia e plataforma digital com IA"
+    lead="Um projeto sob medida que vai do diagnóstico estratégico à plataforma digital da sua empresa em produção, com inteligência artificial onde ela de fato reduz trabalho. Exemplo: a plataforma do programa Elite 90 Pro."
+  />
+
+  <section class="section container">
+    <div class="block">
+      <h2 class="text" style="margin-bottom: 24px;">Benefícios para a empresa</h2>
+      <ul class="list text">
+        <li>Estratégia antes do código: o diagnóstico define o que construir e em que ordem.</li>
+        <li>Uma plataforma própria, construída por módulos, com partes em produção antes do fim do projeto.</li>
+        <li>IA aplicada onde ela reduz trabalho manual, como a triagem de leads do Elite 90 Pro.</li>
+        <li>Independência de fornecedor na escolha das ferramentas: a GM Digital Bunker™ não recebe comissão.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <h2 class="text" style="margin-bottom: 24px;">Como funciona</h2>
+      <p class="lead">O projeto começa por um diagnóstico e um plano diretor com o roteiro de execução em etapas. A construção segue por módulos, e cada módulo entra em produção quando fica pronto.</p>
+    </div>
+  </section>
+
+  <section class="band-indigo" aria-labelledby="depois-titulo">
+    <div class="section container">
+      <p class="eyebrow">Depois da entrega</p>
+      <h2 id="depois-titulo" class="text" style="margin-bottom: 24px;">A relação não termina na entrega</h2>
+      <p class="lead text" style="margin-bottom: 32px;">O cuidado contínuo com os sistemas que a GM Digital Bunker™ já construiu, como portais e aplicações web, depois da entrega do projeto. Um contrato mensal cobre hospedagem, correções e pequenas evoluções. O que conta como "pequena evolução" fica definido por escrito no contrato.</p>
+      <div class="grid grid--3">
+        <div class="card"><p class="small">O sistema continua no ar, corrigido e atualizado, sem que você precise procurar outro fornecedor que não conhece o código.</p></div>
+        <div class="card"><p class="small">Quem mantém é quem construiu.</p></div>
+        <div class="card"><p class="small">Pequenas melhorias entram no contrato, sem orçamento novo a cada ajuste.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section container" aria-labelledby="caso-titulo">
+    <p class="eyebrow">Caso</p>
+    <h2 id="caso-titulo" class="text" style="margin-bottom: 32px;">Um projeto deste serviço</h2>
+    <div class="grid grid--2">
+      <a class="card" href="/casos/elite-90-pro">
+        <img src="/imagens/elite-90-pro-site.jpg" alt="Página inicial do site do programa Coach Ruiz: Construa um corpo de atleta em 90 dias" width="1920" height="1080" loading="lazy" class="proof-img" />
+        <span class="eyebrow eyebrow--muted" style="margin: 0;">Caso</span>
+        <span class="h4" style="font-size: 24px;">Elite 90 Pro</span>
+        <span class="small" style="flex: 1;">Programa de 90 dias de transformação física para executivos, conduzido pelo Coach Ruiz. A GM Digital Bunker desenhou o ecossistema digital do programa e conduz sua construção por módulos.</span>
+        <span class="more">Ler o caso <span aria-hidden="true">→</span></span>
+      </a>
+    </div>
+  </section>
+
+  <Invite />
+</Base>

@@ -1,0 +1,97 @@
+---
+import Base from '../../layouts/Base.astro';
+import Opening from '../../components/Opening.astro';
+import Invite from '../../components/Invite.astro';
+import { AMAZON } from '../../config';
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Book',
+  name: 'Quando é Melhor com IA',
+  alternativeHeadline: 'Aumentação profissional por uso de IA. De Análise Estratégica a Produção Técnica',
+  author: { '@type': 'Person', name: 'Gonçalo Marques' },
+  isbn: '978-65-02-41615-0',
+  bookFormat: 'https://schema.org/EBook',
+  inLanguage: 'pt-BR',
+  datePublished: '2026',
+};
+---
+<Base
+  title="Quando é Melhor com IA"
+  description="Quando é Melhor com IA, de Gonçalo Marques: como aplicar IA com rigor e método na produção técnica, na análise complexa e no apoio à decisão estratégica."
+  current="metodo"
+  path="/metodo/livro"
+  ctaSecondary
+  jsonLd={jsonLd}
+>
+  <Opening
+    crumbs={[{ label: 'Início', href: '/' }, { label: 'Método', href: '/metodo' }, { label: 'Livro' }]}
+    eyebrow="O livro"
+    title="Quando é Melhor com IA"
+    lead="Aumentação profissional por uso de IA. De Análise Estratégica a Produção Técnica"
+  >
+    <p class="meta" style="margin: 24px 0 0;">Gonçalo Marques · eBook · 2026 · ISBN 978-65-02-41615-0 · 11 capítulos · cerca de 35 mil palavras</p>
+  </Opening>
+
+  <section class="section container">
+    <div class="side side--reverse">
+      <div>
+        <img src="/imagens/capa-quando-e-melhor-com-ia.jpg" alt="Capa do livro Quando é Melhor com IA, de Gonçalo Marques" width="1000" height="1600" class="cover" />
+        <a class="btn btn--primary" href={AMAZON} style="margin-top: 24px;">Comprar na Amazon <span aria-hidden="true">↗</span><span class="visually-hidden">site externo</span></a>
+      </div>
+      <div>
+        <div class="block">
+          <h2 class="text" style="margin-bottom: 16px;">Do que trata</h2>
+          <p class="lead">Como aplicar IA com rigor e método na produção técnica, na análise complexa e no apoio à decisão estratégica.</p>
+        </div>
+        <div class="block">
+          <h2 class="text" style="margin-bottom: 16px;">Para quem</h2>
+          <p class="lead">Analistas, desenvolvedores, gestores e consultores que querem passar do uso ocasional ao uso avançado de IA.</p>
+        </div>
+        <div class="block">
+          <h2 class="text" style="margin-bottom: 16px;">Por que este livro</h2>
+          <div class="prose text">
+            <p>A literatura de IA divide-se entre a crítica ao hype e o manual prático, e pouco trata da distância entre o que a IA sabe fazer e o que chega pronto ao usuário. O livro oferece um método para reduzir essa distância antes, durante e depois de cada uso: escolher a ferramenta pelo tipo de trabalho, estruturar e ancorar as solicitações em fontes e validar cada resultado.</p>
+            <p>Outros livros dizem o que a IA pode fazer; este diz quando é melhor com ela.</p>
+          </div>
+        </div>
+        <blockquote class="quote block">
+          <p>"Este livro tem como propósito guiar o profissional a aplicar tecnologias de Inteligência Artificial (IA) com rigor, responsabilidade e método no seu trabalho de geração e aplicação de conhecimento."</p>
+          <cite>Do prefácio</cite>
+        </blockquote>
+      </div>
+    </div>
+  </section>
+
+  <section class="band-indigo" aria-labelledby="ideias-titulo">
+    <div class="section container">
+      <p class="eyebrow">As quatro ideias</p>
+      <h2 id="ideias-titulo" class="text" style="margin-bottom: 32px;">O que organiza o livro</h2>
+      <div class="grid grid--4">
+        <div class="card"><span class="meta step__n">01</span><h3 class="h4">Funções transversais</h3><p class="small">Quatro padrões de raciocínio presentes em qualquer tarefa</p></div>
+        <div class="card"><span class="meta step__n">02</span><h3 class="h4">Economia da fricção</h3><p class="small">Potência da IA versus o quanto dela chega à entrega</p></div>
+        <div class="card"><span class="meta step__n">03</span><h3 class="h4">Sete arquétipos</h3><p class="small">Qual a melhor IA para cada perfil de trabalho</p></div>
+        <div class="card"><span class="meta step__n">04</span><h3 class="h4">Governança</h3><p class="small">Zero alucinação, validação humana, privacidade e propriedade intelectual</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section container" aria-labelledby="capitulos-titulo">
+    <h2 id="capitulos-titulo" class="text" style="margin-bottom: 24px;">Os capítulos</h2>
+    <ol class="chapters">
+      <li>Introdução</li>
+      <li>Método e Critérios de Organização</li>
+      <li>Taxonomia Canônica do Uso de IA</li>
+      <li>Framework Conceitual – Funções Transversais (Metacasos)</li>
+      <li>A Economia da Fricção (O Streamlining como Camada de Habilitação)</li>
+      <li>Casos de Uso Operacionais, Analíticos e Criativos</li>
+      <li>Casos de Uso Estratégico-Síntese</li>
+      <li>Galeria de Arquétipos Profissionais</li>
+      <li>Governança de Qualidade, Confiabilidade e Ética</li>
+      <li>Coerência Sistêmica e Rastreabilidade Interna</li>
+      <li>Conclusão Geral da Obra</li>
+    </ol>
+    <!-- Reserved: print, English (When It's Better with AI) and German editions, when published -->
+  </section>
+
+  <Invite />
+</Base>

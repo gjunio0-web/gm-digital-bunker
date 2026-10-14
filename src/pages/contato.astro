@@ -1,0 +1,49 @@
+---
+import Base from '../layouts/Base.astro';
+import Opening from '../components/Opening.astro';
+import ContactForm from '../components/ContactForm.astro';
+import { EMAIL_CONTATO, LINKEDIN } from '../config';
+---
+<Base
+  title="Contato"
+  description="Contato da GM Digital Bunker™: pedido de conversa inicial, e-mail e LinkedIn."
+  current="contato"
+  path="/contato"
+  ctaSecondary
+  noActionBar
+  noDialog
+>
+  <Opening
+    crumbs={[{ label: 'Início', href: '/' }, { label: 'Contato' }]}
+    eyebrow="Contato"
+    title="Contato"
+    lead="Vamos conversar sobre onde e quando é melhor com IA no seu negócio."
+  />
+
+  <section class="section container">
+    <div class="side">
+      <div>
+        <p class="lead" style="margin-bottom: 40px;">A conversa inicial serve para entender o momento do negócio e onde a IA já aparece na operação.</p>
+        <p class="form__alert" id="enviado" role="status" tabindex="-1" hidden>Pedido recebido. A resposta chega pelo e-mail informado, para marcar a conversa inicial.</p>
+        <ContactForm idPrefix="c" />
+      </div>
+      <aside>
+        <h2 class="h3" style="margin-bottom: 16px;">Outros canais</h2>
+        <p style="margin: 0 0 12px;">E-mail: <a href={`mailto:${EMAIL_CONTATO}`}>{EMAIL_CONTATO}</a></p>
+        <p style="margin: 0;"><a href={LINKEDIN}>LinkedIn de Gonçalo Marques <span aria-hidden="true">↗</span><span class="visually-hidden">site externo</span></a></p>
+      </aside>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .form__alert { margin: 0 0 24px; padding: 16px 20px; border: 2px solid var(--ink); border-radius: var(--radius-md); font-weight: 600; color: var(--ink); }
+</style>
+
+<script>
+  // After a Netlify submission, the page reloads with ?enviado=1: show the success line
+  if (new URLSearchParams(location.search).get('enviado') === '1') {
+    const ok = document.getElementById('enviado');
+    if (ok) { ok.hidden = false; ok.focus(); }
+  }
+</script>
