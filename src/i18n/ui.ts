@@ -42,7 +42,7 @@ export const ui = {
     menu: { open: 'Menu', close: 'Close menu' },
     theme: { toLight: 'Switch to light theme', toDark: 'Switch to dark theme' },
     langSwitch: { code: 'PT', label: 'Versão em português', hreflang: 'pt-BR' },
-    footer: { tagline: 'Technology and AI strategy for the real world.', pages: 'Pages', also: 'Also', book: 'Book on Amazon', linkedin: 'LinkedIn', privacy: 'Privacy', external: 'external site', pagesNav: 'Footer – pages', externalNav: 'Footer – external destinations', current: 'EN', other: 'PT' },
+    footer: { tagline: 'AI technology strategy for the real world.', pages: 'Pages', also: 'Also', book: 'Book on Amazon', linkedin: 'LinkedIn', privacy: 'Privacy', external: 'external site', pagesNav: 'Footer – pages', externalNav: 'Footer – external destinations', current: 'EN', other: 'PT' },
     crumbsHome: 'Home',
     crumbsLabel: 'You are here',
     invite: "Let's talk about where and when it's better with AI in your business.",

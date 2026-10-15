@@ -117,13 +117,13 @@ export const home: Record<Lang, HomeContent> = {
 
   en: {
     title: 'GM Digital Bunker™',
-    description: 'Technology and AI strategy for the real world. Senior decisions, executed with AI, through to the finished artifact, for small and mid-sized companies.',
+    description: 'AI technology strategy for the real world. Senior decisions, executed with AI, through to the finished artifact, for small and mid-sized companies.',
     jsonLdDescription: 'Independent technology strategy practice focused on the advanced application of artificial intelligence, from strategic analysis to the production of technical and communication artifacts.',
     hero: {
       meta: 'Strategy · Technology · AI · 2026',
       whoHtml: '<a href="/en/about">Gonçalo Marques</a> · São Paulo',
-      titleHtml: 'Technology and AI strategy for the <span>real world</span>.',
-      lead: 'For small and mid-sized companies that need to decide and execute on technology and AI, from strategic analysis to the finished artifact.',
+      titleHtml: 'AI technology strategy for the <span>real world</span>.',
+      lead: 'For small and mid-sized companies that need to decide and execute on AI technology, from strategic analysis to the finished artifact.',
       services: 'See services', method: 'Learn the method', pause: 'Pause animation', resume: 'Resume animation',
     },
     s1: {
