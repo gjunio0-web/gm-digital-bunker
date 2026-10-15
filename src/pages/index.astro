@@ -24,7 +24,7 @@ const jsonLd = {
     <p class="hero__meta hero__meta--right" aria-hidden="true">Estratégia · Tecnologia · IA · 2026</p>
     <div class="container hero__content">
       <div class="hero__plate">
-        <p class="eyebrow" style="margin-bottom: 16px;">Gonçalo Marques · São Paulo</p>
+        <p class="eyebrow hero__who" style="margin-bottom: 16px;"><a href="/sobre">Gonçalo Marques</a> · São Paulo</p>
         <h1 id="capa-titulo" class="display" style="margin-bottom: 20px;">Estratégia de tecnologia e IA para o <span>mundo real</span>.</h1>
         <p class="lead" style="margin-bottom: 32px; max-width: 36rem;">Para empresas de pequeno e médio porte que precisam decidir e executar em tecnologia e IA, da análise estratégica ao artefato pronto.</p>
         <div class="actions">
@@ -179,6 +179,7 @@ const jsonLd = {
           <span class="more">Abrir o AI Strategy Hub <span aria-hidden="true">↗</span><span class="visually-hidden">site externo</span></span>
         </a>
       </div>
+      <p class="bridge">Os textos sobre o método estão em <a href="/publicacoes">Publicações <span aria-hidden="true">→</span></a></p>
 
       <h3 class="text" style="margin: 64px 0 24px;">A IA amplia o trabalho de consultoria, quando se sabe onde usá-la</h3>
       <div class="grid grid--4 evidence">
@@ -226,6 +227,12 @@ const jsonLd = {
 </Base>
 
 <style>
+  /* Bridges from the home narrative to pages the menu alone would reach */
+  .hero__who a { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+  .hero__who a:hover { color: var(--accent-hover); }
+  .bridge { margin: 24px 0 0; font-size: 16px; line-height: 1.5; }
+  .bridge a { font-weight: 600; }
+
   .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 
   /* Carousel: a grid on desktop, one card at a time with arrows on phones */
