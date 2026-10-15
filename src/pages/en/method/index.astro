@@ -1,0 +1,60 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Opening from '../../../components/Opening.astro';
+import Invite from '../../../components/Invite.astro';
+import { path } from '../../../i18n/routes';
+import { HUB } from '../../../config';
+const L = 'en';
+const hub = `${HUB}/?lang=en`;
+---
+<Base
+  lang={L}
+  title="The method"
+  description="The GM Digital Bunker™ method: when AI actually improves a piece of work, how to recognize what each task demands and how to check what AI produces."
+  current="metodo"
+  pageId="metodo"
+>
+  <Opening
+    lang={L}
+    crumbs={[{ label: 'Home', href: path('inicio', L) }, { label: 'Method' }]}
+    eyebrow="Method"
+    title="The method"
+    lead="When AI actually improves a piece of work, how to recognize what each task demands and how to check what AI produces. The book explains the judgment; the AI Strategy Hub puts it into practice."
+  />
+
+  <section class="section container" aria-labelledby="ideias-titulo">
+    <h2 id="ideias-titulo" class="text" style="margin-bottom: 32px;">What organizes the method</h2>
+    <div class="grid grid--4">
+      <div class="card"><span class="meta step__n">01</span><h3 class="h4">Cross-cutting functions</h3><p class="small">Four reasoning patterns present in any task</p></div>
+      <div class="card"><span class="meta step__n">02</span><h3 class="h4">The economics of friction</h3><p class="small">AI's power versus how much of it reaches the deliverable</p></div>
+      <div class="card"><span class="meta step__n">03</span><h3 class="h4">Seven archetypes</h3><p class="small">Which AI is best for each work profile</p></div>
+      <div class="card"><span class="meta step__n">04</span><h3 class="h4">Governance</h3><p class="small">Zero hallucination, human validation, privacy and intellectual property</p></div>
+    </div>
+  </section>
+
+  <section class="band-indigo" aria-labelledby="pecas-titulo">
+    <div class="section container">
+      <p class="eyebrow">Two pieces</p>
+      <h2 id="pecas-titulo" class="text" style="margin-bottom: 32px;">The book and the application</h2>
+      <div class="grid grid--2">
+        <a class="card" href={path('livro', L)}>
+          <span class="proof-frame"><img src="/imagens/capa-quando-e-melhor-com-ia.jpg" alt="Cover of the book Quando é Melhor com IA (When it's Better with AI), by Gonçalo Marques" width="1000" height="1600" loading="lazy" /></span>
+          <span class="eyebrow eyebrow--muted" style="margin: 0;">The book</span>
+          <span class="h4" style="font-size: 24px;">When it's Better with&nbsp;AI</span>
+          <span class="small" style="flex: 1;">How to apply AI with rigor and method in technical production, complex analysis and support for strategic decisions.</span>
+          <span class="more">About the book <span aria-hidden="true">→</span></span>
+        </a>
+        <a class="card" href={hub}>
+          <img src="/imagens/ai-strategy-hub.jpg" alt='AI Strategy Hub screen: the "Code Surgeon" professional profile selected and the recommended ranking with the capability chart' width="1920" height="1080" loading="lazy" class="proof-img" />
+          <span class="eyebrow eyebrow--muted" style="margin: 0;">Free application</span>
+          <span class="h4" style="font-size: 24px;">AI Strategy Hub <span aria-hidden="true">↗</span></span>
+          <span class="small" style="flex: 1;">A free web dashboard that points to the most suitable AI for each work profile. There is no best AI; there is the best AI for your work, with scores open for audit. Available in Portuguese, English and German.</span>
+          <span class="more">Open the AI Strategy Hub <span aria-hidden="true">↗</span><span class="visually-hidden">external site</span></span>
+        </a>
+      </div>
+      <p class="lead text" style="margin-top: 48px;">The book does not catalog tools: it treats capabilities in the abstract and maps work profiles by the combination of capabilities each one demands. That map of profiles is what the AI Strategy Hub, a free tool separate from the book, uses to recommend which specific AI applies to each profile.</p>
+    </div>
+  </section>
+
+  <Invite lang={L} />
+</Base>

@@ -28,14 +28,20 @@ Buscar por `[dominio]` ou pelos nomes abaixo:
 | Domínio | `src/config.ts` e `astro.config.mjs` | O endereço absoluto (canonical, hreflang, Open Graph, dados estruturados) vem da Netlify no build: `DEPLOY_PRIME_URL` no ramo em construção, `URL` no endereço principal, que passa a ser o domínio próprio quando ele for configurado no site. Nada a trocar no código. Para fixar outro endereço, definir a variável `DOMINIO_FIXO`. Em builds locais vale o marcador `dominio.exemplo`. O e-mail `EMAIL_CONTATO` continua marcador até o domínio existir. |
 | Formulário desativado | `src/components/ContactForm.astro` (`DESATIVADO = true`) | Mudar para `false` quando a página de Privacidade for publicada. Até lá os campos aparecem desabilitados, com aviso e e-mail alternativo. |
 | Página de Privacidade | `src/pages/privacidade.astro` | Texto aprovado por Gon em 15/10/2026, pendente de revisão jurídica. Marcadores entre colchetes: razão social e CNPJ, prazo de guarda (sugestão: 90 dias), provedor do formulário (Netlify ou Firebase) e data de publicação. |
-| Versão em inglês | `Header.astro`/`Footer.astro` (link `/en/`) e `hreflang` em `Base.astro` | Os links existem; as páginas `/en/...` entram depois da aprovação do conteúdo em português. |
 | Formatos, prazos e honorários | `src/pages/servicos/index.astro` (comentário) | Fora do lançamento, conforme o documento de conteúdo. |
+
+## Idiomas
+
+Português (padrão, sem prefixo) e inglês americano (`/en/…`), com endereços traduzidos. `src/i18n/routes.ts` mapeia cada página nos dois idiomas e alimenta o link PT/EN do cabeçalho e do rodapé, o canonical e os pares `hreflang`; `src/i18n/ui.ts` guarda os textos de interface (menu, rodapé, formulário, diálogo, barra de ação, 404). A página inicial é um único modelo (`src/templates/Home.astro`) com o conteúdo em `src/content/home.ts`; as páginas internas em inglês ficam em `src/pages/en/`. O AI Strategy Hub é aberto com `?lang=en` a partir das páginas em inglês. A página 404 é uma só, com a linha em inglês abaixo da portuguesa. Textos em inglês traduzidos por Claude e pendentes da revisão de Gon.
 
 ## Estrutura
 
 ```
 src/
   config.ts                 constantes (domínio, e-mail, marca, endereços externos)
+  i18n/routes.ts, ui.ts     endereços por idioma e textos de interface
+  content/home.ts           conteúdo da página inicial nos dois idiomas
+  templates/Home.astro      modelo da página inicial
   styles/global.css         tokens do Design System (temas escuro e claro), tipografia, botões, cartões, abertura animada
   layouts/Base.astro        head, cabeçalho, rodapé, barra de ação (celular) e diálogo de contato
   components/
@@ -46,9 +52,9 @@ src/
     ContactForm.astro       o único formulário (Netlify Forms), usado na página e no diálogo
     ContactDialog.astro     diálogo <dialog> aberto por qualquer "Agendar conversa"
     ActionBar.astro         botão fixo no rodapé da tela em celulares
-  pages/                    uma página por endereço (12 páginas, inclusive 404 e privacidade)
+  pages/                    uma página por endereço em português (12) e, em pages/en/, em inglês (11)
 public/imagens/             capa do livro, capturas do site Elite 90 Pro e do AI Strategy Hub, retrato do autor
-public/og/og-image.jpg      imagem Open Graph (1200×630) para prévias de link; regerar com `npm run og` (na primeira vez, `npx playwright install chromium`)
+public/og/                  imagens Open Graph (1200×630), pt e en; regerar com `npm run og` (na primeira vez, `npx playwright install chromium`)
 scripts/og/                 fonte da imagem OG (og.html + render.mjs)
 ```
 

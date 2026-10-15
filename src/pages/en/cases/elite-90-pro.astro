@@ -1,0 +1,76 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Opening from '../../../components/Opening.astro';
+import Invite from '../../../components/Invite.astro';
+import { path } from '../../../i18n/routes';
+const L = 'en';
+---
+<Base
+  lang={L}
+  title="Elite 90 Pro: from WhatsApp to a complete system"
+  description="How GM Digital Bunker™ designed the digital ecosystem of the Elite 90 Pro program and leads its construction module by module."
+  current="casos"
+  pageId="caso"
+>
+  <Opening
+    lang={L}
+    crumbs={[{ label: 'Home', href: path('inicio', L) }, { label: 'Cases', href: path('caso', L) }, { label: 'Elite 90 Pro' }]}
+    eyebrow="GM Digital Bunker success case"
+    title="Elite 90 Pro: from WhatsApp to a complete system"
+    lead="A 90-day physical transformation program for executives, led by Coach Ruiz. GM Digital Bunker designed the program's digital ecosystem and leads its construction module by module."
+  />
+
+  <section class="section container">
+    <div class="side">
+      <div>
+        <div class="block">
+          <h2 class="text" style="margin-bottom: 16px;">The starting point</h2>
+          <p class="lead">Coach Ruiz had no technology team.</p>
+        </div>
+        <div class="block">
+          <h2 class="text" style="margin-bottom: 16px;">In production</h2>
+          <p class="lead">100% in production: the bilingual public website and the AI lead-screening module of the Coach's dashboard. In screening, the AI scores candidates and drafts the assessment, always reviewed by the Coach before it is sent.</p>
+        </div>
+        <div class="block">
+          <h2 class="text" style="margin-bottom: 16px;">Under construction</h2>
+          <p class="lead">15 of 51 features ready, from lead capture to compliance; the rest under construction module by module. Athlete tracking and delegation to partner professionals in progress; athlete portal and payments on the roadmap.</p>
+          <p class="meta" style="margin-top: 12px;">Status as of September 21, 2026.</p>
+        </div>
+        <div class="block">
+          <h2 class="text" style="margin-bottom: 16px;">Data protection</h2>
+          <p class="lead">90 days to delete the data of declined applicants: a rule under Brazil's General Data Protection Law (LGPD), proposed and implemented by GM Digital Bunker.</p>
+        </div>
+      </div>
+      <aside>
+        <figure style="margin: 0;">
+          <img src="/imagens/elite-90-pro-site.jpg" alt="Home page of the Coach Ruiz program website: Build an athlete's body in 90 days" width="1920" height="1080" loading="lazy" class="proof-img" />
+          <figcaption class="meta" style="margin-top: 12px;"><a href="https://coachruiz.com.br">coachruiz.com.br <span aria-hidden="true">↗</span><span class="visually-hidden">external site</span></a></figcaption>
+        </figure>
+      </aside>
+    </div>
+  </section>
+
+  <section class="band-indigo" aria-label="Quote from the project's delivery dossier">
+    <div class="section container">
+      <blockquote class="quote" style="border-left-color: currentColor;">
+        <p>"The system does not replace clinical curation; it takes the coach straight to the validation stage."</p>
+        <cite>Project delivery dossier, 2026</cite>
+      </blockquote>
+    </div>
+  </section>
+
+  <section class="section container" aria-labelledby="servico-titulo">
+    <p class="eyebrow">Related service</p>
+    <h2 id="servico-titulo" class="text" style="margin-bottom: 32px;">The service behind this case</h2>
+    <div class="grid grid--2">
+      <a class="card" href={path('estrategia', L)}>
+        <span class="eyebrow eyebrow--muted" style="margin: 0;">Service</span>
+        <span class="h4" style="font-size: 24px;">AI strategy and digital platform</span>
+        <span class="small" style="flex: 1;">A tailored project, from diagnosis to a platform in production; Elite 90 Pro as the case.</span>
+        <span class="more">See the service <span aria-hidden="true">→</span></span>
+      </a>
+    </div>
+  </section>
+
+  <Invite lang={L} />
+</Base>

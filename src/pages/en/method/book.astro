@@ -1,0 +1,103 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Opening from '../../../components/Opening.astro';
+import Invite from '../../../components/Invite.astro';
+import { path } from '../../../i18n/routes';
+import { AMAZON } from '../../../config';
+const L = 'en';
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Book',
+  name: 'Quando é Melhor com IA',
+  alternateName: "When it's Better with AI",
+  alternativeHeadline: 'Aumentação profissional por uso de IA. De Análise Estratégica a Produção Técnica',
+  author: { '@type': 'Person', name: 'Gonçalo Marques' },
+  isbn: '978-65-02-41615-0',
+  bookFormat: 'https://schema.org/EBook',
+  inLanguage: 'pt-BR',
+  datePublished: '2026',
+};
+---
+<Base
+  lang={L}
+  title="When it's Better with AI"
+  description="When it's Better with AI (Quando é Melhor com IA), by Gonçalo Marques: how to apply AI with rigor and method in technical production, complex analysis and support for strategic decisions."
+  current="metodo"
+  pageId="livro"
+  ctaSecondary
+  jsonLd={jsonLd}
+>
+  <Opening
+    lang={L}
+    crumbs={[{ label: 'Home', href: path('inicio', L) }, { label: 'Method', href: path('metodo', L) }, { label: 'Book' }]}
+    eyebrow="The book"
+    title="When it's Better with AI"
+    lead="Professional augmentation through the use of AI. From strategic analysis to technical production."
+  >
+    <p class="meta" style="margin: 24px 0 0;">Gonçalo Marques · eBook · 2026 · ISBN 978-65-02-41615-0 · 11 chapters · about 35,000 words · published in Portuguese as <span lang="pt-BR">Quando é Melhor com IA</span>; English edition forthcoming</p>
+  </Opening>
+
+  <section class="section container">
+    <div class="side side--reverse">
+      <div>
+        <img src="/imagens/capa-quando-e-melhor-com-ia.jpg" alt="Cover of the book Quando é Melhor com IA (When it's Better with AI), by Gonçalo Marques" width="1000" height="1600" class="cover" />
+        <a class="btn btn--primary" href={AMAZON} style="margin-top: 24px;">Buy on Amazon <span aria-hidden="true">↗</span><span class="visually-hidden">external site</span></a>
+        <p class="meta" style="margin-top: 12px;">Portuguese edition</p>
+      </div>
+      <div>
+        <div class="block">
+          <h2 class="text" style="margin-bottom: 16px;">What it is about</h2>
+          <p class="lead">How to apply AI with rigor and method in technical production, complex analysis and support for strategic decisions.</p>
+        </div>
+        <div class="block">
+          <h2 class="text" style="margin-bottom: 16px;">Who it is for</h2>
+          <p class="lead">Analysts, developers, managers and consultants who want to move from occasional to advanced use of AI.</p>
+        </div>
+        <div class="block">
+          <h2 class="text" style="margin-bottom: 16px;">Why this book</h2>
+          <div class="prose text">
+            <p>The literature on AI splits between the critique of the hype and the practical manual, and says little about the distance between what AI can do and what reaches the user ready to use. The book offers a method for closing that distance before, during and after each use: choose the tool by the type of work, structure and anchor requests in sources, and validate every result.</p>
+            <p>Other books say what AI can do; this one says when it's better with it.</p>
+          </div>
+        </div>
+        <blockquote class="quote block">
+          <p>"The purpose of this book is to guide professionals in applying Artificial Intelligence (AI) technologies with rigor, responsibility and method in their work of generating and applying knowledge."</p>
+          <cite>From the preface (translated)</cite>
+        </blockquote>
+      </div>
+    </div>
+  </section>
+
+  <section class="band-indigo" aria-labelledby="ideias-titulo">
+    <div class="section container">
+      <p class="eyebrow">The four ideas</p>
+      <h2 id="ideias-titulo" class="text" style="margin-bottom: 32px;">What organizes the book</h2>
+      <div class="grid grid--4">
+        <div class="card"><span class="meta step__n">01</span><h3 class="h4">Cross-cutting functions</h3><p class="small">Four reasoning patterns present in any task</p></div>
+        <div class="card"><span class="meta step__n">02</span><h3 class="h4">The economics of friction</h3><p class="small">AI's power versus how much of it reaches the deliverable</p></div>
+        <div class="card"><span class="meta step__n">03</span><h3 class="h4">Seven archetypes</h3><p class="small">Which AI is best for each work profile</p></div>
+        <div class="card"><span class="meta step__n">04</span><h3 class="h4">Governance</h3><p class="small">Zero hallucination, human validation, privacy and intellectual property</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section container" aria-labelledby="capitulos-titulo">
+    <h2 id="capitulos-titulo" class="text" style="margin-bottom: 24px;">The chapters</h2>
+    <ol class="chapters">
+      <li>Introduction</li>
+      <li>Method and Organizing Criteria</li>
+      <li>Canonical Taxonomy of AI Use</li>
+      <li>Conceptual Framework – Cross-cutting Functions (Metacases)</li>
+      <li>The Economics of Friction (Streamlining as an Enabling Layer)</li>
+      <li>Operational, Analytical and Creative Use Cases</li>
+      <li>Strategic-Synthesis Use Cases</li>
+      <li>Gallery of Professional Archetypes</li>
+      <li>Governance of Quality, Reliability and Ethics</li>
+      <li>Systemic Coherence and Internal Traceability</li>
+      <li>General Conclusion</li>
+    </ol>
+    <p class="meta" style="margin-top: 16px;">Chapter titles translated from the Portuguese edition.</p>
+  </section>
+
+  <Invite lang={L} />
+</Base>

@@ -10,4 +10,5 @@ export default defineConfig({
   site,
   trailingSlash: 'never',
   build: { format: 'file' },
+  i18n: { defaultLocale: 'pt-BR', locales: ['pt-BR', 'en'], routing: { prefixDefaultLocale: false } },
 });

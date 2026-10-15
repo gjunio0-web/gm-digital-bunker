@@ -1,0 +1,58 @@
+---
+import Base from '../../layouts/Base.astro';
+import Opening from '../../components/Opening.astro';
+import Invite from '../../components/Invite.astro';
+import { path } from '../../i18n/routes';
+import { LINKEDIN, HUB } from '../../config';
+const L = 'en';
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: 'Gonçalo Marques',
+  jobTitle: 'Technology and AI strategist',
+  worksFor: { '@type': 'Organization', name: 'GM Digital Bunker™' },
+  alumniOf: ['Universidade Estadual de Campinas (Unicamp)', 'Fundação Getulio Vargas (FGV)'],
+};
+---
+<Base
+  lang={L}
+  title="About GM Digital Bunker™"
+  description="What GM Digital Bunker™ is and who leads it: Gonçalo Marques, author of When it's Better with AI."
+  current="sobre"
+  pageId="sobre"
+  jsonLd={jsonLd}
+>
+  <Opening
+    lang={L}
+    crumbs={[{ label: 'Home', href: path('inicio', L) }, { label: 'About' }]}
+    eyebrow="About"
+    title="About GM Digital Bunker™"
+    lead="GM Digital Bunker™ is an independent technology strategy practice focused on the advanced application of artificial intelligence, from strategic analysis to the production of technical and communication artifacts."
+  />
+
+  <section class="section container" aria-labelledby="diferenciais-titulo">
+    <h2 id="diferenciais-titulo" class="text" style="margin-bottom: 32px;">Three differentiators</h2>
+    <div class="grid grid--3">
+      <div class="card"><h3 class="h4">Vendor independence</h3><p class="small">The practice takes no commission from any tool it recommends.</p></div>
+      <div class="card"><h3 class="h4">A method of its own, published</h3><p class="small">Anyone can check the criteria behind each recommendation.</p></div>
+      <div class="card"><h3 class="h4">Complete delivery</h3><p class="small">The work goes from diagnosis to the finished artifact, that is, to the system, document or material the company starts using, and does not stop at the report.</p></div>
+    </div>
+  </section>
+
+  <section class="band-indigo" aria-labelledby="conduz-titulo">
+    <div class="section container">
+      <p class="eyebrow">Who leads it</p>
+      <h2 id="conduz-titulo" class="text" style="margin-bottom: 32px;">Gonçalo Marques</h2>
+      <div style="display: flex; flex-wrap: wrap; gap: 32px 48px; align-items: flex-start;">
+        <img class="portrait" src="/imagens/goncalo-marques.jpg" alt="Gonçalo Marques" width="640" height="640" loading="lazy" />
+        <div class="prose text" style="flex: 1 1 480px;">
+          <p>The practice is led by Gonçalo Marques, author of the book <a href={path('livro', L)}>When it's Better with AI</a> and creator of the <a href={`${HUB}/?lang=en`}>AI Strategy Hub</a>. He brings nearly 30 years of corporate experience in strategy, technology and architecture, at companies such as Microsoft, Accenture, Cogna and Acelera Partners.</p>
+          <p>He is an electrical engineer from the University of Campinas (Unicamp), with graduate specializations from Fundação Getulio Vargas (FGV) in Project and Portfolio Management and in Knowledge Management. He holds the Leading SAFe (Scaled Agile Framework) and ITIL Foundation certifications. He has written technology book reviews for the newspaper O Estado de S. Paulo.</p>
+          <p><a href={LINKEDIN}>Gonçalo Marques on LinkedIn <span aria-hidden="true">↗</span><span class="visually-hidden">external site</span></a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <Invite lang={L} />
+</Base>

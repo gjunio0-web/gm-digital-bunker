@@ -1,0 +1,66 @@
+// Interface strings per language: header, footer, action bar, dialog, form, shared labels.
+// Page content lives in the pages themselves (and in src/content for the home page).
+import type { Lang } from './routes';
+
+export const ui = {
+  'pt-BR': {
+    htmlLang: 'pt-BR',
+    ogLocale: 'pt_BR',
+    skip: 'Pular para o conteúdo',
+    brand: 'GM Digital Bunker™',
+    nav: { servicos: 'Serviços', casos: 'Casos', metodo: 'Método', publicacoes: 'Publicações', sobre: 'Sobre', contato: 'Contato' },
+    cta: 'Agendar conversa',
+    menu: { open: 'Menu', close: 'Fechar menu' },
+    theme: { toLight: 'Mudar para tema claro', toDark: 'Mudar para tema escuro' },
+    langSwitch: { code: 'EN', label: 'English version', hreflang: 'en' },
+    footer: { tagline: 'Estratégia de tecnologia e IA para o mundo real.', pages: 'Páginas', also: 'Também', book: 'Livro na Amazon', linkedin: 'LinkedIn', privacy: 'Privacidade', external: 'site externo', pagesNav: 'Rodapé – páginas', externalNav: 'Rodapé – destinos externos', current: 'PT', other: 'EN' },
+    crumbsHome: 'Início',
+    crumbsLabel: 'Você está em',
+    invite: 'Vamos conversar sobre onde e quando é melhor com IA no seu negócio.',
+    dialog: { title: 'Agendar conversa', lead: 'A conversa inicial serve para entender o momento do negócio e onde a IA já aparece na operação.', close: 'Fechar', foot: 'Prefere outro canal?', footLink: 'Ver a página de contato' },
+    form: {
+      honeypot: 'Não preencha este campo:',
+      notice: 'O envio ficará ativo quando a página de Privacidade for publicada. Até lá, escreva para',
+      required: '(obrigatório)', optional: '(opcional)',
+      name: 'Nome', company: 'Empresa', email: 'E-mail', message: 'Mensagem',
+      messageHelp: 'O assunto que a empresa quer tratar na conversa',
+      errName: 'Erro: informe o nome.', errCompany: 'Erro: informe a empresa.', errEmail: 'Erro: informe o e-mail no formato nome@empresa.com.br.',
+      errSummary: (n: number) => `Erro: há ${n} ${n === 1 ? 'campo' : 'campos'} a corrigir.`,
+      submit: 'Enviar pedido de conversa', sending: 'Enviando…',
+      data: 'Os dados deste formulário servem apenas para responder a este contato. Ver', dataLink: 'Privacidade',
+      success: 'Pedido recebido. A resposta chega pelo e-mail informado, para marcar a conversa inicial.',
+    },
+    notFound: { title: 'Página não encontrada', lead: 'O endereço pode ter mudado ou não existir mais.', button: 'Ir para a página inicial', eyebrow: 'Erro 404' },
+  },
+  en: {
+    htmlLang: 'en',
+    ogLocale: 'en_US',
+    skip: 'Skip to content',
+    brand: 'GM Digital Bunker™',
+    nav: { servicos: 'Services', casos: 'Cases', metodo: 'Method', publicacoes: 'Publications', sobre: 'About', contato: 'Contact' },
+    cta: 'Book a conversation',
+    menu: { open: 'Menu', close: 'Close menu' },
+    theme: { toLight: 'Switch to light theme', toDark: 'Switch to dark theme' },
+    langSwitch: { code: 'PT', label: 'Versão em português', hreflang: 'pt-BR' },
+    footer: { tagline: 'Technology and AI strategy for the real world.', pages: 'Pages', also: 'Also', book: 'Book on Amazon', linkedin: 'LinkedIn', privacy: 'Privacy', external: 'external site', pagesNav: 'Footer – pages', externalNav: 'Footer – external destinations', current: 'EN', other: 'PT' },
+    crumbsHome: 'Home',
+    crumbsLabel: 'You are here',
+    invite: "Let's talk about where and when it's better with AI in your business.",
+    dialog: { title: 'Book a conversation', lead: 'The initial conversation is for understanding where the business stands and where AI already shows up in its operations.', close: 'Close', foot: 'Prefer another channel?', footLink: 'See the contact page' },
+    form: {
+      honeypot: 'Leave this field empty:',
+      notice: 'Submissions will open once the Privacy page is published. Until then, write to',
+      required: '(required)', optional: '(optional)',
+      name: 'Name', company: 'Company', email: 'Email', message: 'Message',
+      messageHelp: 'What the company would like to discuss',
+      errName: 'Error: enter your name.', errCompany: 'Error: enter the company.', errEmail: 'Error: enter the email as name@company.com.',
+      errSummary: (n: number) => `Error: ${n} ${n === 1 ? 'field needs' : 'fields need'} correcting.`,
+      submit: 'Send conversation request', sending: 'Sending…',
+      data: 'The data in this form is used only to reply to this contact. See', dataLink: 'Privacy',
+      success: 'Request received. The reply comes to the email provided, to schedule the initial conversation.',
+    },
+    notFound: { title: 'Page not found', lead: 'The address may have changed or no longer exist.', button: 'Go to the home page', eyebrow: 'Error 404' },
+  },
+} as const satisfies Record<Lang, unknown>;
+
+export const t = (lang: Lang) => ui[lang];

@@ -1,0 +1,49 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Opening from '../../../components/Opening.astro';
+import Invite from '../../../components/Invite.astro';
+import { path } from '../../../i18n/routes';
+const L = 'en';
+---
+<Base
+  lang={L}
+  title="AI advisory by subscription"
+  description="A part-time AI executive for small and mid-sized companies: quarterly review of AI tools, vendor screening and support for decisions."
+  current="servicos"
+  pageId="conselho"
+>
+  <Opening
+    lang={L}
+    crumbs={[{ label: 'Home', href: path('inicio', L) }, { label: 'Services', href: path('servicos', L) }, { label: 'AI advisory by subscription' }]}
+    eyebrow="Service"
+    title="AI advisory by subscription"
+    lead="Fractional AI executive: quarterly review of the AI tool portfolio, screening of AI vendor proposals and support for decisions, with a monthly fee and a cap on hours."
+  />
+
+  <section class="section container">
+    <div class="block">
+      <h2 class="text" style="margin-bottom: 24px;">What it is</h2>
+      <p class="lead">A part-time AI executive: someone who looks after your company's artificial intelligence decisions without you having to hire that professional full time.</p>
+    </div>
+
+    <div class="block">
+      <h2 class="text" style="margin-bottom: 24px;">Benefits for the company</h2>
+      <ul class="list text">
+        <li>A regular review of the AI tools the company pays for and uses, to know what is worth keeping.</li>
+        <li>An independent second opinion before closing with an AI vendor. GM Digital Bunker™ takes no commissions from vendors.</li>
+        <li>Support for AI decisions at the moment they come up, not only when a project is contracted.</li>
+        <li>Predictable cost: a fixed monthly fee with an hour limit set in the contract.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="band-indigo" aria-labelledby="funciona-titulo">
+    <div class="section container">
+      <p class="eyebrow">How it works</p>
+      <h2 id="funciona-titulo" class="text" style="margin-bottom: 24px;">Monthly fee, quarterly review and a cap on hours</h2>
+      <p class="lead text">The company pays a monthly fee. Each quarter, the AI tool portfolio is reviewed. Between reviews, vendor proposals and decision questions are analyzed within the contract's hour cap.</p>
+    </div>
+  </section>
+
+  <Invite lang={L} />
+</Base>

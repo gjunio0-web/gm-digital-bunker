@@ -1,0 +1,55 @@
+---
+import Base from '../../layouts/Base.astro';
+import Opening from '../../components/Opening.astro';
+import { path } from '../../i18n/routes';
+import { EMAIL_CONTATO } from '../../config';
+const L = 'en';
+// Translation of the Portuguese draft approved on 2026-10-15; the Portuguese text, once legally
+// reviewed, is the reference. Bracketed items are placeholders, as in the Portuguese page.
+---
+<Base lang={L} title="Privacy" description="How GM Digital Bunker™ handles the data sent through the contact form and technical browsing data." pageId="privacidade" ctaSecondary>
+  <Opening
+    lang={L}
+    crumbs={[{ label: 'Home', href: path('inicio', L) }, { label: 'Privacy' }]}
+    eyebrow="Utility"
+    title="Privacy"
+    lead="What data this site collects, what it is used for and how to request access, correction or deletion, under Brazil's General Data Protection Law (LGPD, Law 13,709/2018)."
+  />
+
+  <section class="section container">
+    <div class="prose text legal">
+      <p class="meta" style="margin-bottom: 32px;">This is a translation for convenience. The Portuguese version is the reference.</p>
+
+      <h2>Who is responsible for the data</h2>
+      <p>The controller is GM Digital Bunker™ [legal name, CNPJ tax ID], based in São Paulo, Brazil, represented by Gonçalo Marques. Questions and requests about personal data can be sent to <a href={`mailto:${EMAIL_CONTATO}`}>{EMAIL_CONTATO}</a>.</p>
+
+      <h2>What data the site collects</h2>
+      <p>The contact form asks for name, company, email and, optionally, a message. These are the only personal data the site requests.</p>
+      <p>While browsing, the server hosting the site records, as any server does, the IP address and technical connection data (browser, pages visited, date and time). The site loads its typefaces from Google Fonts servers; in that request, the visitor's IP address reaches Google.</p>
+      <p>The site uses no tracking cookies and no audience analytics tools. The only information stored in the browser is the theme preference (dark or light), which stays on the device and is not sent anywhere.</p>
+
+      <h2>What the data is used for</h2>
+      <p>Form data is used only to reply to the contact and, where applicable, to schedule the initial conversation. It is not used for newsletters or advertising, and it is not sold or shared with third parties. The legal basis is the legitimate interest in replying to whoever requests contact and, when the conversation moves forward, the preliminary steps toward a contract.</p>
+      <p>The server's technical logs serve the security and operation of the site.</p>
+
+      <h2>How long it is kept</h2>
+      <p>Form data is kept for as long as the contact lasts and, at most, for [90 days] after the last exchange of messages, after which it is deleted. If the contact results in a contract, the data is then handled under the contract. The server's technical logs follow the hosting provider's retention period.</p>
+
+      <h2>Who else has access</h2>
+      <p>The form is received and stored by [Netlify], the company hosting the site, under its privacy policy. Typefaces are served by Google. No other service receives visitor data.</p>
+
+      <h2>Your rights</h2>
+      <p>The LGPD guarantees anyone the right to know whether their data is processed, to access it, correct it, request its deletion and withdraw consent when consent is the basis for processing. Just write to <a href={`mailto:${EMAIL_CONTATO}`}>{EMAIL_CONTATO}</a>; replies are given within the legal deadline. Anyone who believes their rights were not respected may turn to Brazil's National Data Protection Authority (ANPD).</p>
+
+      <h2>Changes</h2>
+      <p>This page may change when the site gains new functions. The date of the last update appears below.</p>
+      <p class="meta">Last updated: [publication date].</p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .legal h2 { font-size: 24px; margin: 40px 0 12px; }
+  .legal p { margin: 0 0 16px; }
+  .legal .meta { margin-top: 24px; }
+</style>

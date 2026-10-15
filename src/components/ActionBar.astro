@@ -1,11 +1,14 @@
 ---
 // Phone-only action bar pinned to the bottom of the screen. Hidden once the closing
 // invitation (an element with [data-convite]) is on screen or already passed.
-interface Props { secondary?: boolean; }
-const { secondary = false } = Astro.props;
+import { t } from '../i18n/ui';
+import { path, type Lang } from '../i18n/routes';
+interface Props { secondary?: boolean; lang?: Lang; }
+const { secondary = false, lang = 'pt-BR' } = Astro.props;
+const u = t(lang);
 ---
 <div class="action-bar" data-action-bar>
-  <a class={`btn ${secondary ? 'btn--secondary' : 'btn--primary'}`} href="/contato" data-abrir-contato>Agendar conversa</a>
+  <a class={`btn ${secondary ? 'btn--secondary' : 'btn--primary'}`} href={path('contato', lang)} data-abrir-contato>{u.cta}</a>
 </div>
 
 <style>

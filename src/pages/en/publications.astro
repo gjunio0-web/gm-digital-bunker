@@ -1,0 +1,51 @@
+---
+import Base from '../../layouts/Base.astro';
+import Opening from '../../components/Opening.astro';
+import Invite from '../../components/Invite.astro';
+import { path } from '../../i18n/routes';
+import { HUB } from '../../config';
+const L = 'en';
+// Titles and summaries come from the AI Strategy Hub's own English strings (i18n/en.json); most recent first
+const artigos = [
+  {
+    titulo: 'A hundred books, three surveys, one question.',
+    resumo: 'I asked three AIs to survey, each on its own, everything published about AI. They disagreed – and it was in the disagreement that the question no book answers showed up.',
+    url: `${HUB}/?lang=en&tab=articles&artigo=cem-livros`,
+  },
+  {
+    titulo: 'The brilliant lawyer who never files the brief.',
+    resumo: 'The thread of the argument in "Quando é Melhor com IA": why power and efficiency are independent axes, not two points on the same ruler.',
+    url: `${HUB}/?lang=en&tab=articles&artigo=fio-do-argumento`,
+  },
+];
+---
+<Base
+  lang={L}
+  title="Publications"
+  description="Articles on the When it's Better with AI method, published on the AI Strategy Hub."
+  current="publicacoes"
+  pageId="publicacoes"
+>
+  <Opening
+    lang={L}
+    crumbs={[{ label: 'Home', href: path('inicio', L) }, { label: 'Publications' }]}
+    eyebrow="Publications"
+    title="Publications"
+    lead="Articles on the method, published on the AI Strategy Hub."
+  />
+
+  <section class="section container" aria-label="Articles">
+    <div class="grid grid--2">
+      {artigos.map((a) => (
+        <a class="card" href={a.url}>
+          <span class="eyebrow eyebrow--muted" style="margin: 0;">Article</span>
+          <span class="h4" style="font-size: 24px;">{a.titulo}</span>
+          <span class="small" style="flex: 1;">{a.resumo}</span>
+          <span class="more">Read on the AI Strategy Hub <span aria-hidden="true">↗</span><span class="visually-hidden">external site</span></span>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <Invite lang={L} />
+</Base>

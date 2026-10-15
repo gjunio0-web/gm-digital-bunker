@@ -6,45 +6,58 @@ import Footer from '../components/Footer.astro';
 import ActionBar from '../components/ActionBar.astro';
 import ContactDialog from '../components/ContactDialog.astro';
 
+import { DOMINIO } from '../config';
+import { t } from '../i18n/ui';
+import { path as routePath, otherLang, type Lang, type PageId } from '../i18n/routes';
+
 interface Props {
   title: string;
   description: string;
   current?: string;
-  path?: string;        // canonical path, e.g. "/casos/elite-90-pro"
+  pageId?: PageId;      // which page this is, in any language (routes.ts); gives canonical and hreflang
+  path?: string;        // canonical path override
+  lang?: Lang;
   ctaSecondary?: boolean;
   noActionBar?: boolean;
   noDialog?: boolean;
   jsonLd?: Record<string, unknown>;
 }
-const { title, description, current = '', path = '/', ctaSecondary = false, noActionBar = false, noDialog = false, jsonLd } = Astro.props;
-import { DOMINIO } from '../config';
+const { title, description, current = '', pageId = 'inicio', lang = 'pt-BR', ctaSecondary = false, noActionBar = false, noDialog = false, jsonLd } = Astro.props;
+const u = t(lang);
+const path = Astro.props.path ?? routePath(pageId, lang);
+const altPath = routePath(pageId, otherLang(lang));
 const fullTitle = title === 'GM Digital Bunker™' ? title : `${title} – GM Digital Bunker™`;
+const ogImage = lang === 'en' ? `${DOMINIO}/og/og-image-en.jpg` : `${DOMINIO}/og/og-image.jpg`;
+const ogAlt = lang === 'en'
+  ? 'GM Digital Bunker™ – Technology and AI strategy for the real world. Senior decisions, executed with AI, through to the finished artifact.'
+  : 'GM Digital Bunker™ – Estratégia de tecnologia e IA para o mundo real. Decisão sênior, executada com IA, até o artefato pronto.';
 ---
 <!doctype html>
-<html lang="pt-BR">
+<html lang={u.htmlLang}>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{fullTitle}</title>
   <meta name="description" content={description} />
   <link rel="canonical" href={`${DOMINIO}${path}`} />
-  <link rel="alternate" hreflang="pt-BR" href={`${DOMINIO}${path}`} />
-  <link rel="alternate" hreflang="en" href={`${DOMINIO}/en${path === '/' ? '/' : path}`} />
-  <link rel="alternate" hreflang="x-default" href={`${DOMINIO}${path}`} />
+  <link rel="alternate" hreflang="pt-BR" href={`${DOMINIO}${lang === 'pt-BR' ? path : altPath}`} />
+  <link rel="alternate" hreflang="en" href={`${DOMINIO}${lang === 'en' ? path : altPath}`} />
+  <link rel="alternate" hreflang="x-default" href={`${DOMINIO}${lang === 'pt-BR' ? path : altPath}`} />
   <meta property="og:title" content={fullTitle} />
   <meta property="og:description" content={description} />
   <meta property="og:type" content="website" />
-  <meta property="og:locale" content="pt_BR" />
+  <meta property="og:locale" content={u.ogLocale} />
+  <meta property="og:locale:alternate" content={lang === 'en' ? 'pt_BR' : 'en_US'} />
   <meta property="og:url" content={`${DOMINIO}${path}`} />
   <meta property="og:site_name" content="GM Digital Bunker™" />
-  <meta property="og:image" content={`${DOMINIO}/og/og-image.jpg`} />
+  <meta property="og:image" content={ogImage} />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="GM Digital Bunker™ – Estratégia de tecnologia e IA para o mundo real. Decisão sênior, executada com IA, até o artefato pronto." />
+  <meta property="og:image:alt" content={ogAlt} />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content={fullTitle} />
   <meta name="twitter:description" content={description} />
-  <meta name="twitter:image" content={`${DOMINIO}/og/og-image.jpg`} />
+  <meta name="twitter:image" content={ogImage} />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -56,14 +69,14 @@ const fullTitle = title === 'GM Digital Bunker™' ? title : `${title} – GM Di
   {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
 </head>
 <body>
-  <a class="skip" href="#conteudo">Pular para o conteúdo</a>
-  <Header current={current} ctaSecondary={ctaSecondary} />
+  <a class="skip" href="#conteudo">{u.skip}</a>
+  <Header current={current} ctaSecondary={ctaSecondary} lang={lang} pageId={pageId} />
   <main id="conteudo">
     <slot />
   </main>
-  <Footer />
-  {!noActionBar && <ActionBar secondary={ctaSecondary} />}
-  {!noDialog && <ContactDialog />}
+  <Footer lang={lang} pageId={pageId} />
+  {!noActionBar && <ActionBar secondary={ctaSecondary} lang={lang} />}
+  {!noDialog && <ContactDialog lang={lang} />}
   <script>
     // Section reveal (Design System › Movimento): blocks fade in once, with an 8px lift,
     // when they enter the viewport. Cards inside a grid stagger up to five steps.

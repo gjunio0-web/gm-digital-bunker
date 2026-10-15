@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  /* Open Graph image, 1200×630, GM Digital Bunker Design System (dark theme).
+     A still frame of the cover: one wedge of the kinetic bands, the grid, the grain, the plate. */
+  @font-face { font-family: 'Source Serif 4'; font-weight: 600; src: url('../../node_modules/@fontsource/source-serif-4/files/source-serif-4-latin-600-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Source Sans 3'; font-weight: 400; src: url('../../node_modules/@fontsource/source-sans-3/files/source-sans-3-latin-400-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'JetBrains Mono'; font-weight: 500; src: url('../../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-500-normal.woff2') format('woff2'); }
+  html, body { margin: 0; }
+  .og { position: relative; width: 1200px; height: 630px; overflow: hidden; background: #0b0d10; color: #eceef1; }
+  /* kinetic bands, frozen: indigo wedges at the right, as on the cover */
+  .bands { position: absolute; inset: -20%; background: conic-gradient(from 212deg at 78% 42%, transparent 0 58%, #4f46e5 58% 70%, #2a1fb8 70% 76%, transparent 76% 84%, #6a99ff 84% 90%, transparent 90%); opacity: 0.95; }
+  .grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(236,238,241,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(236,238,241,0.06) 1px, transparent 1px); background-size: 80px 80px; }
+  .grain { position: absolute; inset: 0; opacity: 0.22; mix-blend-mode: overlay; }
+  .meta { position: absolute; top: 40px; font: 500 15px/1.4 'JetBrains Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; color: #eceef1; border: 1px solid #666e7a; padding: 8px 12px; background: #0b0d10; }
+  .meta--l { left: 56px; }
+  .meta--r { right: 56px; }
+  .plate { position: absolute; left: 56px; bottom: 56px; width: 760px; padding: 44px 48px 48px; background: #0b0d10; border: 1px solid #2a2f37; border-radius: 4px; }
+  .eyebrow { margin: 0 0 18px; font: 500 15px/1.4 'JetBrains Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; color: #3d7bff; }
+  h1 { margin: 0; font: 600 64px/1.02 'Source Serif 4', serif; font-variation-settings: 'opsz' 60; letter-spacing: -0.01em; color: #eceef1; }
+  h1 span { color: #3d7bff; }
+  .lead { margin: 22px 0 0; font: 400 24px/1.4 'Source Sans 3', sans-serif; color: #c7ccd3; max-width: 30ch; }
+</style>
+</head>
+<body>
+<div class="og">
+  <div class="bands"></div>
+  <div class="grid"></div>
+  <svg class="grain" width="1200" height="630" aria-hidden="true"><filter id="g"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#g)"/></svg>
+  <p class="meta meta--l">GM Digital Bunker™</p>
+  <p class="meta meta--r">Strategy · Technology · AI · 2026</p>
+  <div class="plate">
+    <p class="eyebrow">Gonçalo Marques · São Paulo</p>
+    <h1>Technology and AI strategy for the <span>real world</span>.</h1>
+    <p class="lead">Senior decisions, executed with AI, through to the finished artifact.</p>
+  </div>
+</div>
+</body>
+</html>

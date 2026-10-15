@@ -1,0 +1,101 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Opening from '../../../components/Opening.astro';
+import Invite from '../../../components/Invite.astro';
+import { path } from '../../../i18n/routes';
+const L = 'en';
+---
+<Base
+  lang={L}
+  title="Services"
+  description="GM Digital Bunker™ services for small and mid-sized companies: AI strategy and digital platform, and AI advisory by subscription."
+  current="servicos"
+  pageId="servicos"
+>
+  <Opening
+    lang={L}
+    crumbs={[{ label: 'Home', href: path('inicio', L) }, { label: 'Services' }]}
+    eyebrow="Services"
+    title="Senior strategy through to the finished artifact, with no team pyramid"
+    lead="An independent technology strategy practice, from strategic analysis to the production of technical and communication artifacts."
+  />
+
+  <section class="section container" aria-labelledby="como-titulo">
+    <p class="eyebrow">How we work</p>
+    <h2 id="como-titulo" class="text" style="margin-bottom: 32px;">Whoever diagnoses is whoever delivers</h2>
+    <div class="compare">
+      <div class="card">
+        <span class="eyebrow eyebrow--muted" style="margin: 0;">Traditional consultancy</span>
+        <div>
+          <div class="compare__tier"><b>Partner</b><span>decides</span></div>
+          <div class="compare__tier"><b>Manager</b><span>coordinates</span></div>
+          <div class="compare__tier"><b>Consultants</b><span>analyze</span></div>
+          <div class="compare__tier"><b>Analysts</b><span>research and produce</span></div>
+        </div>
+        <p class="small" style="margin-top: 8px;">Leverage through people: the cost and lead time of an entire team.</p>
+      </div>
+      <div class="card" style="border-color: var(--accent);">
+        <span class="eyebrow" style="margin: 0;">GM Digital Bunker</span>
+        <div>
+          <div class="compare__tier"><b>Senior</b><span>decides and validates</span></div>
+          <div class="compare__tier"><b aria-hidden="true"></b><span class="meta">directs ↓ &nbsp; proposes ↑</span></div>
+          <div class="compare__tier"><b>AI under the senior's direction</b><span>research, curation, synthesis, writing, code, design and finished artifacts</span></div>
+        </div>
+        <p class="small" style="margin-top: 8px;">Leverage through tools: a lean structure, with no pyramid cost.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band-indigo" aria-labelledby="servicos-titulo">
+    <div class="section container">
+      <p class="eyebrow">The services</p>
+      <h2 id="servicos-titulo" class="text" style="margin-bottom: 32px;">What the company can hire</h2>
+      <div class="grid grid--2">
+        <a class="card" href={path('estrategia', L)}>
+          <span class="eyebrow eyebrow--muted" style="margin: 0;">Service</span>
+          <span class="h4" style="font-size: 24px;">AI strategy and digital platform</span>
+          <span class="small" style="flex: 1;">A tailored project, from diagnosis to a platform in production; Elite 90 Pro as the case.</span>
+          <span class="more">See the service <span aria-hidden="true">→</span></span>
+        </a>
+        <a class="card" href={path('conselho', L)}>
+          <span class="eyebrow eyebrow--muted" style="margin: 0;">Service</span>
+          <span class="h4" style="font-size: 24px;">AI advisory by subscription</span>
+          <span class="small" style="flex: 1;">Fractional AI executive: quarterly review, vendor screening and a cap on hours.</span>
+          <span class="more">See the service <span aria-hidden="true">→</span></span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section container" aria-labelledby="comecar-titulo">
+    <p class="eyebrow">How to start</p>
+    <h2 id="comecar-titulo" class="text" style="margin-bottom: 32px;">Three steps, from the conversation to the artifact</h2>
+    <ol class="steps">
+      <li class="card"><span class="meta step__n">01</span><h3>Initial conversation</h3><p class="small">Understand where the business stands and where AI already shows up in its operations.</p></li>
+      <li class="steps__arrow" aria-hidden="true">→</li>
+      <li class="card"><span class="meta step__n">02</span><h3>Diagnosis</h3><p class="small">A closed scope, with decision criteria and priorities defined.</p></li>
+      <li class="steps__arrow" aria-hidden="true">→</li>
+      <li class="card"><span class="meta step__n">03</span><h3>Artifact project</h3><p class="small">Building what was decided, ready for the team to use.</p></li>
+    </ol>
+    <!-- "Formats, timelines and fees" is still to be defined; left out at launch, per the content doc -->
+
+    <h2 class="text sub" style="margin-top: 80px;">Who it is for</h2>
+    <dl class="criteria">
+      <div><dt>Size</dt><dd>Mid-sized company (annual revenue of R$ 4.8 million to R$ 300 million) and growing small company</dd></div>
+      <div><dt>Technology</dt><dd>No dedicated technology director (CIO or CTO); lean, outsourced or operational IT</dd></div>
+      <div><dt>Decision-maker</dt><dd>CEO, partner or area director, who buys business results</dd></div>
+      <div><dt>Moment</dt><dd>AI not yet adopted or already in spontaneous use, with no shared judgment for deciding where and when to invest</dd></div>
+      <div><dt>Expectation</dt><dd>A well-founded decision and something usable at the end of the project</dd></div>
+    </dl>
+    <p class="meta" style="margin: 12px 0 0;">Size bands per the classification of BNDES, Brazil's development bank.</p>
+
+    <h2 class="text sub" style="margin-top: 80px;">What GM Digital Bunker does not do</h2>
+    <div class="grid grid--3">
+      <div class="card"><h3 class="h4">Large-scale operations</h3><p class="small">Rollouts with dozens of people or 24-hour operations call for another kind of supplier.</p></div>
+      <div class="card"><h3 class="h4">Tool resale</h3><p class="small">No commercial ties to vendors: the recommendation starts from the business problem.</p></div>
+      <div class="card"><h3 class="h4">Promises without a source</h3><p class="small">Gains are measured or declared as estimates, never presented as guarantees.</p></div>
+    </div>
+  </section>
+
+  <Invite lang={L} />
+</Base>

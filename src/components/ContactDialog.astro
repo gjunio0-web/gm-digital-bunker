@@ -2,18 +2,23 @@
 // Contact dialog: every "Agendar conversa" link points to /contato; with JavaScript the click
 // opens this dialog over the current page instead. Not rendered on the Contato page itself.
 import ContactForm from './ContactForm.astro';
+import { t } from '../i18n/ui';
+import { path, type Lang } from '../i18n/routes';
+interface Props { lang?: Lang; }
+const { lang = 'pt-BR' } = Astro.props;
+const u = t(lang);
 ---
 <dialog class="dialog" id="dialogo-contato" aria-labelledby="dialogo-contato-titulo">
   <div class="dialog__panel">
     <div class="dialog__head">
-      <h2 id="dialogo-contato-titulo">Agendar conversa</h2>
-      <button type="button" class="btn btn--icon" data-fechar aria-label="Fechar">
+      <h2 id="dialogo-contato-titulo">{u.dialog.title}</h2>
+      <button type="button" class="btn btn--icon" data-fechar aria-label={u.dialog.close}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
     </div>
-    <p class="dialog__lead">A conversa inicial serve para entender o momento do negócio e onde a IA já aparece na operação.</p>
-    <ContactForm idPrefix="d" />
-    <p class="dialog__foot">Prefere outro canal? <a href="/contato">Ver a página de contato</a></p>
+    <p class="dialog__lead">{u.dialog.lead}</p>
+    <ContactForm idPrefix="d" lang={lang} />
+    <p class="dialog__foot">{u.dialog.foot} <a href={path('contato', lang)}>{u.dialog.footLink}</a></p>
   </div>
 </dialog>
 

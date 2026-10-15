@@ -2,43 +2,46 @@
 // The one contact form, used by the Contato page and by the dialog.
 // Netlify Forms markup. Disabled until the Privacy page is approved (see README).
 import { EMAIL_CONTATO } from '../config';
-interface Props { idPrefix?: string; }
-const { idPrefix = 'f' } = Astro.props;
+import { t } from '../i18n/ui';
+import { path, type Lang } from '../i18n/routes';
+interface Props { idPrefix?: string; lang?: Lang; }
+const { idPrefix = 'f', lang = 'pt-BR' } = Astro.props;
+const u = t(lang);
 const DESATIVADO = true;
 const id = (s: string) => `${idPrefix}-${s}`;
 ---
-<form class="form" name="contato" method="POST" action="/contato?enviado=1" data-netlify="true" data-netlify-honeypot="empresa-site" novalidate data-contato-form data-desativado={DESATIVADO ? 'true' : undefined}>
+<form class="form" name="contato" method="POST" action={`${path('contato', lang)}?enviado=1`} data-netlify="true" data-netlify-honeypot="empresa-site" novalidate data-contato-form data-desativado={DESATIVADO ? 'true' : undefined} data-sending={u.form.sending} data-err-one={u.form.errSummary(1)} data-err-many={u.form.errSummary(2).replace('2', '{n}')}>
   <input type="hidden" name="form-name" value="contato" />
-  <p class="visually-hidden"><label>Não preencha este campo: <input name="empresa-site" tabindex="-1" autocomplete="off" /></label></p>
+  <p class="visually-hidden"><label>{u.form.honeypot} <input name="empresa-site" tabindex="-1" autocomplete="off" /></label></p>
 
   <div class="form__alert" role="alert" tabindex="-1" hidden data-resumo></div>
   {DESATIVADO && (
-    <p class="form__aviso">O envio ficará ativo quando a página de Privacidade for publicada. Até lá, escreva para <a href={`mailto:${EMAIL_CONTATO}`}>{EMAIL_CONTATO}</a>.</p>
+    <p class="form__aviso">{u.form.notice} <a href={`mailto:${EMAIL_CONTATO}`}>{EMAIL_CONTATO}</a>.</p>
   )}
 
   <div class="form__field">
-    <label for={id('nome')}>Nome <span>(obrigatório)</span></label>
-    <p class="form__erro" id={id('nome-erro')} hidden>Erro: informe o nome.</p>
+    <label for={id('nome')}>{u.form.name} <span>{u.form.required}</span></label>
+    <p class="form__erro" id={id('nome-erro')} hidden>{u.form.errName}</p>
     <input id={id('nome')} name="nome" type="text" autocomplete="name" required aria-required="true" aria-describedby={id('nome-erro')} disabled={DESATIVADO} />
   </div>
   <div class="form__field">
-    <label for={id('empresa')}>Empresa <span>(obrigatório)</span></label>
-    <p class="form__erro" id={id('empresa-erro')} hidden>Erro: informe a empresa.</p>
+    <label for={id('empresa')}>{u.form.company} <span>{u.form.required}</span></label>
+    <p class="form__erro" id={id('empresa-erro')} hidden>{u.form.errCompany}</p>
     <input id={id('empresa')} name="empresa" type="text" autocomplete="organization" required aria-required="true" aria-describedby={id('empresa-erro')} disabled={DESATIVADO} />
   </div>
   <div class="form__field">
-    <label for={id('email')}>E-mail <span>(obrigatório)</span></label>
-    <p class="form__erro" id={id('email-erro')} hidden>Erro: informe o e-mail no formato nome@empresa.com.br.</p>
+    <label for={id('email')}>{u.form.email} <span>{u.form.required}</span></label>
+    <p class="form__erro" id={id('email-erro')} hidden>{u.form.errEmail}</p>
     <input id={id('email')} name="email" type="email" autocomplete="email" required aria-required="true" aria-describedby={id('email-erro')} disabled={DESATIVADO} />
   </div>
   <div class="form__field">
-    <label for={id('mensagem')}>Mensagem <span>(opcional)</span></label>
-    <p class="form__ajuda" id={id('mensagem-ajuda')}>O assunto que a empresa quer tratar na conversa</p>
+    <label for={id('mensagem')}>{u.form.message} <span>{u.form.optional}</span></label>
+    <p class="form__ajuda" id={id('mensagem-ajuda')}>{u.form.messageHelp}</p>
     <textarea id={id('mensagem')} name="mensagem" rows="5" aria-describedby={id('mensagem-ajuda')} disabled={DESATIVADO}></textarea>
   </div>
   <div class="form__foot">
-    <button type="submit" class="btn btn--primary" disabled={DESATIVADO}>Enviar pedido de conversa</button>
-    <p class="form__dados">Os dados deste formulário servem apenas para responder a este contato. Ver <a href="/privacidade">Privacidade</a>.</p>
+    <button type="submit" class="btn btn--primary" disabled={DESATIVADO}>{u.form.submit}</button>
+    <p class="form__dados">{u.form.data} <a href={path('privacidade', lang)}>{u.form.dataLink}</a>.</p>
   </div>
 </form>
 
@@ -83,13 +86,13 @@ const id = (s: string) => `${idPrefix}-${s}`;
       const resumo = form.querySelector<HTMLElement>('[data-resumo]');
       if (erros.length) {
         e.preventDefault();
-        if (resumo) { resumo.hidden = false; resumo.textContent = `Erro: há ${erros.length} ${erros.length === 1 ? 'campo' : 'campos'} a corrigir.`; resumo.focus(); }
+        if (resumo) { resumo.hidden = false; resumo.textContent = erros.length === 1 ? (form.dataset.errOne || '') : (form.dataset.errMany || '').replace('{n}', String(erros.length)); resumo.focus(); }
         form.querySelector<HTMLInputElement>(`[name="${erros[0]}"]`)?.focus();
         return;
       }
       if (resumo) resumo.hidden = true;
       const btn = form.querySelector<HTMLButtonElement>('button[type="submit"]');
-      if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+      if (btn) { btn.disabled = true; btn.textContent = form.dataset.sending || '…'; }
     });
   });
 </script>

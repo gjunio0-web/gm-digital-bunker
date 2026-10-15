@@ -1,0 +1,55 @@
+---
+import Base from '../../layouts/Base.astro';
+import Opening from '../../components/Opening.astro';
+import ContactForm from '../../components/ContactForm.astro';
+import { path } from '../../i18n/routes';
+import { t } from '../../i18n/ui';
+import { EMAIL_CONTATO, LINKEDIN } from '../../config';
+const L = 'en';
+const u = t(L);
+---
+<Base
+  lang={L}
+  title="Contact"
+  description="Contact GM Digital Bunker™: request an initial conversation, email and LinkedIn."
+  current="contato"
+  pageId="contato"
+  ctaSecondary
+  noActionBar
+  noDialog
+>
+  <Opening
+    lang={L}
+    crumbs={[{ label: 'Home', href: path('inicio', L) }, { label: 'Contact' }]}
+    eyebrow="Contact"
+    title="Contact"
+    lead="Let's talk about where and when it's better with AI in your business."
+  />
+
+  <section class="section container">
+    <div class="side">
+      <div>
+        <p class="lead" style="margin-bottom: 40px;">{u.dialog.lead}</p>
+        <p class="form__alert" id="enviado" role="status" tabindex="-1" hidden>{u.form.success}</p>
+        <ContactForm idPrefix="c" lang={L} />
+      </div>
+      <aside>
+        <h2 class="h3" style="margin-bottom: 16px;">Other channels</h2>
+        <p style="margin: 0 0 12px;">Email: <a href={`mailto:${EMAIL_CONTATO}`}>{EMAIL_CONTATO}</a></p>
+        <p style="margin: 0;"><a href={LINKEDIN}>Gonçalo Marques on LinkedIn <span aria-hidden="true">↗</span><span class="visually-hidden">external site</span></a></p>
+      </aside>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .form__alert { margin: 0 0 24px; padding: 16px 20px; border: 2px solid var(--ink); border-radius: var(--radius-md); font-weight: 600; color: var(--ink); }
+</style>
+
+<script>
+  // After a Netlify submission, the page reloads with ?enviado=1: show the success line
+  if (new URLSearchParams(location.search).get('enviado') === '1') {
+    const ok = document.getElementById('enviado');
+    if (ok) { ok.hidden = false; ok.focus(); }
+  }
+</script>

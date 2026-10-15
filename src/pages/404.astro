@@ -1,10 +1,19 @@
 ---
+// One 404 for both languages (Netlify serves /404.html for any missing address): Portuguese first,
+// with an English line and link below.
 import Base from '../layouts/Base.astro';
 import Opening from '../components/Opening.astro';
+import { t } from '../i18n/ui';
+const pt = t('pt-BR'); const en = t('en');
 ---
-<Base title="Página não encontrada" description="O endereço pode ter mudado ou não existir mais." path="/404" noActionBar>
-  <Opening crumbs={[{ label: 'Início', href: '/' }, { label: '404' }]} eyebrow="Erro 404" title="Página não encontrada" lead="O endereço pode ter mudado ou não existir mais." />
+<Base title={pt.notFound.title} description={pt.notFound.lead} pageId="naoEncontrada" noActionBar>
+  <Opening crumbs={[{ label: pt.crumbsHome, href: '/' }, { label: '404' }]} eyebrow={pt.notFound.eyebrow} title={pt.notFound.title} lead={pt.notFound.lead} />
   <section class="section container">
-    <a class="btn btn--primary" href="/">Ir para a página inicial</a>
+    <a class="btn btn--primary" href="/">{pt.notFound.button}</a>
+    <div lang="en" style="margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--line);">
+      <h2 class="h3" style="margin-bottom: 8px;">{en.notFound.title}</h2>
+      <p style="margin: 0 0 16px;">{en.notFound.lead}</p>
+      <a class="btn btn--secondary" href="/en">{en.notFound.button}</a>
+    </div>
   </section>
 </Base>
