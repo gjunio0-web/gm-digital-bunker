@@ -50,7 +50,7 @@ export const home: Record<Lang, HomeContent> = {
       altTitle: 'As opções disponíveis não foram desenhadas para a empresa média',
       alts: [
         { title: 'Grandes consultorias', tag: 'Fora de escala em preço e formato', text: 'Receitas de US$ 14 bi a US$ 75 bi por ano, programas plurianuais e equipes em pirâmide. Só a Accenture fechou 33 contratos acima de US$ 100 milhões em um único trimestre.' },
-        { title: 'Fornecedores de ferramenta', tag: 'Ferramenta antes do critério', text: 'Entregam o produto, raramente a decisão de se, onde e como usar IA. A recomendação tende a partir do catálogo, e não do problema do negócio.' },
+        { title: 'Fornecedores de ferramenta de IA', tag: 'Ferramenta antes do critério', text: 'Entregam o produto, raramente a decisão de se, onde e como usar IA. A recomendação tende a partir do catálogo, e não do problema do negócio.' },
         { title: 'Uso espontâneo', tag: 'Esforço sem direção', text: 'Cada pessoa adota a própria ferramenta, sem um critério comum. O risco é gastar sem retorno ou expor dados sem perceber.' },
       ],
       mapTitle: 'O espaço vazio: decisão sênior para empresas médias', mapNote: 'Mapa qualitativo, não medido: mostra zonas.',
@@ -58,7 +58,7 @@ export const home: Record<Lang, HomeContent> = {
       cells: [
         { title: 'GM Digital Bunker™', text: 'Estratégia sênior até o artefato pronto, sem pirâmide de equipe', us: true },
         { title: 'Estratégia pura', text: 'Com braços de construção próprios' },
-        { title: 'Ferramentas e execução', text: 'Fornecedores de ferramenta, agências e desenvolvedores' },
+        { title: 'Ferramentas e execução', text: 'Fornecedores de ferramenta de IA, agências e desenvolvedores' },
         { title: 'Integradoras e grandes consultorias', text: 'Programas plurianuais para grandes corporações e governo' },
       ],
       statement: ['Critério antes da ferramenta.', 'Decisão sênior, executada com IA, até o artefato pronto.'],
@@ -140,7 +140,7 @@ export const home: Record<Lang, HomeContent> = {
       altTitle: 'The available options were not designed for the mid-sized company',
       alts: [
         { title: 'Large consultancies', tag: 'Out of scale in price and format', text: 'Revenues of US$ 14 billion to US$ 75 billion a year, multi-year programs and pyramid-shaped teams. Accenture alone closed 33 contracts above US$ 100 million in a single quarter.' },
-        { title: 'Tool vendors', tag: 'Tool before judgment', text: 'They deliver the product, rarely the decision on whether, where and how to use AI. The recommendation tends to start from the catalog, not from the business problem.' },
+        { title: 'AI tool vendors', tag: 'Tool before judgment', text: 'They deliver the product, rarely the decision on whether, where and how to use AI. The recommendation tends to start from the catalog, not from the business problem.' },
         { title: 'Spontaneous use', tag: 'Effort without direction', text: 'Each person adopts their own tool, with no shared judgment. The risk is spending without return or exposing data without noticing.' },
       ],
       mapTitle: 'The empty space: senior decisions for mid-sized companies', mapNote: 'Qualitative map, not measured: it shows zones.',
@@ -148,7 +148,7 @@ export const home: Record<Lang, HomeContent> = {
       cells: [
         { title: 'GM Digital Bunker™', text: 'Senior strategy through to the finished artifact, with no team pyramid', us: true },
         { title: 'Pure strategy', text: 'With their own build arms' },
-        { title: 'Tools and execution', text: 'Tool vendors, agencies and developers' },
+        { title: 'Tools and execution', text: 'AI tool vendors, agencies and developers' },
         { title: 'Integrators and large consultancies', text: 'Multi-year programs for large corporations and government' },
       ],
       statement: ['Judgment before the tool.', 'Senior decisions, executed with AI, through to the finished artifact.'],
