@@ -25,7 +25,7 @@ Buscar por `[dominio]` ou pelos nomes abaixo:
 
 | Item | Onde | O que fazer |
 |---|---|---|
-| Domínio | `src/config.ts` (`DOMINIO`, `EMAIL_CONTATO`) e `astro.config.mjs` (`site`) | Trocar `dominio.exemplo` pelo domínio definitivo. Afeta canonical, hreflang, dados estruturados e o e-mail de contato. |
+| Domínio | `src/config.ts` (`DOMINIO`, `EMAIL_CONTATO`) e `astro.config.mjs` (`site`) | Trocar `dominio.exemplo` pelo domínio definitivo. Afeta canonical, hreflang, dados estruturados, o e-mail de contato e o endereço absoluto da imagem Open Graph (sem domínio real, as prévias de link não aparecem). |
 | Formulário desativado | `src/components/ContactForm.astro` (`DESATIVADO = true`) | Mudar para `false` quando a página de Privacidade for publicada. Até lá os campos aparecem desabilitados, com aviso e e-mail alternativo. |
 | Página de Privacidade | `src/pages/privacidade.astro` | Só a estrutura das seções; o texto depende de revisão jurídica e da pessoa jurídica responsável pelos dados. |
 | Retrato | `src/pages/sobre.astro` (`.portrait`) | Substituir o marcador pela fotografia em círculo. |
@@ -50,6 +50,8 @@ src/
     ActionBar.astro         botão fixo no rodapé da tela em celulares
   pages/                    uma página por endereço (12 páginas, inclusive 404 e privacidade)
 public/imagens/             capa do livro e captura do site Elite 90 Pro
+public/og/og-image.jpg      imagem Open Graph (1200×630) para prévias de link; regerar com `npm run og` (na primeira vez, `npx playwright install chromium`)
+scripts/og/                 fonte da imagem OG (og.html + render.mjs)
 ```
 
 ## Comportamentos conferidos
