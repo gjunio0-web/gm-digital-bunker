@@ -3,6 +3,15 @@
    the light theme is applied with [data-theme="light"] on <html>. */
 
 :root {
+  /* Motion (Design System › Movimento) */
+  --dur-fast: 150ms;     /* hover and focus colour changes */
+  --dur-base: 200ms;     /* menu, accordion, dialog, carousel, action bar */
+  --dur-slow: 320ms;     /* section reveal */
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --reveal-shift: 8px;
+  --stagger: 60ms;
+
   /* Colour (dark) */
   --bg: #0b0d10;
   --surface: #161632;          /* cards: base tinted with 16% indigo */
@@ -67,11 +76,14 @@ html[data-theme="light"] {
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; scrollbar-width: thin; scrollbar-color: #808792 transparent; -webkit-text-size-adjust: 100%; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--header-h) + 16px); scrollbar-width: thin; scrollbar-color: #808792 transparent; -webkit-text-size-adjust: 100%; }
 *::-webkit-scrollbar { width: 8px; height: 8px; }
 *::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb { background: #808792; border-radius: 4px; }
 *::-webkit-scrollbar-thumb:hover { background: #959da8; }
+
+/* Theme change: surfaces and text cross-fade instead of snapping */
+body, .band-indigo { transition: background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out); }
 
 body {
   margin: 0;
@@ -116,7 +128,7 @@ h4, .h4 { margin: 0; font-family: var(--serif); font-weight: 600; font-size: 22p
 .statement p:last-child { margin: 0; font-size: clamp(19px, 1.5vw, 21px); line-height: 1.5; }
 
 /* Buttons */
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 20px; border-radius: var(--radius-md); font: 600 16px/1.25 var(--sans); text-decoration: none; cursor: pointer; transition: border-color 150ms ease-out, background-color 150ms ease-out, color 150ms ease-out; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 20px; border-radius: var(--radius-md); font: 600 16px/1.25 var(--sans); text-decoration: none; cursor: pointer; transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
 .btn--primary { background: var(--accent); color: var(--on-accent); border: 1px solid var(--accent); }
 .btn--primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--on-accent); }
 .btn--secondary { background: transparent; color: var(--ink); border: 1px solid var(--line-strong); }
@@ -128,7 +140,7 @@ h4, .h4 { margin: 0; font-family: var(--serif); font-weight: 600; font-size: 22p
 .btn[disabled], .btn[aria-disabled="true"] { opacity: 0.6; cursor: not-allowed; }
 
 /* Cards */
-.card { display: flex; flex-direction: column; gap: 12px; padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); color: inherit; text-decoration: none; transition: border-color 150ms ease-out; }
+.card { display: flex; flex-direction: column; gap: 12px; padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); color: inherit; text-decoration: none; transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-base) var(--ease-out); }
 a.card:hover { border-color: var(--line-strong); color: inherit; }
 .card .small { margin: 0; font-size: 15px; line-height: 1.5; }
 .card .more { font: 600 16px/1.25 var(--sans); color: var(--accent); text-decoration: var(--link-deco, none); text-underline-offset: 4px; }
@@ -227,9 +239,25 @@ a.card:hover { border-color: var(--line-strong); color: inherit; }
 .block + .block { margin-top: 64px; }
 .rule { border: 0; border-top: 1px solid var(--line); margin: 64px 0; }
 
+/* Section reveal: added by JavaScript ([data-reveal]), once, when the block enters the viewport.
+   Children of a grid stagger by --i (capped in the script). Without JavaScript nothing is hidden. */
+[data-reveal] { opacity: 0; transform: translateY(var(--reveal-shift)); transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out); transition-delay: calc(var(--i, 0) * var(--stagger)); }
+[data-reveal].is-visible { opacity: 1; transform: none; }
+@media print { [data-reveal] { opacity: 1; transform: none; } }
+
+/* Dialog: fade and lift in; the backdrop fades. Closing is animated in the component script. */
+@keyframes dialog-in { from { opacity: 0; transform: translateY(var(--reveal-shift)) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+dialog[open] { animation: dialog-in var(--dur-base) var(--ease-out); }
+dialog[open]::backdrop { animation: backdrop-in var(--dur-base) var(--ease-out); }
+
+/* Accordion toggle: the "+" turns into "×" */
+.alt__plus { transition: transform var(--dur-base) var(--ease-in-out); }
+
 /* Reduced motion: nothing moves */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
+  [data-reveal] { opacity: 1; transform: none; }
   .hero__pause { display: none; }
 }

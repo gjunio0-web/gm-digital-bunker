@@ -41,9 +41,18 @@ import ContactForm from './ContactForm.astro';
         dlg.querySelector<HTMLInputElement>('input:not([type="hidden"]):not([disabled])')?.focus();
       });
     });
-    dlg.querySelector('[data-fechar]')?.addEventListener('click', () => dlg.close());
+    // Closing fades the panel out before the dialog is removed (Design System › Movimento)
+    const reduz = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const fechar = () => {
+      if (reduz || !dlg.animate) { dlg.close(); return; }
+      const anim = dlg.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(8px) scale(0.98)' }], { duration: 200, easing: 'cubic-bezier(0.2, 0, 0, 1)' });
+      anim.onfinish = () => dlg.close();
+    };
+    dlg.querySelector('[data-fechar]')?.addEventListener('click', fechar);
     // Click on the backdrop closes
-    dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
+    dlg.addEventListener('click', (e) => { if (e.target === dlg) fechar(); });
+    // Esc: run the same exit animation instead of the browser's instant close
+    dlg.addEventListener('cancel', (e) => { e.preventDefault(); fechar(); });
     dlg.addEventListener('close', () => { gatilho?.focus(); });
   }
 </script>

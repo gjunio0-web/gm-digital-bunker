@@ -239,7 +239,7 @@ const jsonLd = {
   .carousel__controls { display: none; }
   @media (max-width: 767px) {
     .carousel__window { overflow: hidden; margin-right: calc(-1 * var(--gutter)); }
-    .carousel__track { display: flex; gap: 12px; transition: transform 200ms ease-out; transform: translateX(var(--deslocamento, 0)); }
+    .carousel__track { display: flex; gap: 12px; transition: transform var(--dur-base) var(--ease-out); transform: translateX(var(--deslocamento, 0)); }
     .carousel__track > .card { flex: 0 0 78%; }
     .carousel__controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
     .carousel__controls p { margin: 0; }
@@ -327,7 +327,36 @@ const jsonLd = {
 
   // Alternatives: closed on phones, always open on desktop
   const alts = document.querySelectorAll<HTMLDetailsElement>('.alt');
-  const ajustaAlt = () => { const compacto = window.matchMedia('(max-width: 767px)').matches; alts.forEach((d) => { d.open = !compacto; }); };
+  const compactoMQ = window.matchMedia('(max-width: 767px)');
+  const ajustaAlt = () => { alts.forEach((d) => { d.open = !compactoMQ.matches; }); };
   ajustaAlt();
-  window.matchMedia('(max-width: 767px)').addEventListener('change', ajustaAlt);
+  compactoMQ.addEventListener('change', ajustaAlt);
+
+  // Accordion motion (Design System › Movimento): the panel grows or shrinks over 200ms
+  const semMovimento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  alts.forEach((d) => {
+    const painel = d.querySelector<HTMLElement>(':scope > p');
+    const resumo = d.querySelector<HTMLElement>('summary');
+    if (!painel || !resumo) return;
+    let animando = false;
+    resumo.addEventListener('click', (e) => {
+      if (!compactoMQ.matches || semMovimento || !painel.animate) return; // native toggle
+      e.preventDefault();
+      if (animando) return;
+      animando = true;
+      const opts = { duration: 200, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' };
+      if (d.open) {
+        const h = painel.offsetHeight;
+        painel.style.overflow = 'hidden';
+        const a = painel.animate([{ height: `${h}px`, opacity: 1, marginBottom: '16px' }, { height: '0px', opacity: 0, marginBottom: '0px' }], opts);
+        a.onfinish = () => { d.open = false; painel.style.overflow = ''; animando = false; };
+      } else {
+        d.open = true;
+        const h = painel.offsetHeight;
+        painel.style.overflow = 'hidden';
+        const a = painel.animate([{ height: '0px', opacity: 0, marginBottom: '0px' }, { height: `${h}px`, opacity: 1, marginBottom: '16px' }], opts);
+        a.onfinish = () => { painel.style.overflow = ''; animando = false; };
+      }
+    });
+  });
 </script>

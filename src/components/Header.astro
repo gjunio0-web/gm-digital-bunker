@@ -30,7 +30,7 @@ const ctaClass = (current === 'contato' || ctaSecondary) ? 'btn btn--secondary' 
       </button>
       <a class={`${ctaClass} tools__cta`} href="/contato" data-abrir-contato>Agendar conversa</a>
       <button type="button" class="btn btn--icon menu-btn" aria-expanded="false" aria-controls="nav-principal" aria-label="Menu">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/></svg>
+        <svg class="menu-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path class="menu-icon__a" stroke-linecap="round" d="M4 7h16"/><path class="menu-icon__b" stroke-linecap="round" d="M4 12h16"/><path class="menu-icon__c" stroke-linecap="round" d="M4 17h16"/></svg>
       </button>
     </div>
   </div>
@@ -49,8 +49,14 @@ const ctaClass = (current === 'contato' || ctaSecondary) ? 'btn btn--secondary' 
   .menu-btn { display: none; }
 
   @media (max-width: 1023px) {
-    .nav { display: none; position: absolute; left: 0; right: 0; top: var(--header-h); background: var(--bg); border-bottom: 1px solid var(--line); padding: 8px var(--gutter) 16px; }
-    .nav.is-open { display: block; }
+    /* Menu: slides 8px down while fading in; visibility is delayed on close so it stays clickable until gone */
+    .nav { position: absolute; left: 0; right: 0; top: var(--header-h); background: var(--bg); border-bottom: 1px solid var(--line); box-shadow: var(--shadow-overlay); padding: 8px var(--gutter) 16px; opacity: 0; visibility: hidden; transform: translateY(calc(-1 * var(--reveal-shift))); transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), visibility 0s linear var(--dur-base); }
+    .nav.is-open { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
+    /* Icon: the three lines become an × */
+    .menu-icon path { transform-origin: 12px 12px; transition: transform var(--dur-base) var(--ease-in-out), opacity var(--dur-fast) var(--ease-out); }
+    .menu-btn[aria-expanded="true"] .menu-icon__a { transform: translateY(5px) rotate(45deg); }
+    .menu-btn[aria-expanded="true"] .menu-icon__b { opacity: 0; }
+    .menu-btn[aria-expanded="true"] .menu-icon__c { transform: translateY(-5px) rotate(-45deg); }
     .nav ul { flex-direction: column; gap: 0; }
     .nav li { border-top: 1px solid var(--line); }
     .nav a:not(.btn) { min-height: 48px; width: 100%; }

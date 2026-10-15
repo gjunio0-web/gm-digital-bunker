@@ -54,5 +54,34 @@ const fullTitle = title === 'GM Digital Bunker™' ? title : `${title} – GM Di
   <Footer />
   {!noActionBar && <ActionBar secondary={ctaSecondary} />}
   {!noDialog && <ContactDialog />}
+  <script>
+    // Section reveal (Design System › Movimento): blocks fade in once, with an 8px lift,
+    // when they enter the viewport. Cards inside a grid stagger up to five steps.
+    // The hero and the page opening are never delayed; without JavaScript nothing is hidden.
+    const reduz = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!reduz && 'IntersectionObserver' in window) {
+      const alvos: HTMLElement[] = [];
+      document.querySelectorAll<HTMLElement>('main section:not(.hero):not(.opening)').forEach((sec) => {
+        const cont = sec.classList.contains('container') ? sec : sec.querySelector<HTMLElement>(':scope > .container') ?? sec;
+        Array.from(cont.children).forEach((filho) => {
+          const el = filho as HTMLElement;
+          const grade = el.matches('.grid, .steps, .alternatives, .carousel__track, .evidence');
+          if (grade) {
+            Array.from(el.children).forEach((c, i) => { if (!(c as HTMLElement).classList.contains('steps__arrow')) { (c as HTMLElement).style.setProperty('--i', String(Math.min(i, 5))); alvos.push(c as HTMLElement); } });
+          } else if (el.matches('.carousel')) {
+            const track = el.querySelector<HTMLElement>('.carousel__track');
+            track && Array.from(track.children).forEach((c, i) => { (c as HTMLElement).style.setProperty('--i', String(Math.min(i, 5))); alvos.push(c as HTMLElement); });
+            const ctrl = el.querySelector<HTMLElement>('.carousel__controls'); ctrl && alvos.push(ctrl);
+          } else {
+            alvos.push(el);
+          }
+        });
+      });
+      const obs = new IntersectionObserver((entradas) => {
+        entradas.forEach((e) => { if (e.isIntersecting) { (e.target as HTMLElement).classList.add('is-visible'); obs.unobserve(e.target); } });
+      }, { rootMargin: '0px 0px -40px 0px', threshold: 0 });
+      alvos.forEach((el) => { el.setAttribute('data-reveal', ''); obs.observe(el); });
+    }
+  </script>
 </body>
 </html>
