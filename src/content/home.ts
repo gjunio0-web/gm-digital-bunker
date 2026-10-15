@@ -27,13 +27,13 @@ export interface HomeContent {
 export const home: Record<Lang, HomeContent> = {
   'pt-BR': {
     title: 'GM Digital Bunker™',
-    description: 'Estratégia de tecnologia e IA para o mundo real. Decisão sênior, executada com IA, até o artefato pronto, para empresas de pequeno e médio porte.',
+    description: 'Estratégia de tecnologia em IA para o mundo real. Decisão sênior, executada com IA, até o artefato pronto, para empresas de pequeno e médio porte.',
     jsonLdDescription: 'Prática independente de estratégia tecnológica voltada à aplicação avançada de inteligência artificial, da análise estratégica à produção de artefatos técnicos e de comunicação.',
     hero: {
       meta: 'Estratégia · Tecnologia · IA · 2026',
       whoHtml: '<a href="/sobre">Gonçalo Marques</a> · São Paulo',
-      titleHtml: 'Estratégia de tecnologia e IA para o <span>mundo real</span>.',
-      lead: 'Para empresas de pequeno e médio porte que precisam decidir e executar em tecnologia e IA, da análise estratégica ao artefato pronto.',
+      titleHtml: 'Estratégia de tecnologia em IA para o <span>mundo real</span>.',
+      lead: 'Para empresas de pequeno e médio porte que precisam decidir e executar em tecnologia para IA, da análise estratégica ao artefato pronto.',
       services: 'Ver serviços', method: 'Conhecer o método', pause: 'Pausar animação', resume: 'Retomar animação',
     },
     s1: {

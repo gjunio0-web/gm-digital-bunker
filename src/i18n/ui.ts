@@ -13,7 +13,7 @@ export const ui = {
     menu: { open: 'Menu', close: 'Fechar menu' },
     theme: { toLight: 'Mudar para tema claro', toDark: 'Mudar para tema escuro' },
     langSwitch: { code: 'EN', label: 'English version', hreflang: 'en' },
-    footer: { tagline: 'Estratégia de tecnologia e IA para o mundo real.', pages: 'Páginas', also: 'Também', book: 'Livro na Amazon', linkedin: 'LinkedIn', privacy: 'Privacidade', external: 'site externo', pagesNav: 'Rodapé – páginas', externalNav: 'Rodapé – destinos externos', current: 'PT', other: 'EN' },
+    footer: { tagline: 'Estratégia de tecnologia em IA para o mundo real.', pages: 'Páginas', also: 'Também', book: 'Livro na Amazon', linkedin: 'LinkedIn', privacy: 'Privacidade', external: 'site externo', pagesNav: 'Rodapé – páginas', externalNav: 'Rodapé – destinos externos', current: 'PT', other: 'EN' },
     crumbsHome: 'Início',
     crumbsLabel: 'Você está em',
     invite: 'Vamos conversar sobre onde e quando é melhor com IA no seu negócio.',
