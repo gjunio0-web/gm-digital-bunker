@@ -233,7 +233,7 @@ a.card:hover { border-color: var(--line-strong); color: inherit; }
 .chapters li { counter-increment: cap; padding: 10px 0; border-bottom: 1px solid var(--line); break-inside: avoid; font-size: 16px; line-height: 1.5; }
 .chapters li::before { content: counter(cap, decimal-leading-zero) "  "; font: 400 13px/1.5 var(--mono); color: var(--muted); }
 .cover { display: block; width: 100%; max-width: 320px; border: 1px solid var(--line); border-radius: var(--radius-md); }
-.portrait { width: 160px; height: 160px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px dashed var(--line-strong); font: 400 13px/1.5 var(--mono); color: var(--muted); text-align: center; flex: 0 0 auto; }
+.portrait { width: 160px; height: 160px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); flex: 0 0 auto; }
 .side { display: grid; gap: 48px; }
 @media (min-width: 1024px) { .side { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; } .side--reverse { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); } }
 .sub { margin: 48px 0 16px; }
