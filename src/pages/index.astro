@@ -37,7 +37,7 @@ const jsonLd = {
   </section>
 
   <!-- 01 -->
-  <section class="section container" aria-labelledby="oportunidade-titulo">
+  <section class="section container" id="oportunidade" aria-labelledby="oportunidade-titulo">
     <p class="eyebrow">01 · A oportunidade</p>
     <h2 id="oportunidade-titulo" class="text" style="margin-bottom: 16px;">A IA já chegou à operação. O critério para usá-la ainda é frágil.</h2>
     <p class="lead" style="margin-bottom: 48px;">Por que a empresa média usa IA com pouco critério e sem uma opção de apoio adequada</p>
@@ -112,7 +112,7 @@ const jsonLd = {
   </section>
 
   <!-- 02 -->
-  <section class="band-indigo" aria-labelledby="proposta-titulo">
+  <section class="band-indigo" id="proposta" aria-labelledby="proposta-titulo">
     <div class="section container">
       <p class="eyebrow">02 · A proposta</p>
       <h2 id="proposta-titulo" class="text" style="margin-bottom: 48px;">Do diagnóstico ao artefato pronto</h2>
@@ -132,7 +132,7 @@ const jsonLd = {
   </section>
 
   <!-- 03 -->
-  <section class="section container" aria-labelledby="servicos-titulo">
+  <section class="section container" id="servicos" aria-labelledby="servicos-titulo">
     <p class="eyebrow">03 · Serviços</p>
     <h2 id="servicos-titulo" class="text" style="margin-bottom: 48px;">O que a empresa pode contratar</h2>
     <div class="grid grid--2">
@@ -198,7 +198,7 @@ const jsonLd = {
   </section>
 
   <!-- 05 -->
-  <section class="section container" aria-labelledby="encaixe-titulo">
+  <section class="section container" id="encaixe" aria-labelledby="encaixe-titulo">
     <p class="eyebrow">05 · O encaixe e o próximo passo</p>
     <h2 id="encaixe-titulo" class="text" style="margin-bottom: 48px;">Desenhada para empresas sem executivo exclusivamente dedicado a tecnologia</h2>
     <dl class="criteria">
@@ -224,9 +224,37 @@ const jsonLd = {
       <a class="btn btn--on-indigo" href="/contato" data-abrir-contato>Agendar conversa</a>
     </div>
   </section>
+  <!-- Section index (desktop): follows the scroll, jumps to a section on click; hidden over the hero -->
+  <nav class="rail" aria-label="Seções desta página" data-rail>
+    <ol>
+      <li><a href="#oportunidade"><span class="rail__n">01</span><span class="rail__l">A oportunidade</span></a></li>
+      <li><a href="#proposta"><span class="rail__n">02</span><span class="rail__l">A proposta</span></a></li>
+      <li><a href="#servicos"><span class="rail__n">03</span><span class="rail__l">Serviços</span></a></li>
+      <li><a href="#provas"><span class="rail__n">04</span><span class="rail__l">As provas</span></a></li>
+      <li><a href="#encaixe"><span class="rail__n">05</span><span class="rail__l">O encaixe</span></a></li>
+    </ol>
+  </nav>
 </Base>
 
 <style>
+  /* Section index rail */
+  .rail { display: none; }
+  @media (min-width: 1280px) {
+    .rail { display: block; position: fixed; right: 32px; top: 50%; transform: translateY(-50%); z-index: 15; opacity: 0; visibility: hidden; transition: opacity var(--dur-base) var(--ease-out), visibility 0s linear var(--dur-base); }
+    .rail.is-shown { opacity: 1; visibility: visible; transition-delay: 0s; }
+    .rail ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .rail a { display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 0 8px; font: 500 12px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); text-decoration: none; border-right: 1px solid var(--line); transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
+    .rail a:hover, .rail a:focus-visible { color: var(--ink); }
+    .rail__l { max-width: 0; overflow: hidden; white-space: nowrap; opacity: 0; transition: max-width var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out); }
+    .rail a[aria-current="true"] { color: var(--ink); border-right-color: var(--accent); }
+    .rail a:hover .rail__l, .rail a:focus-visible .rail__l { max-width: 160px; opacity: 1; }
+    /* Over an indigo band the rail takes that band's palette */
+    .rail.on-indigo a { color: #f4f3ff; border-right-color: rgba(255, 255, 255, 0.35); }
+    .rail.on-indigo a:hover, .rail.on-indigo a:focus-visible, .rail.on-indigo a[aria-current="true"] { color: #fff; }
+    .rail.on-indigo a[aria-current="true"] { border-right-color: #fff; }
+    .rail ol { align-items: flex-end; }
+  }
+
   /* Bridges from the home narrative to pages the menu alone would reach */
   .hero__who a { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
   .hero__who a:hover { color: var(--accent-hover); }
@@ -323,6 +351,31 @@ const jsonLd = {
     car.addEventListener('touchend', (e) => { const x1 = e.changedTouches[0]?.clientX; if (x0 == null || x1 == null) return; if (x1 - x0 < -40) ir(i + 1); else if (x1 - x0 > 40) ir(i - 1); x0 = null; });
     window.addEventListener('resize', render);
     render();
+  }
+
+  // Section index rail: shown once the hero has passed; the active item is the last section
+  // whose top is above the middle of the viewport.
+  const rail = document.querySelector<HTMLElement>('[data-rail]');
+  if (rail) {
+    const links = Array.from(rail.querySelectorAll<HTMLAnchorElement>('a'));
+    const secs = links.map((a) => document.querySelector<HTMLElement>(a.getAttribute('href') || ''));
+    const hero = document.getElementById('abertura');
+    const convite = document.querySelector<HTMLElement>('[data-convite]');
+    const atualiza = () => {
+      const meio = window.innerHeight / 2;
+      const depoisDaCapa = hero ? hero.getBoundingClientRect().bottom < 80 : true;
+      const antesDoConvite = convite ? convite.getBoundingClientRect().top > meio : true;
+      rail.classList.toggle('is-shown', depoisDaCapa && antesDoConvite);
+      let ativo = -1;
+      secs.forEach((sec, i) => { if (sec && sec.getBoundingClientRect().top <= meio) ativo = i; });
+      links.forEach((a, i) => { if (i === ativo) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); });
+      // Palette: what sits behind the rail at mid-height
+      const atras = document.elementFromPoint(window.innerWidth - 40, meio)?.closest('.band-indigo');
+      rail.classList.toggle('on-indigo', !!atras);
+    };
+    atualiza();
+    window.addEventListener('scroll', atualiza, { passive: true });
+    window.addEventListener('resize', atualiza);
   }
 
   // Alternatives: closed on phones, always open on desktop
