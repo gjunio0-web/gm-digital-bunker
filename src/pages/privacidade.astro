@@ -1,23 +1,52 @@
 ---
 import Base from '../layouts/Base.astro';
 import Opening from '../components/Opening.astro';
-// Structure only: the text depends on legal review and on the legal entity responsible for the data
-const secoes = [
-  'Quem é responsável pelos dados',
-  'Quais dados o formulário coleta (nome, empresa, e-mail, mensagem)',
-  'Para que servem',
-  'Por quanto tempo ficam guardados',
-  'Quem mais tem acesso (o serviço que recebe o formulário)',
-  'Como pedir acesso, correção ou exclusão',
-  'Contato',
-];
+import { EMAIL_CONTATO } from '../config';
+// Draft approved by Gon on 2026-10-15, pending legal review. Bracketed items are placeholders:
+// legal entity and CNPJ, retention period, form provider (Netlify or Firebase, per the next
+// architecture decision) and the publication date.
 ---
-<Base title="Privacidade" description="Como a GM Digital Bunker™ trata os dados enviados pelo formulário de contato." path="/privacidade" ctaSecondary>
-  <Opening crumbs={[{ label: 'Início', href: '/' }, { label: 'Privacidade' }]} eyebrow="Utilitária" title="Privacidade" lead="Esta página será publicada com o texto revisado juridicamente. Até lá, o formulário de contato fica desativado." />
-  <section class="section container" aria-label="Estrutura da página">
-    <p class="meta" style="margin-bottom: 16px;">Estrutura prevista</p>
-    <ol class="chapters text">
-      {secoes.map((s) => <li>{s}</li>)}
-    </ol>
+<Base title="Privacidade" description="Como a GM Digital Bunker™ trata os dados enviados pelo formulário de contato e os dados técnicos de navegação." path="/privacidade" ctaSecondary>
+  <Opening
+    crumbs={[{ label: 'Início', href: '/' }, { label: 'Privacidade' }]}
+    eyebrow="Utilitária"
+    title="Privacidade"
+    lead="Quais dados este site recolhe, para que servem e como pedir acesso, correção ou exclusão, conforme a Lei Geral de Proteção de Dados Pessoais (LGPD, Lei 13.709/2018)."
+  />
+
+  <section class="section container">
+    <div class="prose text legal">
+      <h2>Quem é responsável pelos dados</h2>
+      <p>A responsável pelo tratamento é a GM Digital Bunker™ [razão social, CNPJ], com sede em São Paulo, SP, representada por Gonçalo Marques. Dúvidas e pedidos sobre dados pessoais podem ser enviados para <a href={`mailto:${EMAIL_CONTATO}`}>{EMAIL_CONTATO}</a>.</p>
+
+      <h2>Quais dados o site recolhe</h2>
+      <p>O formulário de contato pede nome, empresa, e-mail e, se a pessoa quiser, uma mensagem. Esses são os únicos dados pessoais que o site requisita.</p>
+      <p>Ao navegar, o servidor que hospeda o site registra, como qualquer servidor, o endereço IP e dados técnicos da conexão (navegador, páginas acessadas, data e hora). O site carrega as fontes tipográficas dos servidores do Google Fonts; nessa requisição, o endereço IP do visitante chega ao Google.</p>
+      <p>O site não usa cookies de rastreamento nem ferramentas de análise de audiência. A única informação guardada no navegador é a preferência de tema (escuro ou claro), que fica no próprio aparelho e não é enviada a lugar nenhum.</p>
+
+      <h2>Para que os dados servem</h2>
+      <p>Os dados do formulário servem apenas para responder ao contato e, se for o caso, marcar a conversa inicial. Não são usados para envio de novidades ou propaganda, não são vendidos nem cedidos a terceiros. A base legal é o interesse legítimo em responder a quem pede contato e, quando a conversa avança, as providências preliminares a um contrato.</p>
+      <p>Os registros técnicos do servidor servem à segurança e ao funcionamento do site.</p>
+
+      <h2>Por quanto tempo ficam guardados</h2>
+      <p>Os dados do formulário são mantidos enquanto durar o contato e, no máximo, por [90 dias] após a última troca de mensagens, quando são excluídos. Se o contato resultar em contrato, os dados passam a ser tratados conforme o contrato. Os registros técnicos do servidor seguem o prazo de retenção do provedor de hospedagem.</p>
+
+      <h2>Quem mais tem acesso</h2>
+      <p>O formulário é recebido e armazenado pela [Netlify], empresa que hospeda o site, nos termos da política de privacidade dela. As fontes tipográficas são servidas pelo Google. Nenhum outro serviço recebe dados dos visitantes.</p>
+
+      <h2>Seus direitos</h2>
+      <p>A LGPD garante a qualquer pessoa o direito de saber se seus dados são tratados, de acessá-los, corrigi-los, pedir a exclusão e revogar o consentimento quando ele for a base do tratamento. Basta escrever para <a href={`mailto:${EMAIL_CONTATO}`}>{EMAIL_CONTATO}</a>; a resposta é dada no prazo da lei. Quem entender que seus direitos não foram respeitados pode recorrer à Autoridade Nacional de Proteção de Dados (ANPD).</p>
+
+      <h2>Alterações</h2>
+      <p>Esta página pode mudar quando o site ganhar novas funções. A data da última atualização aparece abaixo.</p>
+      <p class="meta">Última atualização: [data da publicação].</p>
+    </div>
   </section>
 </Base>
+
+<style>
+  .legal h2 { font-size: 24px; margin: 40px 0 12px; }
+  .legal h2:first-child { margin-top: 0; }
+  .legal p { margin: 0 0 16px; }
+  .legal .meta { margin-top: 24px; }
+</style>
