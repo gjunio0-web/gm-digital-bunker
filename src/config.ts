@@ -10,6 +10,6 @@ export const EMAIL_CONTATO = 'contato@dominio.exemplo'; // placeholder until the
 export const MARCA = 'GM Digital Bunker™';
 // External addresses, per the stage-1 content doc
 export const AMAZON = 'https://www.amazon.com.br/dp/B0H7QR7DZ7';
-export const AMAZON_EN = 'https://www.amazon.com/-/pt/dp/B0H7QR7DZ7/'; // US store, for the English pages
+export const AMAZON_EN = 'https://www.amazon.com/dp/B0H7QR7DZ7'; // US store, for the English pages
 export const LINKEDIN = 'https://www.linkedin.com/in/gjunio0';
 export const HUB = 'https://ai-strat-hub.netlify.app';
