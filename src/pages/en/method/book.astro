@@ -3,7 +3,7 @@ import Base from '../../../layouts/Base.astro';
 import Opening from '../../../components/Opening.astro';
 import Invite from '../../../components/Invite.astro';
 import { path } from '../../../i18n/routes';
-import { AMAZON } from '../../../config';
+import { AMAZON_EN } from '../../../config';
 const L = 'en';
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -41,7 +41,7 @@ const jsonLd = {
     <div class="side side--reverse">
       <div>
         <img src="/imagens/capa-quando-e-melhor-com-ia.jpg" alt="Cover of the book Quando é Melhor com IA (When it's Better with AI), by Gonçalo Marques" width="1000" height="1600" class="cover" />
-        <a class="btn btn--primary" href={AMAZON} style="margin-top: 24px;">Buy on Amazon <span aria-hidden="true">↗</span><span class="visually-hidden">external site</span></a>
+        <a class="btn btn--primary" href={AMAZON_EN} style="margin-top: 24px;">Buy on Amazon <span aria-hidden="true">↗</span><span class="visually-hidden">external site</span></a>
         <p class="meta" style="margin-top: 12px;">Portuguese edition</p>
       </div>
       <div>

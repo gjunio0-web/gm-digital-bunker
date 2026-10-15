@@ -2,11 +2,12 @@
 // Site footer: brand line, page links and external destinations.
 import { t } from '../i18n/ui';
 import { path, otherLang, type Lang, type PageId } from '../i18n/routes';
-import { AMAZON, LINKEDIN, HUB } from '../config';
+import { AMAZON, AMAZON_EN, LINKEDIN, HUB } from '../config';
 interface Props { lang?: Lang; pageId?: PageId; }
 const { lang = 'pt-BR', pageId = 'inicio' } = Astro.props;
 const u = t(lang);
 const hub = lang === 'en' ? `${HUB}/?lang=en` : HUB;
+const amazon = lang === 'en' ? AMAZON_EN : AMAZON;
 ---
 <footer class="footer">
   <div class="container footer__inner">
@@ -29,7 +30,7 @@ const hub = lang === 'en' ? `${HUB}/?lang=en` : HUB;
       <nav aria-label={u.footer.externalNav}>
         <p class="eyebrow eyebrow--muted">{u.footer.also}</p>
         <ul>
-          <li><a href={AMAZON}>{u.footer.book} <span aria-hidden="true">↗</span><span class="visually-hidden">{u.footer.external}</span></a></li>
+          <li><a href={amazon}>{u.footer.book} <span aria-hidden="true">↗</span><span class="visually-hidden">{u.footer.external}</span></a></li>
           <li><a href={hub}>AI Strategy Hub <span aria-hidden="true">↗</span><span class="visually-hidden">{u.footer.external}</span></a></li>
           <li><a href={LINKEDIN}>{u.footer.linkedin} <span aria-hidden="true">↗</span><span class="visually-hidden">{u.footer.external}</span></a></li>
           <li><a href={path('privacidade', lang)}>{u.footer.privacy}</a></li>
