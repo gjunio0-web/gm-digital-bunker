@@ -17,10 +17,10 @@ const ctaClass = (current === 'contato' || ctaSecondary) ? 'btn btn--secondary' 
     <a class="brand" href="/">GM Digital Bunker™</a>
     <nav class="nav" id="nav-principal" aria-label="Principal">
       <ul>
-        {items.map((i) => (
-          <li><a href={i.href} aria-current={current === i.id ? 'page' : undefined}>{i.label}</a></li>
+        {items.map((i, n) => (
+          <li style={`--i: ${n}`}><a href={i.href} aria-current={current === i.id ? 'page' : undefined}>{i.label}</a></li>
         ))}
-        <li class="nav__cta"><a class={ctaClass} href="/contato" data-abrir-contato>Agendar conversa</a></li>
+        <li class="nav__cta" style={`--i: ${items.length}`}><a class={ctaClass} href="/contato" data-abrir-contato>Agendar conversa</a></li>
       </ul>
     </nav>
     <div class="tools">
@@ -49,9 +49,13 @@ const ctaClass = (current === 'contato' || ctaSecondary) ? 'btn btn--secondary' 
   .menu-btn { display: none; }
 
   @media (max-width: 1023px) {
-    /* Menu: slides 8px down while fading in; visibility is delayed on close so it stays clickable until gone */
-    .nav { position: absolute; left: 0; right: 0; top: var(--header-h); background: var(--bg); border-bottom: 1px solid var(--line); box-shadow: var(--shadow-overlay); padding: 8px var(--gutter) 16px; opacity: 0; visibility: hidden; transform: translateY(calc(-1 * var(--reveal-shift))); transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), visibility 0s linear var(--dur-base); }
-    .nav.is-open { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
+    /* Menu: the panel travels menu-shift down over dur-slow while fading in; the items follow,
+       staggered. Closing is quicker (dur-base), with no stagger; visibility is delayed so the
+       panel stays clickable until it is gone. */
+    .nav { position: absolute; left: 0; right: 0; top: var(--header-h); background: var(--bg); border-bottom: 1px solid var(--line); box-shadow: var(--shadow-overlay); padding: 8px var(--gutter) 16px; opacity: 0; visibility: hidden; transform: translateY(calc(-1 * var(--menu-shift))); transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), visibility 0s linear var(--dur-base); }
+    .nav.is-open { opacity: 1; visibility: visible; transform: none; transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out), visibility 0s linear 0s; }
+    .nav li { opacity: 0; transform: translateY(calc(-1 * var(--reveal-shift))); transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out); }
+    .nav.is-open li { opacity: 1; transform: none; transition-duration: var(--dur-slow); transition-delay: calc(var(--i, 0) * var(--stagger)); }
     /* Icon: the three lines become an × */
     .menu-icon path { transform-origin: 12px 12px; transition: transform var(--dur-base) var(--ease-in-out), opacity var(--dur-fast) var(--ease-out); }
     .menu-btn[aria-expanded="true"] .menu-icon__a { transform: translateY(5px) rotate(45deg); }
