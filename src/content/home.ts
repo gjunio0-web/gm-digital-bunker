@@ -57,8 +57,8 @@ export const home: Record<Lang, HomeContent> = {
       axisY: 'Escopo ↑', yTop: 'Estratégia e decisão', yBottom: 'Implantação e operação', axisX: 'Porte do cliente →', xLeft: 'Pequena e média empresa', xRight: 'Grande corporação e governo',
       cells: [
         { title: 'GM Digital Bunker™', text: 'Estratégia sênior até o artefato pronto, sem pirâmide de equipe', us: true },
-        { title: 'Estratégia pura', text: 'Com braços de construção próprios' },
-        { title: 'Ferramentas e execução', text: 'Fornecedores de ferramenta de IA, agências e desenvolvedores' },
+        { title: 'Consultorias de estratégia pura', text: 'Decisão e plano, sem construção' },
+        { title: 'Fornecedores de ferramenta e de execução', text: 'Fornecedores de ferramenta de IA, agências e desenvolvedores' },
         { title: 'Integradoras e grandes consultorias', text: 'Programas plurianuais para grandes corporações e governo' },
       ],
       statement: ['Critério antes da ferramenta.', 'Decisão sênior, executada com IA, até o artefato pronto.'],
@@ -147,8 +147,8 @@ export const home: Record<Lang, HomeContent> = {
       axisY: 'Scope ↑', yTop: 'Strategy and decision', yBottom: 'Deployment and operations', axisX: 'Client size →', xLeft: 'Small and mid-sized company', xRight: 'Large corporation and government',
       cells: [
         { title: 'GM Digital Bunker™', text: 'Senior strategy through to the finished artifact, with no team pyramid', us: true },
-        { title: 'Pure strategy', text: 'With their own build arms' },
-        { title: 'Tools and execution', text: 'AI tool vendors, agencies and developers' },
+        { title: 'Pure-strategy consultancies', text: 'Decision and plan, no construction' },
+        { title: 'Tool vendors and builders', text: 'AI tool vendors, agencies and developers' },
         { title: 'Integrators and large consultancies', text: 'Multi-year programs for large corporations and government' },
       ],
       statement: ['Judgment before the tool.', 'Senior decisions, executed with AI, through to the finished artifact.'],
