@@ -51,7 +51,7 @@ export const home: Record<Lang, HomeContent> = {
       alts: [
         { title: 'Grandes consultorias', tag: 'Formato de grande conta', text: 'Equipe em pirâmide, programa de meses e honorário dimensionado para a corporação. O menor projeto que essas casas aceitam já é maior do que a empresa média precisa, ou pode pagar.' },
         { title: 'Fornecedores de ferramenta de IA', tag: 'Vendem a ferramenta, não a decisão', text: 'Entregam a ferramenta; raramente a decisão sobre usar ou não usar IA, onde e como. A recomendação tende a partir do que o fornecedor tem para vender, e não do problema do negócio.' },
-        { title: 'Uso espontâneo', tag: 'Esforço sem direção', text: 'Cada pessoa adota a própria ferramenta, cada uma por si. O risco é gastar sem retorno ou expor dados sem perceber.' },
+        { title: 'Cada um com a sua ferramenta', tag: 'Esforço sem direção', text: 'Funcionários adotam IA por conta própria, sem orientação da empresa. O risco é gastar sem retorno ou expor dados sem perceber.' },
       ],
       mapTitle: 'O espaço vazio: decisão sênior para empresas médias', mapNote: 'Mapa qualitativo, não medido: mostra zonas.',
       axisY: 'Escopo ↑', yTop: 'Estratégia e decisão', yBottom: 'Implantação e operação', axisX: 'Porte do cliente →', xLeft: 'Pequena e média empresa', xRight: 'Grande corporação e governo',
@@ -141,7 +141,7 @@ export const home: Record<Lang, HomeContent> = {
       alts: [
         { title: 'Large consultancies', tag: 'Built for large accounts', text: 'Pyramid-shaped teams, months-long programs and fees sized for the corporation. The smallest project these firms take on is already bigger than the mid-sized company needs, or can afford.' },
         { title: 'AI tool vendors', tag: 'They sell the tool, not the decision', text: 'They deliver the tool; rarely the decision on whether to use AI at all, where and how. The recommendation tends to start from what the vendor has to sell, not from the business problem.' },
-        { title: 'Spontaneous use', tag: 'Effort without direction', text: 'Each person adopts their own tool, every one for themselves. The risk is spending without return or exposing data without noticing.' },
+        { title: 'Everyone with their own tool', tag: 'Effort without direction', text: 'Employees adopt AI on their own, with no guidance from the company. The risk is spending without return or exposing data without noticing.' },
       ],
       mapTitle: 'The empty space: senior decisions for mid-sized companies', mapNote: 'Qualitative map, not measured: it shows zones.',
       axisY: 'Scope ↑', yTop: 'Strategy and decision', yBottom: 'Deployment and operations', axisX: 'Client size →', xLeft: 'Small and mid-sized company', xRight: 'Large corporation and government',
