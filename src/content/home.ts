@@ -39,7 +39,7 @@ export const home: Record<Lang, HomeContent> = {
     s1: {
       eyebrow: '01 · A oportunidade',
       title: 'A IA já chegou à operação. O critério para usá-la ainda é frágil.',
-      lead: 'Por que a empresa média usa IA com pouco critério e sem uma opção de apoio adequada',
+      lead: 'Por que a empresa média usa IA sem uma regra para decidir onde ela compensa, e sem uma opção de apoio adequada. Os dados abaixo mostram o mesmo quadro nos dois extremos do porte.',
       carouselLabel: 'Três números sobre a oportunidade', prev: 'Número anterior', next: 'Próximo número', of: 'de',
       stats: [
         { figure: '65%', text: 'das empresas de pequeno porte já usam IA, na maioria ferramentas de texto como ChatGPT, Gemini e Copilot', source: 'Sebrae, 2025' },
@@ -77,31 +77,31 @@ export const home: Record<Lang, HomeContent> = {
       eyebrow: '03 · Serviços', title: 'O que a empresa pode contratar', label: 'Serviço', more: 'Ver o serviço',
       services: [
         { id: 'estrategia', title: 'Estratégia e plataforma digital com IA', text: 'Projeto sob medida, do diagnóstico à plataforma em produção; Elite 90 Pro como caso.' },
-        { id: 'conselho', title: 'Conselho de IA por assinatura', text: 'Executivo de IA fracionado: revisão trimestral, triagem de fornecedores e teto de horas.' },
+        { id: 'conselho', title: 'Conselho de IA por assinatura', text: 'Executivo de IA em tempo parcial: revisão trimestral, triagem de fornecedores e teto de horas.' },
       ],
     },
     s4: {
       eyebrow: '04 · As provas', title: 'Um caso real, o método publicado e a evidência externa',
       caseLabel: 'Caso', caseTitle: 'Elite 90 Pro', caseText: 'Programa de 90 dias de transformação física para executivos, conduzido pelo Coach Ruiz. A GM Digital Bunker desenhou o ecossistema digital do programa e conduz sua construção por módulos.', caseMore: 'Ler o caso', caseAlt: 'Página inicial do site do programa Coach Ruiz: Construa um corpo de atleta em 90 dias',
       bookLabel: 'O livro', bookTitleHtml: 'Quando é Melhor com&nbsp;IA', bookText: 'Como aplicar IA com rigor e método na produção técnica, na análise complexa e no apoio à decisão estratégica.', bookMore: 'Conhecer o livro', bookAlt: 'Capa do livro Quando é Melhor com IA, de Gonçalo Marques',
-      hubLabel: 'Aplicativo gratuito', hubTitle: 'AI Strategy Hub', hubText: 'Painel gratuito na web que indica a IA mais adequada a cada perfil de trabalho.', hubMore: 'Abrir o AI Strategy Hub', hubAlt: 'Tela do AI Strategy Hub: perfil profissional "Cirurgião de Código" selecionado e ranking recomendado com o gráfico de capacidades', external: 'site externo',
+      hubLabel: 'Aplicativo gratuito', hubTitle: 'AI Strategy Hub', hubText: 'Painel na web que indica a IA mais adequada a cada perfil de trabalho.', hubMore: 'Abrir o AI Strategy Hub', hubAlt: 'Tela do AI Strategy Hub: perfil profissional "Cirurgião de Código" selecionado e classificação recomendada com o gráfico de capacidades', external: 'site externo',
       bridgeHtml: 'Os textos sobre o método estão em <a href="/publicacoes">Publicações <span aria-hidden="true">→</span></a>',
       evidenceTitle: 'A IA amplia o trabalho de consultoria, quando se sabe onde usá-la',
       evidence: [
-        { figure: '+12,2%', text: 'mais tarefas concluídas' }, { figure: '25,1%', text: 'mais rapidez na execução' },
-        { figure: '+40%', text: 'de qualidade, ou mais' }, { figure: '−19', text: 'pontos percentuais de acerto em tarefa fora do alcance da IA' },
+        { figure: '+12,2%', text: 'de tarefas concluídas' }, { figure: '+25,1%', text: 'de rapidez na execução' },
+        { figure: '+40%', text: 'de qualidade avaliada' }, { figure: '−19', text: 'pontos percentuais de acerto em tarefa fora do alcance da IA' },
       ],
       evidenceLead: 'O ganho depende de saber quando a IA ajuda e quando atrapalha. É a pergunta que dá nome ao método: quando é melhor com IA.',
       evidenceSource: "Estudo de campo da Harvard Business School com a BCG, 758 consultores (Dell'Acqua et al., SSRN, 2023)",
       statement: ['Quando é melhor com IA?', 'Responder a essa pergunta, caso a caso, é o trabalho.'],
     },
     s5: {
-      eyebrow: '05 · O encaixe e o próximo passo', title: 'Desenhada para empresas sem executivo exclusivamente dedicado a tecnologia',
+      eyebrow: '05 · O encaixe e o próximo passo', title: 'Uma prática desenhada para empresas sem executivo exclusivamente dedicado a tecnologia',
       criteria: [
         { term: 'Porte', text: 'Média empresa (receita anual de R$ 4,8 mi a R$ 300 mi) e pequena empresa em crescimento' },
         { term: 'Tecnologia', text: 'Sem diretor dedicado a tecnologia (CIO ou CTO); TI enxuta, terceirizada ou operacional' },
         { term: 'Decisor', text: 'CEO, sócio ou diretor de área, que compra resultado de negócio' },
-        { term: 'Momento', text: 'IA ainda não adotada ou já em uso espontâneo, sem critério comum para decidir onde e quando investir' },
+        { term: 'Momento', text: 'IA ainda não adotada ou já usada por conta própria pela equipe, sem uma regra comum para decidir onde e quando investir' },
         { term: 'Expectativa', text: 'Decisão fundamentada e algo utilizável no fim do projeto' },
       ],
       note: 'Faixa de porte pela classificação do BNDES.',
@@ -129,7 +129,7 @@ export const home: Record<Lang, HomeContent> = {
     s1: {
       eyebrow: '01 · The opportunity',
       title: 'AI has already reached operations. The judgment for using it is still fragile.',
-      lead: 'Why the mid-sized company uses AI with little judgment and no suitable source of support',
+      lead: 'Why the mid-sized company uses AI with no rule for deciding where it pays off, and no suitable source of support. The figures below show the same picture at both ends of the size range.',
       carouselLabel: 'Three figures on the opportunity', prev: 'Previous figure', next: 'Next figure', of: 'of',
       stats: [
         { figure: '65%', text: 'of small businesses in Brazil already use AI, mostly text tools such as ChatGPT, Gemini and Copilot', source: 'Sebrae (Brazilian small-business agency), 2025' },
@@ -167,31 +167,31 @@ export const home: Record<Lang, HomeContent> = {
       eyebrow: '03 · Services', title: 'What the company can hire', label: 'Service', more: 'See the service',
       services: [
         { id: 'estrategia', title: 'AI strategy and digital platform', text: 'A tailored project, from diagnosis to a platform in production; Elite 90 Pro as the case.' },
-        { id: 'conselho', title: 'AI advisory by subscription', text: 'Fractional AI executive: quarterly review, vendor screening and a cap on hours.' },
+        { id: 'conselho', title: 'AI advisory by subscription', text: 'Part-time AI executive: quarterly review, vendor screening and a cap on hours.' },
       ],
     },
     s4: {
       eyebrow: '04 · The proof', title: 'A real case, the published method and external evidence',
       caseLabel: 'Case', caseTitle: 'Elite 90 Pro', caseText: 'A 90-day physical transformation program for executives, led by Coach Ruiz. GM Digital Bunker designed the program\'s digital ecosystem and leads its construction module by module.', caseMore: 'Read the case', caseAlt: 'Home page of the Coach Ruiz program website: Build an athlete\'s body in 90 days',
       bookLabel: 'The book', bookTitleHtml: 'When it\'s Better with&nbsp;AI', bookText: 'How to apply AI with rigor and method in technical production, complex analysis and support for strategic decisions.', bookMore: 'About the book', bookAlt: 'Cover of the book Quando é Melhor com IA (When it\'s Better with AI), by Gonçalo Marques',
-      hubLabel: 'Free application', hubTitle: 'AI Strategy Hub', hubText: 'A free web dashboard that points to the most suitable AI for each work profile.', hubMore: 'Open the AI Strategy Hub', hubAlt: 'AI Strategy Hub screen: the "Code Surgeon" professional profile selected and the recommended ranking with the capability chart', external: 'external site',
+      hubLabel: 'Free application', hubTitle: 'AI Strategy Hub', hubText: 'A web dashboard that points to the most suitable AI for each work profile.', hubMore: 'Open the AI Strategy Hub', hubAlt: 'AI Strategy Hub screen: the "Code Surgeon" professional profile selected and the recommended ranking with the capability chart', external: 'external site',
       bridgeHtml: 'The articles on the method are in <a href="/en/publications">Publications <span aria-hidden="true">→</span></a>',
       evidenceTitle: 'AI amplifies consulting work, when you know where to use it',
       evidence: [
-        { figure: '+12.2%', text: 'more tasks completed' }, { figure: '25.1%', text: 'faster execution' },
-        { figure: '+40%', text: 'in quality, or more' }, { figure: '−19', text: 'percentage points of accuracy on a task beyond AI\'s reach' },
+        { figure: '+12.2%', text: 'tasks completed' }, { figure: '+25.1%', text: 'speed of execution' },
+        { figure: '+40%', text: 'assessed quality' }, { figure: '−19', text: 'percentage points of accuracy on a task beyond AI\'s reach' },
       ],
       evidenceLead: 'The gain depends on knowing when AI helps and when it gets in the way. That is the question that names the method: when it\'s better with AI.',
       evidenceSource: "Harvard Business School field study with BCG, 758 consultants (Dell'Acqua et al., SSRN, 2023)",
       statement: ['When is it better with AI?', 'Answering that question, case by case, is the work.'],
     },
     s5: {
-      eyebrow: '05 · The fit and the next step', title: 'Designed for companies without an executive dedicated exclusively to technology',
+      eyebrow: '05 · The fit and the next step', title: 'A practice designed for companies without an executive dedicated exclusively to technology',
       criteria: [
         { term: 'Size', text: 'Mid-sized company (annual revenue of R$ 4.8 million to R$ 300 million) and growing small company' },
         { term: 'Technology', text: 'No dedicated technology director (CIO or CTO); lean, outsourced or operational IT' },
         { term: 'Decision-maker', text: 'CEO, partner or area director, who buys business results' },
-        { term: 'Moment', text: 'AI not yet adopted or already in spontaneous use, with no shared judgment for deciding where and when to invest' },
+        { term: 'Moment', text: 'AI not yet adopted or already used by the team on its own, with no shared rule for deciding where and when to invest' },
         { term: 'Expectation', text: 'A well-founded decision and something usable at the end of the project' },
       ],
       note: 'Size bands per the classification of BNDES, Brazil\'s development bank.',
