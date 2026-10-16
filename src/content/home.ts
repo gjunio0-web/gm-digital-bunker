@@ -49,7 +49,7 @@ export const home: Record<Lang, HomeContent> = {
       footnote: '* Indústrias com 100 ou mais funcionários que não adotam tecnologias digitais avançadas.',
       altTitle: 'O que a empresa média tem hoje, e por que não basta',
       alts: [
-        { title: 'Grandes consultorias', tag: 'Formato de grande conta', text: 'Equipe em pirâmide, programa de meses e honorário dimensionado para a corporação. O menor projeto que essas casas aceitam já é maior do que a empresa média precisa, ou pode pagar.' },
+        { title: 'Grandes consultorias', tag: 'Formato de grande conta', text: 'Equipe em pirâmide, programa de meses e honorário dimensionado para grandes corporações. O menor projeto que essas casas aceitam já é maior do que a empresa média precisa, ou pode pagar.' },
         { title: 'Fornecedores de ferramenta de IA', tag: 'Vendem a ferramenta, não a decisão', text: 'Entregam a ferramenta; raramente a decisão sobre usar ou não usar IA, onde e como. A recomendação tende a partir do que o fornecedor tem para vender, e não do problema do negócio.' },
         { title: 'Cada um com a sua ferramenta', tag: 'Esforço sem direção', text: 'Funcionários adotam IA por conta própria, sem orientação da empresa. O risco é gastar sem retorno ou expor dados sem perceber.' },
       ],
@@ -139,7 +139,7 @@ export const home: Record<Lang, HomeContent> = {
       footnote: '* Manufacturers with 100 or more employees that do not adopt advanced digital technologies.',
       altTitle: 'What the mid-sized company has today, and why it is not enough',
       alts: [
-        { title: 'Large consultancies', tag: 'Built for large accounts', text: 'Pyramid-shaped teams, months-long programs and fees sized for the corporation. The smallest project these firms take on is already bigger than the mid-sized company needs, or can afford.' },
+        { title: 'Large consultancies', tag: 'Built for large accounts', text: 'Pyramid-shaped teams, months-long programs and fees sized for large corporations. The smallest project these firms take on is already bigger than the mid-sized company needs, or can afford.' },
         { title: 'AI tool vendors', tag: 'They sell the tool, not the decision', text: 'They deliver the tool; rarely the decision on whether to use AI at all, where and how. The recommendation tends to start from what the vendor has to sell, not from the business problem.' },
         { title: 'Everyone with their own tool', tag: 'Effort without direction', text: 'Employees adopt AI on their own, with no guidance from the company. The risk is spending without return or exposing data without noticing.' },
       ],
