@@ -33,7 +33,7 @@ export const home: Record<Lang, HomeContent> = {
       meta: 'Estratégia · Tecnologia · IA · 2026',
       whoHtml: '<a href="/sobre">Gonçalo Marques</a> · São Paulo',
       titleHtml: 'Estratégia de tecnologia em IA para o <span>mundo real</span>.',
-      lead: 'Para empresas de pequeno e médio porte que precisam decidir e executar em tecnologia para IA, da análise estratégica ao artefato pronto.',
+      lead: 'Para empresas de pequeno e médio porte que precisam decidir e executar em tecnologia aplicada a IA, da análise estratégica ao artefato pronto.',
       services: 'Ver serviços', method: 'Conhecer o método', pause: 'Pausar animação', resume: 'Retomar animação',
     },
     s1: {
