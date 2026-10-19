@@ -10,8 +10,8 @@ export const datas = {
   'pt-BR': {
     inicio: { publicado: '2026-10-14', atualizado: '2026-10-19', arquivos: ['src/pages/index.astro', 'src/templates/Home.astro', 'src/content/home.ts'] },
     servicos: { publicado: '2026-10-14', atualizado: '2026-10-16', arquivos: ['src/pages/servicos/index.astro'] },
-    estrategia: { publicado: '2026-10-14', atualizado: '2026-10-16', arquivos: ['src/pages/servicos/estrategia-e-plataforma-digital-com-ia.astro'] },
-    conselho: { publicado: '2026-10-14', atualizado: '2026-10-16', arquivos: ['src/pages/servicos/conselho-de-ia.astro'] },
+    estrategia: { publicado: '2026-10-14', atualizado: '2026-10-19', arquivos: ['src/pages/servicos/estrategia-e-plataforma-digital-com-ia.astro'] },
+    conselho: { publicado: '2026-10-14', atualizado: '2026-10-19', arquivos: ['src/pages/servicos/conselho-de-ia.astro'] },
     caso: { publicado: '2026-10-14', atualizado: '2026-10-16', arquivos: ['src/pages/casos/elite-90-pro.astro'] },
     metodo: { publicado: '2026-10-14', atualizado: '2026-10-16', arquivos: ['src/pages/metodo/index.astro'] },
     livro: { publicado: '2026-10-14', atualizado: '2026-10-16', arquivos: ['src/pages/metodo/livro.astro'] },
