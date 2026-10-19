@@ -2,6 +2,10 @@
 // Maintained by hand: set `atualizado` to the day the page text changes. `arquivos` lists the source files
 // that make up each page, so `npm run check:seo` can warn when a file was committed after its date.
 // Initial values come from the first and last commit of each source file in the repository (14–19/10/2026).
+// Commits up to this day were reviewed and changed no page text (structured data, fonts, images, headers),
+// so `check:seo` only warns about commits after it. Move the day forward after each such review.
+export const revisadoAte = '2026-10-19';
+
 export const datas = {
   'pt-BR': {
     inicio: { publicado: '2026-10-14', atualizado: '2026-10-17', arquivos: ['src/pages/index.astro', 'src/templates/Home.astro', 'src/content/home.ts'] },

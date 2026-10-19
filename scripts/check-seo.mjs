@@ -3,7 +3,7 @@
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { datas } from '../src/lib/datas.mjs';
+import { datas, revisadoAte } from '../src/lib/datas.mjs';
 
 const DIST = new URL('../dist/', import.meta.url).pathname;
 const errors = [];
@@ -40,7 +40,7 @@ for (const p of pages) {
   if (!p.title) err(p.f, 'missing <title>');
   else titles.set(p.title, [...(titles.get(p.title) ?? []), p.f]);
   if (!p.description) err(p.f, 'missing meta description');
-  else if (p.description.length < 70 || p.description.length > 160) warn(p.f, `description has ${p.description.length} characters (target 70–160)`);
+  else if (!is404 && (p.description.length < 70 || p.description.length > 160)) warn(p.f, `description has ${p.description.length} characters (target 70–160)`);
   if (p.title && /^(.+?) – GM Digital Bunker™$/.test(p.title) && /GM Digital Bunker™/.test(p.title.replace(/ – GM Digital Bunker™$/, ''))) warn(p.f, `brand repeated in title: "${p.title}"`);
 
   if (is404) {
@@ -99,7 +99,7 @@ try {
     for (const [id, d] of Object.entries(paginas)) {
       for (const arq of d.arquivos) {
         const ultimo = execFileSync('git', ['log', '-1', '--format=%cs', '--', arq], { cwd: new URL('..', import.meta.url).pathname, encoding: 'utf8' }).trim();
-        if (ultimo && ultimo > d.atualizado) warn(`${lang}/${id}`, `${arq} was committed on ${ultimo}, after atualizado ${d.atualizado}: update src/lib/datas.mjs if the text changed`);
+        if (ultimo && ultimo > d.atualizado && ultimo > revisadoAte) warn(`${lang}/${id}`, `${arq} was committed on ${ultimo}, after atualizado ${d.atualizado}: update src/lib/datas.mjs if the text changed`);
       }
     }
   }
