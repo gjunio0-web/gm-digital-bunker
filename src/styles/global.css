@@ -263,12 +263,12 @@ a.card:hover { border-color: var(--line-strong); color: inherit; }
 .faq-rows__item { display: grid; gap: 12px 48px; padding: 28px 0; border-bottom: 1px solid var(--line); }
 @media (min-width: 900px) { .faq-rows__item { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
 .faq-rows__q { display: flex; gap: 16px; align-items: baseline; }
-.faq-rows__n, .faq-plates__n { font: 500 13px/1.5 var(--mono); letter-spacing: 0.08em; color: var(--accent); }
+.faq-rows__n, .faq-plates__n { font: 500 13px/1.5 var(--mono); letter-spacing: 0.08em; color: var(--muted); }
 .faq-rows__t, .faq-plates__t { margin: 0; font-family: var(--serif); font-weight: 600; font-size: 22px; line-height: 1.3; color: var(--ink); }
 .faq-rows__a { margin: 0; max-width: 36rem; font-size: 17px; line-height: 1.55; color: var(--ink-body); }
 .faq-plates { display: grid; gap: 24px; }
 @media (min-width: 900px) { .faq-plates { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.faq-plates__item { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 12px; padding: 28px 24px 24px; background: var(--surface); border-top: 2px solid var(--accent); border-radius: 0 0 var(--radius-md) var(--radius-md); }
+.faq-plates__item { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 12px; padding: 28px 24px 24px; background: var(--surface); border-top: 2px solid var(--line-strong); border-radius: 0 0 var(--radius-md) var(--radius-md); }
 .faq-plates__n { position: absolute; top: -18px; right: 12px; font: 600 112px/1 var(--serif); font-variation-settings: 'opsz' 60; letter-spacing: 0; color: var(--ink); opacity: 0.06; pointer-events: none; }
 .faq-plates__t { max-width: 26rem; }
 .faq-plates__a { margin: 0; font-size: 16px; line-height: 1.5; color: var(--ink-body); }
