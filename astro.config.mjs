@@ -4,6 +4,7 @@ import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 import { DOMINIO as site } from './src/lib/origem.mjs';
 import { routes } from './src/i18n/routes.ts';
+import llmsTxt from './src/lib/llms.mjs';
 
 // Page address -> id, so each sitemap entry can list its translation. The translated pages have
 // different addresses (/sobre and /en/about), which the integration's own i18n pairing does not cover.
@@ -15,6 +16,7 @@ export default defineConfig({
   trailingSlash: 'never',
   build: { format: 'file' },
   integrations: [
+    llmsTxt(),
     sitemap({
       filter: (url) => new URL(url).pathname !== '/404',
       serialize(item) {
