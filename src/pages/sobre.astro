@@ -51,9 +51,26 @@ const jsonLd = {
   </section>
 
   <section class="section container" aria-labelledby="artefato-titulo">
-    <h2 id="artefato-titulo" class="text" style="margin-bottom: 24px;">Este site é um artefato do método</h2>
-    <p class="lead text" style="max-width: 72ch;">A decisão sobre o que o site diz, como se organiza e com que aparência foi de Gonçalo Marques, que validou cada página antes de publicá-la. A inteligência artificial, sob sua direção, produziu o texto nos dois idiomas, o código, o sistema de design e as imagens de compartilhamento. A conferência seguiu critérios verificáveis: contraste de cores em todas as 22 páginas, nos temas claro e escuro; ligações internas e equivalência entre as versões em português e inglês.</p>
+    <div class="artefato">
+      <h2 id="artefato-titulo" class="text artefato__t">Este site é um artefato do método</h2>
+      <p class="lead text artefato__p">A decisão sobre o que o site diz, como se organiza e com que aparência foi de Gonçalo Marques, que validou cada página antes de publicá-la. A inteligência artificial, sob sua direção, produziu o texto nos dois idiomas, o código, o sistema de design e as imagens de compartilhamento. A conferência seguiu critérios verificáveis: contraste de cores em todas as 22 páginas, nos temas claro e escuro; ligações internas e equivalência entre as versões em português e inglês.</p>
+      <figure class="artefato__fig" aria-hidden="true"><svg class="artefato__art" viewBox="0 0 400 320" preserveAspectRatio="xMaxYMid slice" role="presentation" focusable="false" xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="0" x2="0" y2="320" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="40" y1="0" x2="40" y2="320" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="80" y1="0" x2="80" y2="320" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="120" y1="0" x2="120" y2="320" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="160" y1="0" x2="160" y2="320" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="200" y1="0" x2="200" y2="320" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="240" y1="0" x2="240" y2="320" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="280" y1="0" x2="280" y2="320" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="320" y1="0" x2="320" y2="320" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="360" y1="0" x2="360" y2="320" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="400" y1="0" x2="400" y2="320" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="0" y1="0" x2="400" y2="0" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="0" y1="40" x2="400" y2="40" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="0" y1="80" x2="400" y2="80" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="0" y1="120" x2="400" y2="120" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="0" y1="160" x2="400" y2="160" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="0" y1="200" x2="400" y2="200" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="0" y1="240" x2="400" y2="240" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="0" y1="280" x2="400" y2="280" stroke="var(--line)" stroke-width="1" opacity="0.7"/><line x1="0" y1="320" x2="400" y2="320" stroke="var(--line)" stroke-width="1" opacity="0.7"/><polygon points="90,150 400,0 400,170" fill="var(--indigo)"/><polygon points="90,150 400,170 400,262" fill="var(--indigo-deep)"/><polygon points="90,150 400,262 226,320" fill="var(--accent)" opacity="0.9"/><line x1="90" y1="150" x2="0" y2="118" stroke="var(--line-strong)" stroke-width="1"/><line x1="90" y1="150" x2="0" y2="176" stroke="var(--line-strong)" stroke-width="1"/><line x1="90" y1="150" x2="40" y2="320" stroke="var(--line-strong)" stroke-width="1" stroke-dasharray="3 4"/><circle cx="90" cy="150" r="3.5" fill="var(--ink)"/></svg></figure>
+    </div>
   </section>
 
   <Invite />
 </Base>
+
+<style>
+  /* Heading, text and figure share one grid; the figure spans both rows so it runs from the heading's top edge to the text's bottom edge. */
+  .artefato { display: grid; gap: 24px 40px; }
+  .artefato__t { margin: 0; }
+  .artefato__p { max-width: 60ch; margin: 0; }
+  .artefato__fig { margin: 0; }
+  .artefato__art { display: block; width: 100%; height: auto; }
+  @media (min-width: 900px) {
+    .artefato { grid-template-columns: minmax(0, 1fr) minmax(300px, 400px); gap: 24px 56px; grid-template-rows: auto 1fr; }
+    .artefato__fig { grid-column: 2; grid-row: 1 / span 2; align-self: stretch; }
+    .artefato__art { height: 100%; }
+  }
+</style>
