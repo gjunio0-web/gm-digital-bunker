@@ -3,17 +3,6 @@ import Base from '../../layouts/Base.astro';
 import Opening from '../../components/Opening.astro';
 import Invite from '../../components/Invite.astro';
 import { AMAZON } from '../../config';
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'Book',
-  name: 'Quando é Melhor com IA',
-  alternativeHeadline: 'Aumentação profissional por uso de IA. De Análise Estratégica a Produção Técnica',
-  author: { '@type': 'Person', name: 'Gonçalo Marques' },
-  isbn: '978-65-02-41615-0',
-  bookFormat: 'https://schema.org/EBook',
-  inLanguage: 'pt-BR',
-  datePublished: '2026',
-};
 ---
 <Base
   title="Quando é Melhor com IA"
@@ -21,7 +10,7 @@ const jsonLd = {
   current="metodo"
   pageId="livro"
   ctaSecondary
-  jsonLd={jsonLd}
+ 
 >
   <Opening
     crumbs={[{ label: 'Início', href: '/' }, { label: 'Método', href: '/metodo' }, { label: 'Livro' }]}

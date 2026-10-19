@@ -8,6 +8,7 @@ import ContactDialog from '../components/ContactDialog.astro';
 
 import { DOMINIO, INDEXAVEL } from '../config';
 import { t } from '../i18n/ui';
+import { grafo, emJson } from '../lib/schema';
 import { path as routePath, otherLang, type Lang, type PageId } from '../i18n/routes';
 
 interface Props {
@@ -21,9 +22,8 @@ interface Props {
   noActionBar?: boolean;
   noDialog?: boolean;
   noindex?: boolean;    // page never indexed (the 404): no canonical, no hreflang
-  jsonLd?: Record<string, unknown>;
 }
-const { title, description, current = '', pageId = 'inicio', lang = 'pt-BR', ctaSecondary = false, noActionBar = false, noDialog = false, noindex = false, jsonLd } = Astro.props;
+const { title, description, current = '', pageId = 'inicio', lang = 'pt-BR', ctaSecondary = false, noActionBar = false, noDialog = false, noindex = false } = Astro.props;
 // Search engines are kept out until the domain exists (src/lib/origem.mjs), and always out of the 404.
 const robots = noindex || !INDEXAVEL;
 const u = t(lang);
@@ -31,6 +31,7 @@ const path = Astro.props.path ?? routePath(pageId, lang);
 const altPath = routePath(pageId, otherLang(lang));
 const fullTitle = title === 'GM Digital Bunker™' ? title : `${title} – GM Digital Bunker™`;
 const ogImage = lang === 'en' ? `${DOMINIO}/og/og-image-en.jpg` : `${DOMINIO}/og/og-image.jpg`;
+const dados = noindex ? undefined : grafo({ lang, pageId, title: fullTitle, description });
 const ogAlt = lang === 'en'
   ? 'GM Digital Bunker™ – AI technology strategy for the real world. Senior decisions, executed with AI, through to the finished artifact.'
   : 'GM Digital Bunker™ – Estratégia de tecnologia em IA para o mundo real. Decisão sênior, executada com IA, até o artefato pronto.';
@@ -74,7 +75,7 @@ const ogAlt = lang === 'en'
     // Apply the remembered theme before paint to avoid a flash
     try { if (localStorage.getItem('tema') === 'claro') document.documentElement.dataset.theme = 'light'; } catch (e) {}
   </script>
-  {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+  {dados && <script type="application/ld+json" set:html={emJson(dados)} />}
 </head>
 <body>
   <a class="skip" href="#conteudo">{u.skip}</a>

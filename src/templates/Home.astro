@@ -10,18 +10,8 @@ const { lang } = Astro.props;
 const c = home[lang];
 const u = t(lang);
 const hub = lang === 'en' ? `${HUB}/?lang=en` : HUB;
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'ProfessionalService',
-  name: 'GM Digital Bunker™',
-  description: c.jsonLdDescription,
-  url: `${DOMINIO}${path('inicio', lang)}`,
-  areaServed: 'BR',
-  founder: { '@type': 'Person', name: 'Gonçalo Marques' },
-  address: { '@type': 'PostalAddress', addressLocality: 'São Paulo', addressCountry: 'BR' },
-};
 ---
-<Base title={c.title} description={c.description} current="inicio" pageId="inicio" lang={lang} jsonLd={jsonLd}>
+<Base title={c.title} description={c.description} current="inicio" pageId="inicio" lang={lang}>
 
   <!-- Opening: scenario 4 (tactile brutalism, kinetic colour bands, grid, grain) -->
   <section class="hero" id="abertura" aria-labelledby="capa-titulo">

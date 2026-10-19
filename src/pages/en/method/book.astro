@@ -5,18 +5,6 @@ import Invite from '../../../components/Invite.astro';
 import { path } from '../../../i18n/routes';
 import { AMAZON_EN } from '../../../config';
 const L = 'en';
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'Book',
-  name: 'Quando é Melhor com IA',
-  alternateName: "When it's Better with AI",
-  alternativeHeadline: 'Aumentação profissional por uso de IA. De Análise Estratégica a Produção Técnica',
-  author: { '@type': 'Person', name: 'Gonçalo Marques' },
-  isbn: '978-65-02-41615-0',
-  bookFormat: 'https://schema.org/EBook',
-  inLanguage: 'pt-BR',
-  datePublished: '2026',
-};
 ---
 <Base
   lang={L}
@@ -25,7 +13,7 @@ const jsonLd = {
   current="metodo"
   pageId="livro"
   ctaSecondary
-  jsonLd={jsonLd}
+ 
 >
   <Opening
     lang={L}

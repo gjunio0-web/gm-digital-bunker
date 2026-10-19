@@ -2,6 +2,8 @@
 // Errors fail the run (exit 1); warnings are reported only.
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { datas } from '../src/lib/datas.mjs';
 
 const DIST = new URL('../dist/', import.meta.url).pathname;
 const errors = [];
@@ -72,6 +74,36 @@ else {
   for (const c of byCanonical.keys()) if (!urls.includes(c)) err('sitemap-0.xml', `canonical missing from the sitemap: ${c}`);
 }
 for (const p of pages) if (p.f !== '404.html' && !p.jsonld.length) warn(p.f, 'no JSON-LD');
+
+// JSON-LD: every { "@id": … } reference must resolve to a node of the same @graph.
+for (const p of pages) {
+  for (const raw of p.jsonld) {
+    let j; try { j = JSON.parse(raw); } catch { continue; }
+    if (!j['@graph']) continue;
+    const ids = new Set(j['@graph'].map((n) => n['@id']));
+    const visit = (x, dono) => {
+      if (Array.isArray(x)) x.forEach((v) => visit(v, dono));
+      else if (x && typeof x === 'object') {
+        const k = Object.keys(x);
+        if (k.length === 1 && k[0] === '@id' && !ids.has(x['@id'])) err(p.f, `JSON-LD reference does not resolve: ${x['@id']}`);
+        Object.values(x).forEach((v) => visit(v, dono));
+      }
+    };
+    for (const n of j['@graph']) for (const [k, v] of Object.entries(n)) if (k !== '@id') visit(v, n['@type']);
+  }
+}
+
+// Dates (src/lib/datas.mjs): warn when a source file was committed after the page's `atualizado` date.
+try {
+  for (const [lang, paginas] of Object.entries(datas)) {
+    for (const [id, d] of Object.entries(paginas)) {
+      for (const arq of d.arquivos) {
+        const ultimo = execFileSync('git', ['log', '-1', '--format=%cs', '--', arq], { cwd: new URL('..', import.meta.url).pathname, encoding: 'utf8' }).trim();
+        if (ultimo && ultimo > d.atualizado) warn(`${lang}/${id}`, `${arq} was committed on ${ultimo}, after atualizado ${d.atualizado}: update src/lib/datas.mjs if the text changed`);
+      }
+    }
+  }
+} catch { /* no git available: skip */ }
 
 console.log(`${pages.length} pages checked`);
 for (const w of warnings) console.log(`warning  ${w}`);

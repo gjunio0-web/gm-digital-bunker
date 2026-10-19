@@ -3,21 +3,13 @@ import Base from '../layouts/Base.astro';
 import Opening from '../components/Opening.astro';
 import Invite from '../components/Invite.astro';
 import { LINKEDIN } from '../config';
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'Person',
-  name: 'Gonçalo Marques',
-  jobTitle: 'Estrategista de tecnologia em IA',
-  worksFor: { '@type': 'Organization', name: 'GM Digital Bunker™' },
-  alumniOf: ['Universidade Estadual de Campinas (Unicamp)', 'Fundação Getulio Vargas (FGV)'],
-};
 ---
 <Base
   title="Sobre a GM Digital Bunker™"
   description="Quem é a GM Digital Bunker™ e quem a conduz: Gonçalo Marques, autor de Quando é Melhor com IA."
   current="sobre"
   pageId="sobre"
-  jsonLd={jsonLd}
+ 
 >
   <Opening
     crumbs={[{ label: 'Início', href: '/' }, { label: 'Sobre' }]}

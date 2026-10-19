@@ -5,14 +5,6 @@ import Invite from '../../components/Invite.astro';
 import { path } from '../../i18n/routes';
 import { LINKEDIN, HUB } from '../../config';
 const L = 'en';
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'Person',
-  name: 'Gonçalo Marques',
-  jobTitle: 'AI technology strategist',
-  worksFor: { '@type': 'Organization', name: 'GM Digital Bunker™' },
-  alumniOf: ['Universidade Estadual de Campinas (Unicamp)', 'Fundação Getulio Vargas (FGV)'],
-};
 ---
 <Base
   lang={L}
@@ -20,7 +12,7 @@ const jsonLd = {
   description="What GM Digital Bunker™ is and who leads it: Gonçalo Marques, author of When it's Better with AI."
   current="sobre"
   pageId="sobre"
-  jsonLd={jsonLd}
+ 
 >
   <Opening
     lang={L}
