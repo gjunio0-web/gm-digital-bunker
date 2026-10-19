@@ -2,6 +2,8 @@
 import Base from '../../layouts/Base.astro';
 import Opening from '../../components/Opening.astro';
 import Invite from '../../components/Invite.astro';
+import Foto from '../../components/Foto.astro';
+import { fotoCapa, fotoHub } from '../../assets/imagens';
 ---
 <Base
   title="O método"
@@ -32,14 +34,14 @@ import Invite from '../../components/Invite.astro';
       <h2 id="pecas-titulo" class="text" style="margin-bottom: 32px;">O livro e o aplicativo</h2>
       <div class="grid grid--2">
         <a class="card" href="/metodo/livro">
-          <span class="proof-frame"><img src="/imagens/capa-quando-e-melhor-com-ia.jpg" alt="Capa do livro Quando é Melhor com IA, de Gonçalo Marques" width="1000" height="1600" loading="lazy" /></span>
+          <span class="proof-frame"><Foto img={fotoCapa} tipo="capaQuadro" alt="Capa do livro Quando é Melhor com IA, de Gonçalo Marques" /></span>
           <span class="eyebrow eyebrow--muted" style="margin: 0;">O livro</span>
           <span class="h4" style="font-size: 24px;">Quando é Melhor com&nbsp;IA</span>
           <span class="small" style="flex: 1;">Como aplicar IA com rigor e método na produção técnica, na análise complexa e no apoio à decisão estratégica.</span>
           <span class="more">Conhecer o livro <span aria-hidden="true">→</span></span>
         </a>
         <a class="card" href="https://ai-strat-hub.netlify.app">
-          <img src="/imagens/ai-strategy-hub.jpg" alt='Tela do AI Strategy Hub: perfil profissional "Cirurgião de Código" selecionado e classificação recomendada com o gráfico de capacidades' width="1920" height="1080" loading="lazy" class="proof-img" />
+          <Foto img={fotoHub} tipo="tela" alt='Tela do AI Strategy Hub: perfil profissional "Cirurgião de Código" selecionado e classificação recomendada com o gráfico de capacidades' class="proof-img" />
           <span class="eyebrow eyebrow--muted" style="margin: 0;">Aplicativo gratuito</span>
           <span class="h4" style="font-size: 24px;">AI Strategy Hub <span aria-hidden="true">↗</span></span>
           <span class="small" style="flex: 1;">Painel na web que indica a IA mais adequada a cada perfil de trabalho. Não existe a melhor IA, existe a melhor IA para o seu trabalho, com notas abertas para auditoria. Disponível em português, inglês e alemão.</span>

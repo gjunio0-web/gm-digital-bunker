@@ -2,6 +2,8 @@
 import Base from '../../layouts/Base.astro';
 import Opening from '../../components/Opening.astro';
 import Invite from '../../components/Invite.astro';
+import Foto from '../../components/Foto.astro';
+import { fotoCaso } from '../../assets/imagens';
 ---
 <Base
   title="Estratégia e plataforma digital com IA"
@@ -51,7 +53,7 @@ import Invite from '../../components/Invite.astro';
     <h2 id="caso-titulo" class="text" style="margin-bottom: 32px;">Um projeto deste serviço</h2>
     <div class="grid grid--2">
       <a class="card" href="/casos/elite-90-pro">
-        <img src="/imagens/elite-90-pro-site.jpg" alt="Página inicial do site do programa Coach Ruiz: Construa um corpo de atleta em 90 dias" width="1920" height="1080" loading="lazy" class="proof-img" />
+        <Foto img={fotoCaso} tipo="tela" alt="Página inicial do site do programa Coach Ruiz: Construa um corpo de atleta em 90 dias" class="proof-img" />
         <span class="eyebrow eyebrow--muted" style="margin: 0;">Caso</span>
         <span class="h4" style="font-size: 24px;">Elite 90 Pro</span>
         <span class="small" style="flex: 1;">Programa de 90 dias de transformação física para executivos, conduzido pelo Coach Ruiz. A GM Digital Bunker desenhou o ecossistema digital do programa e conduz sua construção por módulos.</span>

@@ -2,6 +2,8 @@
 import Base from '../../layouts/Base.astro';
 import Opening from '../../components/Opening.astro';
 import Invite from '../../components/Invite.astro';
+import Foto from '../../components/Foto.astro';
+import { fotoCaso } from '../../assets/imagens';
 ---
 <Base
   title="Elite 90 Pro: do WhatsApp a um sistema completo"
@@ -38,7 +40,7 @@ import Invite from '../../components/Invite.astro';
       </div>
       <aside>
         <figure style="margin: 0;">
-          <img src="/imagens/elite-90-pro-site.jpg" alt="Página inicial do site do programa Coach Ruiz: Construa um corpo de atleta em 90 dias" width="1920" height="1080" loading="lazy" class="proof-img" />
+          <Foto img={fotoCaso} tipo="tela" alt="Página inicial do site do programa Coach Ruiz: Construa um corpo de atleta em 90 dias" class="proof-img" />
           <figcaption class="meta" style="margin-top: 12px;"><a href="https://coachruiz.com.br">coachruiz.com.br <span aria-hidden="true">↗</span><span class="visually-hidden">site externo</span></a></figcaption>
         </figure>
       </aside>

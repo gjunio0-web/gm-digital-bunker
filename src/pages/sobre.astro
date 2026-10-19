@@ -3,6 +3,8 @@ import Base from '../layouts/Base.astro';
 import Opening from '../components/Opening.astro';
 import Invite from '../components/Invite.astro';
 import { LINKEDIN } from '../config';
+import Foto from '../components/Foto.astro';
+import { fotoRetrato } from '../assets/imagens';
 ---
 <Base
   title="Sobre a GM Digital Bunker™"
@@ -32,7 +34,7 @@ import { LINKEDIN } from '../config';
       <p class="eyebrow">Quem conduz</p>
       <h2 id="conduz-titulo" class="text" style="margin-bottom: 32px;">Gonçalo Marques</h2>
       <div style="display: flex; flex-wrap: wrap; gap: 32px 48px; align-items: flex-start;">
-        <img class="portrait" src="/imagens/goncalo-marques.jpg" alt="Gonçalo Marques" width="640" height="640" loading="lazy" />
+        <Foto img={fotoRetrato} tipo="retrato" alt="Gonçalo Marques" class="portrait" />
         <div class="prose text" style="flex: 1 1 480px;">
           <p>A prática é conduzida por Gonçalo Marques, autor do livro <a href="/metodo/livro">Quando é Melhor com IA</a> e criador do <a href="https://ai-strat-hub.netlify.app">AI Strategy Hub</a>. Ele soma quase 30 anos de vivência corporativa em estratégia, tecnologia e arquitetura, em empresas como Microsoft, Accenture, Cogna e Acelera Partners.</p>
           <p>É engenheiro eletricista formado pela Universidade Estadual de Campinas (Unicamp) e especialista pela Fundação Getulio Vargas (FGV) em Gestão de Projetos e Portfólios de Projetos e em Gestão do Conhecimento. Tem as certificações Leading SAFe (Scaled Agile Framework) e ITIL Foundation. Escreveu resenhas de livros de tecnologia para o jornal O Estado de S. Paulo.</p>

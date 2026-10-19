@@ -3,6 +3,8 @@ import Base from '../../../layouts/Base.astro';
 import Opening from '../../../components/Opening.astro';
 import Invite from '../../../components/Invite.astro';
 import { path } from '../../../i18n/routes';
+import Foto from '../../../components/Foto.astro';
+import { fotoCaso } from '../../../assets/imagens';
 const L = 'en';
 ---
 <Base
@@ -55,7 +57,7 @@ const L = 'en';
     <h2 id="caso-titulo" class="text" style="margin-bottom: 32px;">A project from this service</h2>
     <div class="grid grid--2">
       <a class="card" href={path('caso', L)}>
-        <img src="/imagens/elite-90-pro-site.jpg" alt="Home page of the Coach Ruiz program website: Build an athlete's body in 90 days" width="1920" height="1080" loading="lazy" class="proof-img" />
+        <Foto img={fotoCaso} tipo="tela" alt="Home page of the Coach Ruiz program website: Build an athlete's body in 90 days" class="proof-img" />
         <span class="eyebrow eyebrow--muted" style="margin: 0;">Case</span>
         <span class="h4" style="font-size: 24px;">Elite 90 Pro</span>
         <span class="small" style="flex: 1;">A 90-day physical transformation program for executives, led by Coach Ruiz. GM Digital Bunker designed the program's digital ecosystem and leads its construction module by module.</span>

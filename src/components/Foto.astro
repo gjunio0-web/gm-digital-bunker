@@ -1,0 +1,24 @@
+---
+// Responsive image through astro:assets: AVIF and WebP with a srcset, the original JPEG as fallback.
+// `tipo` fixes the widths and the `sizes` hint to the size the image is shown at (see global.css).
+import { Picture } from 'astro:assets';
+
+const perfis = {
+  tela: { widths: [480, 800, 1200], sizes: '(min-width: 900px) 560px, 100vw' }, // screenshots, 16:9, column width
+  capa: { widths: [320, 640], sizes: '320px' },                                 // book cover on its own page (max 320px)
+  capaQuadro: { widths: [200, 400], sizes: '200px' },                           // book cover inside the 16:9 frame
+  retrato: { widths: [160, 320], sizes: '160px' },                              // portrait, 160px circle
+} as const;
+
+interface Props {
+  img: ImageMetadata;
+  alt: string;
+  tipo: keyof typeof perfis;
+  class?: string;
+  loading?: 'lazy' | 'eager';
+  fetchpriority?: 'high' | 'low' | 'auto';
+}
+const { img, alt, tipo, class: classe, loading = 'lazy', fetchpriority } = Astro.props;
+const { widths, sizes } = perfis[tipo];
+---
+<Picture src={img} alt={alt} formats={['avif', 'webp']} widths={[...widths]} sizes={sizes} class={classe} loading={loading} fetchpriority={fetchpriority} decoding="async" />

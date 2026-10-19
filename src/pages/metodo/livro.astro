@@ -3,6 +3,8 @@ import Base from '../../layouts/Base.astro';
 import Opening from '../../components/Opening.astro';
 import Invite from '../../components/Invite.astro';
 import { AMAZON } from '../../config';
+import Foto from '../../components/Foto.astro';
+import { fotoCapa } from '../../assets/imagens';
 ---
 <Base
   title="Quando é Melhor com IA"
@@ -24,7 +26,7 @@ import { AMAZON } from '../../config';
   <section class="section container">
     <div class="side side--reverse">
       <div>
-        <img src="/imagens/capa-quando-e-melhor-com-ia.jpg" alt="Capa do livro Quando é Melhor com IA, de Gonçalo Marques" width="1000" height="1600" class="cover" />
+        <Foto img={fotoCapa} tipo="capa" alt="Capa do livro Quando é Melhor com IA, de Gonçalo Marques" class="cover" loading="eager" fetchpriority="high" />
         <a class="btn btn--primary" href={AMAZON} style="margin-top: 24px;">Comprar na Amazon <span aria-hidden="true">↗</span><span class="visually-hidden">site externo</span></a>
       </div>
       <div>

@@ -3,6 +3,8 @@ import Base from '../../../layouts/Base.astro';
 import Opening from '../../../components/Opening.astro';
 import Invite from '../../../components/Invite.astro';
 import { path } from '../../../i18n/routes';
+import Foto from '../../../components/Foto.astro';
+import { fotoCaso } from '../../../assets/imagens';
 const L = 'en';
 ---
 <Base
@@ -42,7 +44,7 @@ const L = 'en';
       </div>
       <aside>
         <figure style="margin: 0;">
-          <img src="/imagens/elite-90-pro-site.jpg" alt="Home page of the Coach Ruiz program website: Build an athlete's body in 90 days" width="1920" height="1080" loading="lazy" class="proof-img" />
+          <Foto img={fotoCaso} tipo="tela" alt="Home page of the Coach Ruiz program website: Build an athlete's body in 90 days" class="proof-img" />
           <figcaption class="meta" style="margin-top: 12px;"><a href="https://coachruiz.com.br">coachruiz.com.br <span aria-hidden="true">↗</span><span class="visually-hidden">external site</span></a></figcaption>
         </figure>
       </aside>

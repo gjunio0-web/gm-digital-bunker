@@ -5,6 +5,8 @@ import { DOMINIO, HUB } from '../config';
 import { home } from '../content/home';
 import { path, type Lang } from '../i18n/routes';
 import { t } from '../i18n/ui';
+import Foto from '../components/Foto.astro';
+import { fotoCapa, fotoCaso, fotoHub } from '../assets/imagens';
 interface Props { lang: Lang; }
 const { lang } = Astro.props;
 const c = home[lang];
@@ -139,21 +141,21 @@ const hub = lang === 'en' ? `${HUB}/?lang=en` : HUB;
       <h2 id="provas-titulo" class="text" style="margin-bottom: 48px;">{c.s4.title}</h2>
       <div class="grid grid--3">
         <a class="card" href={path('caso', lang)}>
-          <img src="/imagens/elite-90-pro-site.jpg" alt={c.s4.caseAlt} width="1920" height="1080" loading="lazy" class="proof-img" />
+          <Foto img={fotoCaso} tipo="tela" alt={c.s4.caseAlt} class="proof-img" />
           <span class="eyebrow eyebrow--muted" style="margin: 0;">{c.s4.caseLabel}</span>
           <span class="h4" style="font-size: 24px;">{c.s4.caseTitle}</span>
           <span class="small" style="flex: 1;">{c.s4.caseText}</span>
           <span class="more">{c.s4.caseMore} <span aria-hidden="true">→</span></span>
         </a>
         <a class="card" href={path('livro', lang)}>
-          <span class="proof-frame"><img src="/imagens/capa-quando-e-melhor-com-ia.jpg" alt={c.s4.bookAlt} width="1000" height="1600" loading="lazy" /></span>
+          <span class="proof-frame"><Foto img={fotoCapa} tipo="capaQuadro" alt={c.s4.bookAlt} /></span>
           <span class="eyebrow eyebrow--muted" style="margin: 0;">{c.s4.bookLabel}</span>
           <span class="h4" style="font-size: 24px;" set:html={c.s4.bookTitleHtml}></span>
           <span class="small" style="flex: 1;">{c.s4.bookText}</span>
           <span class="more">{c.s4.bookMore} <span aria-hidden="true">→</span></span>
         </a>
         <a class="card" href={hub}>
-          <img src="/imagens/ai-strategy-hub.jpg" alt={c.s4.hubAlt} width="1920" height="1080" loading="lazy" class="proof-img" />
+          <Foto img={fotoHub} tipo="tela" alt={c.s4.hubAlt} class="proof-img" />
           <span class="eyebrow eyebrow--muted" style="margin: 0;">{c.s4.hubLabel}</span>
           <span class="h4" style="font-size: 24px;">{c.s4.hubTitle}</span>
           <span class="small" style="flex: 1;">{c.s4.hubText}</span>

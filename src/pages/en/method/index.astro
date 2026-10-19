@@ -4,6 +4,8 @@ import Opening from '../../../components/Opening.astro';
 import Invite from '../../../components/Invite.astro';
 import { path } from '../../../i18n/routes';
 import { HUB } from '../../../config';
+import Foto from '../../../components/Foto.astro';
+import { fotoCapa, fotoHub } from '../../../assets/imagens';
 const L = 'en';
 const hub = `${HUB}/?lang=en`;
 ---
@@ -38,14 +40,14 @@ const hub = `${HUB}/?lang=en`;
       <h2 id="pecas-titulo" class="text" style="margin-bottom: 32px;">The book and the application</h2>
       <div class="grid grid--2">
         <a class="card" href={path('livro', L)}>
-          <span class="proof-frame"><img src="/imagens/capa-quando-e-melhor-com-ia.jpg" alt="Cover of the book Quando é Melhor com IA (When it's Better with AI), by Gonçalo Marques" width="1000" height="1600" loading="lazy" /></span>
+          <span class="proof-frame"><Foto img={fotoCapa} tipo="capaQuadro" alt="Cover of the book Quando é Melhor com IA (When it's Better with AI), by Gonçalo Marques" /></span>
           <span class="eyebrow eyebrow--muted" style="margin: 0;">The book</span>
           <span class="h4" style="font-size: 24px;">When it's Better with&nbsp;AI</span>
           <span class="small" style="flex: 1;">How to apply AI with rigor and method in technical production, complex analysis and support for strategic decisions.</span>
           <span class="more">About the book <span aria-hidden="true">→</span></span>
         </a>
         <a class="card" href={hub}>
-          <img src="/imagens/ai-strategy-hub.jpg" alt='AI Strategy Hub screen: the "Code Surgeon" professional profile selected and the recommended ranking with the capability chart' width="1920" height="1080" loading="lazy" class="proof-img" />
+          <Foto img={fotoHub} tipo="tela" alt='AI Strategy Hub screen: the "Code Surgeon" professional profile selected and the recommended ranking with the capability chart' class="proof-img" />
           <span class="eyebrow eyebrow--muted" style="margin: 0;">Free application</span>
           <span class="h4" style="font-size: 24px;">AI Strategy Hub <span aria-hidden="true">↗</span></span>
           <span class="small" style="flex: 1;">A web dashboard that points to the most suitable AI for each work profile. There is no best AI; there is the best AI for your work, with scores open for audit. Available in Portuguese, English and German.</span>

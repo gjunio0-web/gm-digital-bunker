@@ -4,6 +4,8 @@ import Opening from '../../../components/Opening.astro';
 import Invite from '../../../components/Invite.astro';
 import { path } from '../../../i18n/routes';
 import { AMAZON_EN } from '../../../config';
+import Foto from '../../../components/Foto.astro';
+import { fotoCapa } from '../../../assets/imagens';
 const L = 'en';
 ---
 <Base
@@ -28,7 +30,7 @@ const L = 'en';
   <section class="section container">
     <div class="side side--reverse">
       <div>
-        <img src="/imagens/capa-quando-e-melhor-com-ia.jpg" alt="Cover of the book Quando é Melhor com IA (When it's Better with AI), by Gonçalo Marques" width="1000" height="1600" class="cover" />
+        <Foto img={fotoCapa} tipo="capa" alt="Cover of the book Quando é Melhor com IA (When it's Better with AI), by Gonçalo Marques" class="cover" loading="eager" fetchpriority="high" />
         <a class="btn btn--primary" href={AMAZON_EN} style="margin-top: 24px;">Buy on Amazon <span aria-hidden="true">↗</span><span class="visually-hidden">external site</span></a>
         <p class="meta" style="margin-top: 12px;">Portuguese edition</p>
       </div>
