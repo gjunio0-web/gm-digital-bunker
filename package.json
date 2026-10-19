@@ -10,13 +10,14 @@
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",
+    "@fontsource-variable/source-serif-4": "^5.3.1",
+    "@fontsource/jetbrains-mono": "^5.2.5",
+    "@fontsource/source-sans-3": "^5.2.5",
     "astro": "^5.18.2"
   },
   "private": true,
   "type": "module",
   "devDependencies": {
-    "@fontsource/jetbrains-mono": "^5.2.5",
-    "@fontsource/source-sans-3": "^5.2.5",
     "@fontsource/source-serif-4": "^5.2.5",
     "playwright": "^1.50.0",
     "sharp": "^0.33.5"
