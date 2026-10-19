@@ -5,17 +5,19 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "og": "node scripts/og/render.mjs"
+    "og": "node scripts/og/render.mjs",
+    "check:seo": "node scripts/check-seo.mjs"
   },
   "dependencies": {
+    "@astrojs/sitemap": "^3.7.4",
     "astro": "^5.18.2"
   },
   "private": true,
   "type": "module",
   "devDependencies": {
-    "@fontsource/source-serif-4": "^5.2.5",
-    "@fontsource/source-sans-3": "^5.2.5",
     "@fontsource/jetbrains-mono": "^5.2.5",
+    "@fontsource/source-sans-3": "^5.2.5",
+    "@fontsource/source-serif-4": "^5.2.5",
     "playwright": "^1.50.0",
     "sharp": "^0.33.5"
   }

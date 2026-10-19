@@ -1,11 +1,7 @@
 // Site-wide constants.
-// DOMINIO: the site's absolute origin, used for canonical, hreflang, Open Graph and JSON-LD.
-// Netlify provides it at build time: DEPLOY_PRIME_URL for the deploy being built (branch deploys
-// and previews included) and URL for the site's main address (the custom domain, once configured).
-// Set DOMINIO_FIXO to pin it explicitly; the placeholder is the last resort (local builds).
-const PLACEHOLDER = 'https://dominio.exemplo';
-const semBarra = (u?: string) => (u ? u.replace(/\/+$/, '') : undefined);
-export const DOMINIO = semBarra(process.env.DOMINIO_FIXO) ?? semBarra(process.env.DEPLOY_PRIME_URL) ?? semBarra(process.env.URL) ?? PLACEHOLDER;
+// DOMINIO (the site's absolute origin) and INDEXAVEL (whether search engines may index the build)
+// are decided in src/lib/origem.mjs, which astro.config.mjs also imports.
+export { DOMINIO, INDEXAVEL, EM_PRODUCAO } from './lib/origem.mjs';
 export const EMAIL_CONTATO = 'contato@dominio.exemplo'; // placeholder until the domain is decided
 export const MARCA = 'GM Digital Bunker™';
 // External addresses, per the stage-1 content doc
