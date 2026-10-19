@@ -45,6 +45,13 @@
   --indigo: #4f46e5;           /* second background */
   --indigo-deep: #2a1fb8;
   --on-indigo: #ffffff;
+  /* Indigo band (Design System › Cor › Índigo): theme-invariant values used only inside .band-indigo */
+  --band-surface: rgba(255, 255, 255, 0.10);
+  --band-surface-raised: rgba(255, 255, 255, 0.14);
+  --band-line: rgba(255, 255, 255, 0.22);
+  --band-line-strong: rgba(255, 255, 255, 0.6);
+  --band-muted: #f4f3ff;
+  --band-accent: #ffffff;
   --selection: #1d3a7a;
 
   /* Type */
@@ -81,15 +88,15 @@ html[data-theme="light"] {
 /* Inside an indigo band every text token turns white and cards become a lighter indigo */
 .band-indigo {
   background: var(--indigo);
-  color: #ffffff;
-  --surface: rgba(255, 255, 255, 0.10);
-  --surface-raised: rgba(255, 255, 255, 0.14);
-  --ink: #ffffff;
-  --ink-body: #ffffff;
-  --muted: #f4f3ff;
-  --line: rgba(255, 255, 255, 0.22);
-  --line-strong: rgba(255, 255, 255, 0.6);
-  --accent: #ffffff;
+  color: var(--on-indigo);
+  --surface: var(--band-surface);
+  --surface-raised: var(--band-surface-raised);
+  --ink: var(--on-indigo);
+  --ink-body: var(--on-indigo);
+  --muted: var(--band-muted);
+  --line: var(--band-line);
+  --line-strong: var(--band-line-strong);
+  --accent: var(--band-accent);
   --link-deco: underline;
 }
 
