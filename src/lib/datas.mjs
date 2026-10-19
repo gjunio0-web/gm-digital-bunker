@@ -8,7 +8,7 @@ export const revisadoAte = '2026-10-19';
 
 export const datas = {
   'pt-BR': {
-    inicio: { publicado: '2026-10-14', atualizado: '2026-10-17', arquivos: ['src/pages/index.astro', 'src/templates/Home.astro', 'src/content/home.ts'] },
+    inicio: { publicado: '2026-10-14', atualizado: '2026-10-19', arquivos: ['src/pages/index.astro', 'src/templates/Home.astro', 'src/content/home.ts'] },
     servicos: { publicado: '2026-10-14', atualizado: '2026-10-16', arquivos: ['src/pages/servicos/index.astro'] },
     estrategia: { publicado: '2026-10-14', atualizado: '2026-10-16', arquivos: ['src/pages/servicos/estrategia-e-plataforma-digital-com-ia.astro'] },
     conselho: { publicado: '2026-10-14', atualizado: '2026-10-16', arquivos: ['src/pages/servicos/conselho-de-ia.astro'] },
@@ -21,13 +21,13 @@ export const datas = {
     privacidade: { publicado: '2026-10-14', atualizado: '2026-10-15', arquivos: ['src/pages/privacidade.astro'] },
   },
   en: {
-    inicio: { publicado: '2026-10-15', atualizado: '2026-10-17', arquivos: ['src/pages/en/index.astro', 'src/templates/Home.astro', 'src/content/home.ts'] },
+    inicio: { publicado: '2026-10-15', atualizado: '2026-10-19', arquivos: ['src/pages/en/index.astro', 'src/templates/Home.astro', 'src/content/home.ts'] },
     servicos: { publicado: '2026-10-15', atualizado: '2026-10-16', arquivos: ['src/pages/en/services/index.astro'] },
     estrategia: { publicado: '2026-10-15', atualizado: '2026-10-16', arquivos: ['src/pages/en/services/ai-strategy-and-digital-platform.astro'] },
     conselho: { publicado: '2026-10-15', atualizado: '2026-10-16', arquivos: ['src/pages/en/services/ai-advisory.astro'] },
     caso: { publicado: '2026-10-15', atualizado: '2026-10-16', arquivos: ['src/pages/en/cases/elite-90-pro.astro'] },
     metodo: { publicado: '2026-10-15', atualizado: '2026-10-16', arquivos: ['src/pages/en/method/index.astro'] },
-    livro: { publicado: '2026-10-15', atualizado: '2026-10-16', arquivos: ['src/pages/en/method/book.astro'] },
+    livro: { publicado: '2026-10-15', atualizado: '2026-10-19', arquivos: ['src/pages/en/method/book.astro'] },
     publicacoes: { publicado: '2026-10-15', atualizado: '2026-10-15', arquivos: ['src/pages/en/publications.astro'] },
     sobre: { publicado: '2026-10-15', atualizado: '2026-10-19', arquivos: ['src/pages/en/about.astro'] },
     contato: { publicado: '2026-10-15', atualizado: '2026-10-15', arquivos: ['src/pages/en/contact.astro'] },

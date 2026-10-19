@@ -32,7 +32,8 @@ const robots = noindex || !INDEXAVEL;
 const u = t(lang);
 const path = Astro.props.path ?? routePath(pageId, lang);
 const altPath = routePath(pageId, otherLang(lang));
-const fullTitle = title === 'GM Digital Bunker™' ? title : `${title} – GM Digital Bunker™`;
+// The brand closes every title; a title that already carries it (the home pages) is used as written.
+const fullTitle = title.includes('GM Digital Bunker™') ? title : `${title} – GM Digital Bunker™`;
 const ogImage = lang === 'en' ? `${DOMINIO}/og/og-image-en.jpg` : `${DOMINIO}/og/og-image.jpg`;
 const dados = noindex ? undefined : grafo({ lang, pageId, title: fullTitle, description });
 const ogAlt = lang === 'en'

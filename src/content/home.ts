@@ -26,7 +26,7 @@ export interface HomeContent {
 
 export const home: Record<Lang, HomeContent> = {
   'pt-BR': {
-    title: 'GM Digital Bunker™',
+    title: 'Estratégia de tecnologia em IA para pequenas e médias empresas – GM Digital Bunker™',
     description: 'Estratégia de tecnologia em IA para o mundo real. Decisão sênior, executada com IA, até o artefato pronto, para empresas de pequeno e médio porte.',
     jsonLdDescription: 'Prática independente de estratégia tecnológica voltada à aplicação avançada de inteligência artificial, da análise estratégica à produção de artefatos técnicos e de comunicação.',
     hero: {
@@ -116,7 +116,7 @@ export const home: Record<Lang, HomeContent> = {
   },
 
   en: {
-    title: 'GM Digital Bunker™',
+    title: 'AI technology strategy for small and mid-sized companies – GM Digital Bunker™',
     description: 'AI technology strategy for the real world. Senior decisions, executed with AI, through to the finished artifact, for small and mid-sized companies.',
     jsonLdDescription: 'Independent technology strategy practice focused on the advanced application of artificial intelligence, from strategic analysis to the production of technical and communication artifacts.',
     hero: {
