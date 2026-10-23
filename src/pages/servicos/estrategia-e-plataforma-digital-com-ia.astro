@@ -2,8 +2,36 @@
 import Base from '../../layouts/Base.astro';
 import Opening from '../../components/Opening.astro';
 import Invite from '../../components/Invite.astro';
+import Faq from '../../components/Faq.astro';
 import Foto from '../../components/Foto.astro';
 import { fotoCaso } from '../../assets/imagens';
+const faqTitulo = "Perguntas frequentes";
+const faq = [
+  {
+    "q": "Por onde o projeto começa?",
+    "a": "Por um diagnóstico e um plano diretor com o roteiro de execução em etapas."
+  },
+  {
+    "q": "A empresa precisa esperar o fim do projeto para usar a plataforma?",
+    "a": "Não. A construção segue por módulos, e cada módulo entra em produção quando fica pronto."
+  },
+  {
+    "q": "Onde a inteligência artificial entra?",
+    "a": "Nos cenários em que ela reduz ou substitui o trabalho manual, nos que melhora um processo que continua existindo e nos que amplia a capacidade de quem decide – e o diagnóstico diz qual dos três cabe em cada ponto da operação. No Elite 90 Pro, as três convivem: automação para triagem de leads; otimização para aprimorar respostas a dúvidas sobre o programa; aumentação quando a IA escreve a versão preliminar das avaliações dos atletas, a serem revisadas pelo profissional especialista."
+  },
+  {
+    "q": "Quem cuida do sistema depois da entrega?",
+    "a": "Quem o construiu. Um contrato mensal cobre hospedagem, correções e pequenas evoluções, e o que conta como pequena evolução fica definido por escrito."
+  },
+  {
+    "q": "A GM Digital Bunker™ recebe comissão das ferramentas escolhidas?",
+    "a": "Não. A escolha das ferramentas é independente de fornecedor."
+  },
+  {
+    "q": "A GM Digital Bunker™ configura ou mantém ferramentas de terceiros?",
+    "a": "Não. Nas ferramentas de mercado, ajudamos a escolher, avaliar e acompanhar; a configuração e o treinamento técnico ficam com o fornecedor. Construímos e mantemos só as plataformas que nós mesmos desenvolvemos."
+  }
+];
 ---
 <Base
   title="Estratégia e plataforma digital com IA"
@@ -81,35 +109,7 @@ import { fotoCaso } from '../../assets/imagens';
     </div>
   </section>
 
-  <section class="section container" aria-labelledby="faq-titulo">
-    <h2 id="faq-titulo" class="text" style="margin-bottom: 40px;">Perguntas frequentes</h2>
-    <div class="faq-rows">
-      <div class="faq-rows__item">
-        <div class="faq-rows__q"><span class="faq-rows__n" aria-hidden="true">01</span><h3 class="faq-rows__t">Por onde o projeto começa?</h3></div>
-        <p class="faq-rows__a">Por um diagnóstico e um plano diretor com o roteiro de execução em etapas.</p>
-      </div>
-      <div class="faq-rows__item">
-        <div class="faq-rows__q"><span class="faq-rows__n" aria-hidden="true">02</span><h3 class="faq-rows__t">A empresa precisa esperar o fim do projeto para usar a plataforma?</h3></div>
-        <p class="faq-rows__a">Não. A construção segue por módulos, e cada módulo entra em produção quando fica pronto.</p>
-      </div>
-      <div class="faq-rows__item">
-        <div class="faq-rows__q"><span class="faq-rows__n" aria-hidden="true">03</span><h3 class="faq-rows__t">Onde a inteligência artificial entra?</h3></div>
-        <p class="faq-rows__a">Nos cenários em que ela reduz ou substitui o trabalho manual, nos que melhora um processo que continua existindo e nos que amplia a capacidade de quem decide – e o diagnóstico diz qual dos três cabe em cada ponto da operação. No Elite 90 Pro, as três convivem: automação para triagem de leads; otimização para aprimorar respostas a dúvidas sobre o programa; aumentação quando a IA escreve a versão preliminar das avaliações dos atletas, a serem revisadas pelo profissional especialista.</p>
-      </div>
-      <div class="faq-rows__item">
-        <div class="faq-rows__q"><span class="faq-rows__n" aria-hidden="true">04</span><h3 class="faq-rows__t">Quem cuida do sistema depois da entrega?</h3></div>
-        <p class="faq-rows__a">Quem o construiu. Um contrato mensal cobre hospedagem, correções e pequenas evoluções, e o que conta como pequena evolução fica definido por escrito.</p>
-      </div>
-      <div class="faq-rows__item">
-        <div class="faq-rows__q"><span class="faq-rows__n" aria-hidden="true">05</span><h3 class="faq-rows__t">A GM Digital Bunker™ recebe comissão das ferramentas escolhidas?</h3></div>
-        <p class="faq-rows__a">Não. A escolha das ferramentas é independente de fornecedor.</p>
-      </div>
-      <div class="faq-rows__item">
-        <div class="faq-rows__q"><span class="faq-rows__n" aria-hidden="true">06</span><h3 class="faq-rows__t">A GM Digital Bunker™ configura ou mantém ferramentas de terceiros?</h3></div>
-        <p class="faq-rows__a">Não. Nas ferramentas de mercado, ajudamos a escolher, avaliar e acompanhar; a configuração e o treinamento técnico ficam com o fornecedor. Construímos e mantemos só as plataformas que nós mesmos desenvolvemos.</p>
-      </div>
-    </div>
-  </section>
+  <Faq kind="rows" title={faqTitulo} items={faq} />
 
   <Invite />
 </Base>

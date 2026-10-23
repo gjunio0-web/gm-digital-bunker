@@ -1,0 +1,82 @@
+---
+// FAQ section (Design System › FaqRows, FaqPlates). Each question is a <details>, so the
+// answers stay in the HTML. rows: accordion at every width. plates: always open from 768px up,
+// accordion below (same behaviour as the home page alternatives).
+interface Props {
+  kind: 'rows' | 'plates';
+  title: string;
+  items: { q: string; a: string }[];
+}
+const { kind, title, items } = Astro.props;
+const num = (i: number) => String(i + 1).padStart(2, '0');
+---
+<section class="section container" aria-labelledby="faq-titulo">
+  <h2 id="faq-titulo" class="text" style="margin-bottom: 40px;">{title}</h2>
+  <div class={`faq-${kind}`} data-faq={kind}>
+    {items.map((it, i) => (
+      <details class={`faq-${kind}__item`} open={kind === 'plates'}>
+        <summary>
+          {kind === 'rows' && <span class="faq-rows__n" aria-hidden="true">{num(i)}</span>}
+          <h3 class={`faq-${kind}__t`}>{it.q}</h3>
+          <span class="faq__plus" aria-hidden="true">+</span>
+          {kind === 'plates' && <span class="faq-plates__n" aria-hidden="true">{num(i)}</span>}
+        </summary>
+        <p class={`faq-${kind}__a`}>{it.a}</p>
+      </details>
+    ))}
+  </div>
+</section>
+
+<script>
+  // Accordion behaviour and motion (Design System › Movimento: 200ms, ease-in-out).
+  const compacto = window.matchMedia('(max-width: 767px)');
+  const semMovimento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  document.querySelectorAll<HTMLElement>('[data-faq]').forEach((lista) => {
+    const placas = lista.dataset.faq === 'plates';
+    const itens = Array.from(lista.querySelectorAll<HTMLDetailsElement>(':scope > details'));
+    const interativo = () => !placas || compacto.matches;
+
+    // Plates: open and inert on wide screens, closed accordion on phones
+    const ajusta = () => {
+      itens.forEach((d) => {
+        const resumo = d.querySelector('summary');
+        if (placas) d.open = !compacto.matches;
+        if (!resumo) return;
+        if (interativo()) resumo.removeAttribute('tabindex');
+        else resumo.setAttribute('tabindex', '-1');
+      });
+    };
+    ajusta();
+    compacto.addEventListener('change', ajusta);
+
+    itens.forEach((d) => {
+      const painel = d.querySelector<HTMLElement>(':scope > p');
+      const resumo = d.querySelector<HTMLElement>(':scope > summary');
+      if (!painel || !resumo) return;
+      let animando = false;
+      resumo.addEventListener('click', (e) => {
+        if (!interativo()) { e.preventDefault(); return; }
+        if (semMovimento || !painel.animate) return; // native toggle
+        e.preventDefault();
+        if (animando) return;
+        animando = true;
+        const opts = { duration: 200, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' };
+        if (d.open) {
+          const h = painel.offsetHeight;
+          const mb = getComputedStyle(painel).marginBottom;
+          painel.style.overflow = 'hidden';
+          const a = painel.animate([{ height: `${h}px`, opacity: 1, marginBottom: mb }, { height: '0px', opacity: 0, marginBottom: '0px' }], opts);
+          a.onfinish = () => { d.open = false; painel.style.overflow = ''; animando = false; };
+        } else {
+          d.open = true;
+          const h = painel.offsetHeight;
+          const mb = getComputedStyle(painel).marginBottom;
+          painel.style.overflow = 'hidden';
+          const a = painel.animate([{ height: '0px', opacity: 0, marginBottom: '0px' }, { height: `${h}px`, opacity: 1, marginBottom: mb }], opts);
+          a.onfinish = () => { painel.style.overflow = ''; animando = false; };
+        }
+      });
+    });
+  });
+</script>

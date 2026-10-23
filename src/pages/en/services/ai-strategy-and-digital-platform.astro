@@ -2,10 +2,38 @@
 import Base from '../../../layouts/Base.astro';
 import Opening from '../../../components/Opening.astro';
 import Invite from '../../../components/Invite.astro';
+import Faq from '../../../components/Faq.astro';
 import { path } from '../../../i18n/routes';
 import Foto from '../../../components/Foto.astro';
 import { fotoCaso } from '../../../assets/imagens';
 const L = 'en';
+const faqTitulo = "Frequently asked questions";
+const faq = [
+  {
+    "q": "Where does the project start?",
+    "a": "With a diagnosis and a master plan with the execution roadmap in stages."
+  },
+  {
+    "q": "Does the company have to wait for the project to end to use the platform?",
+    "a": "No. Construction proceeds module by module, and each module goes into production when it is ready."
+  },
+  {
+    "q": "Where does artificial intelligence come in?",
+    "a": "In scenarios where it reduces or replaces manual work, where it improves a process that continues to exist and where it expands the capacity of those who decide – and the diagnosis says which of the three fits each point of the operation. In Elite 90 Pro, all three coexist: automation for lead screening; optimization to improve answers to questions about the program; augmentation when AI writes the preliminary version of the athletes’ assessments, to be reviewed by the specialist professional."
+  },
+  {
+    "q": "Who looks after the system after delivery?",
+    "a": "Whoever built it. A monthly contract covers hosting, fixes and small improvements, and what counts as a small improvement is set down in writing."
+  },
+  {
+    "q": "Does GM Digital Bunker™ take commissions on the tools chosen?",
+    "a": "No. The choice of tools is vendor-independent."
+  },
+  {
+    "q": "Does GM Digital Bunker™ configure or maintain third-party tools?",
+    "a": "No. For off-the-shelf tools, we help choose, evaluate and monitor them; configuration and technical training stay with the vendor. We build and maintain only the platforms we develop ourselves."
+  }
+];
 ---
 <Base
   lang={L}
@@ -85,35 +113,7 @@ const L = 'en';
     </div>
   </section>
 
-  <section class="section container" aria-labelledby="faq-titulo">
-    <h2 id="faq-titulo" class="text" style="margin-bottom: 40px;">Frequently asked questions</h2>
-    <div class="faq-rows">
-      <div class="faq-rows__item">
-        <div class="faq-rows__q"><span class="faq-rows__n" aria-hidden="true">01</span><h3 class="faq-rows__t">Where does the project start?</h3></div>
-        <p class="faq-rows__a">With a diagnosis and a master plan with the execution roadmap in stages.</p>
-      </div>
-      <div class="faq-rows__item">
-        <div class="faq-rows__q"><span class="faq-rows__n" aria-hidden="true">02</span><h3 class="faq-rows__t">Does the company have to wait for the project to end to use the platform?</h3></div>
-        <p class="faq-rows__a">No. Construction proceeds module by module, and each module goes into production when it is ready.</p>
-      </div>
-      <div class="faq-rows__item">
-        <div class="faq-rows__q"><span class="faq-rows__n" aria-hidden="true">03</span><h3 class="faq-rows__t">Where does artificial intelligence come in?</h3></div>
-        <p class="faq-rows__a">In scenarios where it reduces or replaces manual work, where it improves a process that continues to exist and where it expands the capacity of those who decide – and the diagnosis says which of the three fits each point of the operation. In Elite 90 Pro, all three coexist: automation for lead screening; optimization to improve answers to questions about the program; augmentation when AI writes the preliminary version of the athletes’ assessments, to be reviewed by the specialist professional.</p>
-      </div>
-      <div class="faq-rows__item">
-        <div class="faq-rows__q"><span class="faq-rows__n" aria-hidden="true">04</span><h3 class="faq-rows__t">Who looks after the system after delivery?</h3></div>
-        <p class="faq-rows__a">Whoever built it. A monthly contract covers hosting, fixes and small improvements, and what counts as a small improvement is set down in writing.</p>
-      </div>
-      <div class="faq-rows__item">
-        <div class="faq-rows__q"><span class="faq-rows__n" aria-hidden="true">05</span><h3 class="faq-rows__t">Does GM Digital Bunker™ take commissions on the tools chosen?</h3></div>
-        <p class="faq-rows__a">No. The choice of tools is vendor-independent.</p>
-      </div>
-      <div class="faq-rows__item">
-        <div class="faq-rows__q"><span class="faq-rows__n" aria-hidden="true">06</span><h3 class="faq-rows__t">Does GM Digital Bunker™ configure or maintain third-party tools?</h3></div>
-        <p class="faq-rows__a">No. For off-the-shelf tools, we help choose, evaluate and monitor them; configuration and technical training stay with the vendor. We build and maintain only the platforms we develop ourselves.</p>
-      </div>
-    </div>
-  </section>
+  <Faq kind="rows" title={faqTitulo} items={faq} />
 
   <Invite lang={L} />
 </Base>

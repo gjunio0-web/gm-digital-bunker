@@ -2,8 +2,28 @@
 import Base from '../../../layouts/Base.astro';
 import Opening from '../../../components/Opening.astro';
 import Invite from '../../../components/Invite.astro';
+import Faq from '../../../components/Faq.astro';
 import { path } from '../../../i18n/routes';
 const L = 'en';
+const faqTitulo = "Frequently asked questions";
+const faq = [
+  {
+    "q": "Who is the workshop for?",
+    "a": "People at the company who use or will use AI in their day-to-day work. No technical knowledge is required."
+  },
+  {
+    "q": "Does the workshop teach a specific tool?",
+    "a": "No. The method applies to any tool; technical training on each one is the responsibility of its vendor."
+  },
+  {
+    "q": "What does the team need?",
+    "a": "Access to an AI tool for each participant. No real company material is used."
+  },
+  {
+    "q": "How is it contracted?",
+    "a": "The workshop is contracted separately, per group, for the company’s team. It is delivered in Portuguese."
+  }
+];
 ---
 <Base
   lang={L}
@@ -45,31 +65,7 @@ const L = 'en';
     </div>
   </section>
 
-  <section class="section container" aria-labelledby="faq-titulo">
-    <h2 id="faq-titulo" class="text" style="margin-bottom: 40px;">Frequently asked questions</h2>
-    <div class="faq-plates">
-      <div class="faq-plates__item">
-        <span class="faq-plates__n" aria-hidden="true">01</span>
-        <h3 class="faq-plates__t">Who is the workshop for?</h3>
-        <p class="faq-plates__a">People at the company who use or will use AI in their day-to-day work. No technical knowledge is required.</p>
-      </div>
-      <div class="faq-plates__item">
-        <span class="faq-plates__n" aria-hidden="true">02</span>
-        <h3 class="faq-plates__t">Does the workshop teach a specific tool?</h3>
-        <p class="faq-plates__a">No. The method applies to any tool; technical training on each one is the responsibility of its vendor.</p>
-      </div>
-      <div class="faq-plates__item">
-        <span class="faq-plates__n" aria-hidden="true">03</span>
-        <h3 class="faq-plates__t">What does the team need?</h3>
-        <p class="faq-plates__a">Access to an AI tool for each participant. No real company material is used.</p>
-      </div>
-      <div class="faq-plates__item">
-        <span class="faq-plates__n" aria-hidden="true">04</span>
-        <h3 class="faq-plates__t">How is it contracted?</h3>
-        <p class="faq-plates__a">The workshop is contracted separately, per group, for the company’s team. It is delivered in Portuguese.</p>
-      </div>
-    </div>
-  </section>
+  <Faq kind="plates" title={faqTitulo} items={faq} />
 
   <Invite lang={L} />
 </Base>

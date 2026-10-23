@@ -263,22 +263,39 @@ a.card:hover { border-color: var(--line-strong); color: inherit; }
 .block + .block { margin-top: 64px; }
 .rule { border: 0; border-top: 1px solid var(--line); margin: 64px 0; }
 
-/* FAQ, two patterns (Design System › Componentes › FAQ). Answers always visible, no accordion.
-   faq-rows: numbered question beside its answer, hairline rules (same grammar as .criteria).
-   faq-plates: tinted plates with a neutral top rule and a large ghost numeral; any number of questions. */
-.faq-rows { border-top: 1px solid var(--line); }
-.faq-rows__item { display: grid; gap: 12px 48px; padding: 28px 0; border-bottom: 1px solid var(--line); }
-@media (min-width: 900px) { .faq-rows__item { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
-.faq-rows__q { display: flex; gap: 16px; align-items: baseline; }
-.faq-rows__n, .faq-plates__n { font: 500 13px/1.5 var(--mono); letter-spacing: 0.08em; color: var(--muted); }
+/* FAQ (Design System › Componentes › FaqRows, FaqPlates). Questions are <details>; answers stay in the HTML.
+   faq-rows: numbered questions with hairline rules, accordion at every width.
+   faq-plates: tinted plates with a neutral top rule and a large ghost numeral; any number of questions;
+   always open from 768px up, accordion below, with the numeral moved to the bottom-right corner. */
+.faq-rows__item > summary, .faq-plates__item > summary { list-style: none; cursor: pointer; }
+.faq-rows__item > summary::-webkit-details-marker, .faq-plates__item > summary::-webkit-details-marker { display: none; }
+.faq__plus { flex-shrink: 0; font: 400 24px/1 var(--sans); color: var(--muted); transition: transform var(--dur-base) var(--ease-in-out), color var(--dur-fast) var(--ease-out); }
+summary:hover .faq__plus, details[open] > summary .faq__plus { color: var(--ink); }
+details[open] > summary .faq__plus { transform: rotate(45deg); }
 .faq-rows__t, .faq-plates__t { margin: 0; font-family: var(--serif); font-weight: 600; font-size: 22px; line-height: 1.3; color: var(--ink); }
-.faq-rows__a { margin: 0; max-width: 36rem; font-size: 17px; line-height: 1.55; color: var(--ink-body); }
-.faq-plates { display: grid; gap: 24px; }
-@media (min-width: 900px) { .faq-plates { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.faq-plates__item { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 12px; padding: 28px 24px 24px; background: var(--surface); border-top: 2px solid var(--line-strong); border-radius: 0 0 var(--radius-md) var(--radius-md); }
-.faq-plates__n { position: absolute; top: -18px; right: 12px; font: 600 112px/1 var(--serif); font-variation-settings: 'opsz' 60; letter-spacing: 0; color: var(--ink); opacity: 0.06; pointer-events: none; }
-.faq-plates__t { max-width: 26rem; }
-.faq-plates__a { margin: 0; font-size: 16px; line-height: 1.5; color: var(--ink-body); }
+
+.faq-rows { border-top: 1px solid var(--line); }
+.faq-rows__item { border-bottom: 1px solid var(--line); }
+.faq-rows__item > summary { display: grid; grid-template-columns: 32px minmax(0, 1fr) 24px; gap: 16px; align-items: baseline; min-height: 44px; padding: 24px 0; }
+.faq-rows__n { font: 500 13px/1.5 var(--mono); letter-spacing: 0.08em; color: var(--muted); }
+.faq-rows__item .faq__plus { justify-self: end; }
+.faq-rows__a { margin: 0 0 28px 48px; max-width: 40rem; font-size: 17px; line-height: 1.55; color: var(--ink-body); }
+
+.faq-plates { display: grid; gap: 24px; align-items: start; }
+@media (min-width: 900px) { .faq-plates { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; } }
+.faq-plates__item { position: relative; overflow: hidden; background: var(--surface); border-top: 2px solid var(--line-strong); border-radius: 0 0 var(--radius-md) var(--radius-md); }
+.faq-plates__item > summary { display: flex; gap: 16px; align-items: flex-start; padding: 28px 24px 12px; pointer-events: none; cursor: default; }
+.faq-plates__t { position: relative; flex: 1; max-width: 26rem; }
+.faq-plates .faq__plus { display: none; position: relative; }
+.faq-plates__n { position: absolute; top: -18px; right: 12px; font: 600 112px/1 var(--serif); font-variation-settings: 'opsz' 60; color: var(--ink); opacity: 0.06; pointer-events: none; }
+.faq-plates__a { position: relative; margin: 0 24px 24px; font-size: 16px; line-height: 1.5; color: var(--ink-body); }
+@media (max-width: 767px) {
+  .faq-plates { gap: 16px; }
+  .faq-plates__item > summary { pointer-events: auto; cursor: pointer; padding: 24px 20px; }
+  .faq-plates .faq__plus { display: block; }
+  .faq-plates__n { top: auto; bottom: -22px; }
+  .faq-plates__a { margin: -8px 20px 24px; }
+}
 
 /* Section reveal: added by JavaScript ([data-reveal]), once, when the block enters the viewport.
    Children of a grid stagger by --i (capped in the script). Without JavaScript nothing is hidden. */
