@@ -1,0 +1,75 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Opening from '../../../components/Opening.astro';
+import Invite from '../../../components/Invite.astro';
+import { path } from '../../../i18n/routes';
+const L = 'en';
+---
+<Base
+  lang={L}
+  title="“When it's Better with AI” workshop"
+  description="Team training in the method of the book When it's Better with AI: deciding when AI helps, guiding and reviewing work done with it, and protecting company data. Half a day, in person or online, delivered in Portuguese."
+  current="servicos"
+  pageId="workshop"
+>
+  <Opening
+    lang={L}
+    crumbs={[{ label: 'Home', href: path('inicio', L) }, { label: 'Services', href: path('servicos', L) }, { label: "“When it's Better with AI” workshop" }]}
+    eyebrow="Service"
+    title="“When it's Better with AI” workshop"
+    lead="Half a day for the team to learn when AI improves a deliverable and how to check what it produces, with any tool."
+  />
+
+  <section class="section container">
+    <div class="block">
+      <h2 class="text" style="margin-bottom: 24px;">What it is</h2>
+      <p class="lead">Training based on the book <a href={path('livro', L)}><em>When it's Better with AI</em></a> (<em lang="pt-BR">Quando é Melhor com IA</em>), by Gonçalo Marques. The method is tool-agnostic: it applies to any AI tool the company uses. Technical training on each tool remains with its vendor. The workshop is delivered in Portuguese.</p>
+    </div>
+
+    <div class="block">
+      <h2 class="text" style="margin-bottom: 24px;">Benefits for the company</h2>
+      <ul class="list text">
+        <li>A team that knows when AI helps and when it is not worth the effort.</li>
+        <li>Requests to AI that are structured and anchored in sources, instead of trial and error.</li>
+        <li>Every result checked before delivery, using the book’s checklist.</li>
+        <li>A clear data rule: nothing confidential goes into an AI tool.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="band-indigo" aria-labelledby="funciona-titulo">
+    <div class="section container">
+      <p class="eyebrow">How it works</p>
+      <h2 id="funciona-titulo" class="text" style="margin-bottom: 24px;">Four modules in half a day</h2>
+      <p class="lead text">Over four modules, the team learns to decide the workflow, guide the reasoning, verify the result and calibrate the effort when working with AI. The exercises use real AI tools on a fictional case that runs through all the modules, so no company material goes into the tools. In person, for groups of up to 24 people, or online, with the same duration.</p>
+    </div>
+  </section>
+
+  <section class="section container" aria-labelledby="faq-titulo">
+    <h2 id="faq-titulo" class="text" style="margin-bottom: 40px;">Frequently asked questions</h2>
+    <div class="faq-plates">
+      <div class="faq-plates__item">
+        <span class="faq-plates__n" aria-hidden="true">01</span>
+        <h3 class="faq-plates__t">Who is the workshop for?</h3>
+        <p class="faq-plates__a">People at the company who use or will use AI in their day-to-day work. No technical knowledge is required.</p>
+      </div>
+      <div class="faq-plates__item">
+        <span class="faq-plates__n" aria-hidden="true">02</span>
+        <h3 class="faq-plates__t">Does the workshop teach a specific tool?</h3>
+        <p class="faq-plates__a">No. The method applies to any tool; technical training on each one is the responsibility of its vendor.</p>
+      </div>
+      <div class="faq-plates__item">
+        <span class="faq-plates__n" aria-hidden="true">03</span>
+        <h3 class="faq-plates__t">What does the team need?</h3>
+        <p class="faq-plates__a">Access to an AI tool for each participant. No real company material is used.</p>
+      </div>
+      <div class="faq-plates__item">
+        <span class="faq-plates__n" aria-hidden="true">04</span>
+        <h3 class="faq-plates__t">How is it contracted?</h3>
+        <p class="faq-plates__a">The workshop is contracted separately, per group, for the company’s team. It is delivered in Portuguese.</p>
+      </div>
+    </div>
+  </section>
+
+  <Invite lang={L} />
+</Base>

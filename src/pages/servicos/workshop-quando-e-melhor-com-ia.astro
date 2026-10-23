@@ -1,0 +1,71 @@
+---
+import Base from '../../layouts/Base.astro';
+import Opening from '../../components/Opening.astro';
+import Invite from '../../components/Invite.astro';
+---
+<Base
+  title="Workshop “Quando é Melhor com IA”"
+  description="Capacitação da equipe no método do livro Quando é Melhor com IA: decidir quando a IA ajuda, conduzir e revisar o trabalho feito com ela e proteger os dados da empresa. Meio período, presencial ou online."
+  current="servicos"
+  pageId="workshop"
+>
+  <Opening
+    crumbs={[{ label: 'Início', href: '/' }, { label: 'Serviços', href: '/servicos' }, { label: 'Workshop “Quando é Melhor com IA”' }]}
+    eyebrow="Serviço"
+    title="Workshop “Quando é Melhor com IA”"
+    lead="Meio período para a equipe aprender a decidir quando a IA melhora uma entrega e como conferir o que ela produz, em qualquer ferramenta."
+  />
+
+  <section class="section container">
+    <div class="block">
+      <h2 class="text" style="margin-bottom: 24px;">O que é</h2>
+      <p class="lead">Uma capacitação baseada no livro <a href="/metodo/livro"><em>Quando é Melhor com IA</em></a>, de Gonçalo Marques. O método é agnóstico: vale para qualquer ferramenta de IA que a empresa use. O treinamento técnico em cada ferramenta continua com o fornecedor.</p>
+    </div>
+
+    <div class="block">
+      <h2 class="text" style="margin-bottom: 24px;">Benefícios para a empresa</h2>
+      <ul class="list text">
+        <li>Uma equipe que sabe quando a IA ajuda e quando não compensa o esforço.</li>
+        <li>Pedidos à IA estruturados e ancorados em fontes, em vez de tentativa e erro.</li>
+        <li>Conferência de cada resultado antes da entrega, com o checklist do livro.</li>
+        <li>Uma regra clara de dados: nada confidencial em ferramenta de IA.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="band-indigo" aria-labelledby="funciona-titulo">
+    <div class="section container">
+      <p class="eyebrow">Como funciona</p>
+      <h2 id="funciona-titulo" class="text" style="margin-bottom: 24px;">Quatro módulos em meio período</h2>
+      <p class="lead text">Em quatro módulos, a equipe aprende a decidir o fluxo, conduzir o raciocínio, verificar o resultado e calibrar o esforço no trabalho com IA. Os exercícios usam ferramentas de IA reais sobre um caso fictício que atravessa os módulos, para que nenhum material da empresa entre nas ferramentas. Presencial, em turmas de até 24 pessoas, ou online, com a mesma duração.</p>
+    </div>
+  </section>
+
+  <section class="section container" aria-labelledby="faq-titulo">
+    <h2 id="faq-titulo" class="text" style="margin-bottom: 40px;">Perguntas frequentes</h2>
+    <div class="faq-plates">
+      <div class="faq-plates__item">
+        <span class="faq-plates__n" aria-hidden="true">01</span>
+        <h3 class="faq-plates__t">Para quem é o workshop?</h3>
+        <p class="faq-plates__a">Para as pessoas da empresa que usam ou vão usar IA no dia a dia. Não exige conhecimento técnico.</p>
+      </div>
+      <div class="faq-plates__item">
+        <span class="faq-plates__n" aria-hidden="true">02</span>
+        <h3 class="faq-plates__t">O workshop ensina a usar uma ferramenta específica?</h3>
+        <p class="faq-plates__a">Não. O método vale para qualquer ferramenta; o treinamento técnico em cada uma cabe ao fornecedor.</p>
+      </div>
+      <div class="faq-plates__item">
+        <span class="faq-plates__n" aria-hidden="true">03</span>
+        <h3 class="faq-plates__t">O que a equipe precisa ter?</h3>
+        <p class="faq-plates__a">Acesso a uma ferramenta de IA por participante. Nenhum material real da empresa é usado.</p>
+      </div>
+      <div class="faq-plates__item">
+        <span class="faq-plates__n" aria-hidden="true">04</span>
+        <h3 class="faq-plates__t">Como contratar?</h3>
+        <p class="faq-plates__a">O workshop é contratado à parte, por turma, para a equipe da empresa.</p>
+      </div>
+    </div>
+  </section>
+
+  <Invite />
+</Base>

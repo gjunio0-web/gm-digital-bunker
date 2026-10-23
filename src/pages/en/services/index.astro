@@ -50,7 +50,7 @@ const L = 'en';
     <div class="section container">
       <p class="eyebrow">The services</p>
       <h2 id="servicos-titulo" class="text" style="margin-bottom: 32px;">What the company can hire</h2>
-      <div class="grid grid--2">
+      <div class="grid grid--3">
         <a class="card" href={path('estrategia', L)}>
           <span class="eyebrow eyebrow--muted" style="margin: 0;">Service</span>
           <span class="h4" style="font-size: 24px;">AI strategy and digital platform</span>
@@ -61,6 +61,12 @@ const L = 'en';
           <span class="eyebrow eyebrow--muted" style="margin: 0;">Service</span>
           <span class="h4" style="font-size: 24px;">AI advisory by subscription</span>
           <span class="small" style="flex: 1;">Part-time AI executive: quarterly review, vendor screening and a cap on hours.</span>
+          <span class="more">See the service <span aria-hidden="true">→</span></span>
+        </a>
+        <a class="card" href={path('workshop', L)}>
+          <span class="eyebrow eyebrow--muted" style="margin: 0;">Service</span>
+          <span class="h4" style="font-size: 24px;">“When it's Better with AI” workshop</span>
+          <span class="small" style="flex: 1;">Team training in the book’s method: half a day, four modules, for any AI tool. Delivered in Portuguese.</span>
           <span class="more">See the service <span aria-hidden="true">→</span></span>
         </a>
       </div>

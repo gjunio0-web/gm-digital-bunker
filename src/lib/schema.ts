@@ -106,7 +106,7 @@ export function grafo(o: { lang: Lang; pageId: PageId; title: string; descriptio
       offers: { '@type': 'Offer', url: lang === 'en' ? AMAZON_EN : AMAZON },
     });
   }
-  if (pageId === 'estrategia' || pageId === 'conselho') {
+  if (pageId === 'estrategia' || pageId === 'conselho' || pageId === 'workshop') {
     nos.push({
       '@type': 'Service',
       '@id': idServico(pageId),

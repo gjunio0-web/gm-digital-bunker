@@ -13,7 +13,7 @@ export interface HomeContent {
     statement: [string, string];
   };
   s2: { eyebrow: string; title: string; steps: { title: string; text: string }[]; lead: string; statement: [string, string] };
-  s3: { eyebrow: string; title: string; label: string; more: string; services: { id: 'estrategia' | 'conselho'; title: string; text: string }[] };
+  s3: { eyebrow: string; title: string; label: string; more: string; services: { id: 'estrategia' | 'conselho' | 'workshop'; title: string; text: string }[] };
   s4: {
     eyebrow: string; title: string; caseLabel: string; caseTitle: string; caseText: string; caseMore: string; caseAlt: string;
     bookLabel: string; bookTitleHtml: string; bookText: string; bookMore: string; bookAlt: string;
@@ -78,6 +78,7 @@ export const home: Record<Lang, HomeContent> = {
       services: [
         { id: 'estrategia', title: 'Estratégia e plataforma digital com IA', text: 'Projeto sob medida, do diagnóstico à plataforma em produção; Elite 90 Pro como caso.' },
         { id: 'conselho', title: 'Conselho de IA por assinatura', text: 'Executivo de IA em tempo parcial: revisão trimestral, triagem de fornecedores e teto de horas.' },
+        { id: 'workshop', title: 'Workshop “Quando é Melhor com IA”', text: 'Capacitação da equipe no método do livro: meio período, quatro módulos, para qualquer ferramenta de IA.' },
       ],
     },
     s4: {
@@ -168,6 +169,7 @@ export const home: Record<Lang, HomeContent> = {
       services: [
         { id: 'estrategia', title: 'AI strategy and digital platform', text: 'A tailored project, from diagnosis to a platform in production; Elite 90 Pro as the case.' },
         { id: 'conselho', title: 'AI advisory by subscription', text: 'Part-time AI executive: quarterly review, vendor screening and a cap on hours.' },
+        { id: 'workshop', title: "“When it's Better with AI” workshop", text: 'Team training in the book’s method: half a day, four modules, for any AI tool. Delivered in Portuguese.' },
       ],
     },
     s4: {

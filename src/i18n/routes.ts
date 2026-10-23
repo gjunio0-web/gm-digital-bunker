@@ -8,6 +8,7 @@ export const routes = {
   servicos:    { 'pt-BR': '/servicos',                                         en: '/en/services' },
   estrategia:  { 'pt-BR': '/servicos/estrategia-e-plataforma-digital-com-ia',  en: '/en/services/ai-strategy-and-digital-platform' },
   conselho:    { 'pt-BR': '/servicos/conselho-de-ia',                          en: '/en/services/ai-advisory' },
+  workshop:    { 'pt-BR': '/servicos/workshop-quando-e-melhor-com-ia',          en: '/en/services/when-its-better-with-ai-workshop' },
   caso:        { 'pt-BR': '/casos/elite-90-pro',                               en: '/en/cases/elite-90-pro' },
   metodo:      { 'pt-BR': '/metodo',                                           en: '/en/method' },
   livro:       { 'pt-BR': '/metodo/livro',                                     en: '/en/method/book' },
