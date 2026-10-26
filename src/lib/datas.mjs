@@ -4,12 +4,12 @@
 // Initial values come from the first and last commit of each source file in the repository (14–19/10/2026).
 // Commits up to this day were reviewed and changed no page text (structured data, fonts, images, headers),
 // so `check:seo` only warns about commits after it. Move the day forward after each such review.
-export const revisadoAte = '2026-10-23';
+export const revisadoAte = '2026-10-26';
 
 export const datas = {
   'pt-BR': {
-    inicio: { publicado: '2026-10-14', atualizado: '2026-10-23', arquivos: ['src/pages/index.astro', 'src/templates/Home.astro', 'src/content/home.ts'] },
-    servicos: { publicado: '2026-10-14', atualizado: '2026-10-23', arquivos: ['src/pages/servicos/index.astro'] },
+    inicio: { publicado: '2026-10-14', atualizado: '2026-10-26', arquivos: ['src/pages/index.astro', 'src/templates/Home.astro', 'src/content/home.ts'] },
+    servicos: { publicado: '2026-10-14', atualizado: '2026-10-26', arquivos: ['src/pages/servicos/index.astro'] },
     estrategia: { publicado: '2026-10-14', atualizado: '2026-10-23', arquivos: ['src/pages/servicos/estrategia-e-plataforma-digital-com-ia.astro'] },
     conselho: { publicado: '2026-10-14', atualizado: '2026-10-23', arquivos: ['src/pages/servicos/conselho-de-ia.astro'] },
     workshop: { publicado: '2026-10-23', atualizado: '2026-10-23', arquivos: ['src/pages/servicos/workshop-quando-e-melhor-com-ia.astro'] },
@@ -22,8 +22,8 @@ export const datas = {
     privacidade: { publicado: '2026-10-14', atualizado: '2026-10-15', arquivos: ['src/pages/privacidade.astro'] },
   },
   en: {
-    inicio: { publicado: '2026-10-15', atualizado: '2026-10-23', arquivos: ['src/pages/en/index.astro', 'src/templates/Home.astro', 'src/content/home.ts'] },
-    servicos: { publicado: '2026-10-15', atualizado: '2026-10-23', arquivos: ['src/pages/en/services/index.astro'] },
+    inicio: { publicado: '2026-10-15', atualizado: '2026-10-26', arquivos: ['src/pages/en/index.astro', 'src/templates/Home.astro', 'src/content/home.ts'] },
+    servicos: { publicado: '2026-10-15', atualizado: '2026-10-26', arquivos: ['src/pages/en/services/index.astro'] },
     estrategia: { publicado: '2026-10-15', atualizado: '2026-10-23', arquivos: ['src/pages/en/services/ai-strategy-and-digital-platform.astro'] },
     conselho: { publicado: '2026-10-15', atualizado: '2026-10-23', arquivos: ['src/pages/en/services/ai-advisory.astro'] },
     workshop: { publicado: '2026-10-23', atualizado: '2026-10-23', arquivos: ['src/pages/en/services/when-its-better-with-ai-workshop.astro'] },

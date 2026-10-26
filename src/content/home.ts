@@ -110,10 +110,10 @@ export const home: Record<Lang, HomeContent> = {
       nots: [
         { title: 'Operação contínua 24 horas', text: 'Operação ininterrupta ou monitoramento de grandes ambientes de TI pedem outro tipo de fornecedor.' },
         { title: 'Revenda de ferramentas', text: 'Sem vínculo comercial com fornecedores: a recomendação parte do problema do negócio.' },
-        { title: 'Promessas sem lastro', text: 'Ganhos são medidos ou declarados como estimativa, nunca apresentados como garantia.' },
         { title: 'Tecnologia sem relação com IA', text: 'A prática atua onde a inteligência artificial é o assunto ou está no produto.' },
         { title: 'Plataformas de terceiros', text: 'A implantação, a configuração e a manutenção de software de terceiros cabem ao fornecedor.' },
         { title: 'Treinamento técnico em ferramentas', text: 'O treinamento em cada ferramenta cabe ao fornecedor.' },
+        { title: 'Gestão de grandes equipes de engenharia', text: 'Métricas de produtividade de times de desenvolvimento pedem outro tipo de fornecedor.' },
       ],
     },
     rail: { label: 'Seções desta página', items: ['A oportunidade', 'A proposta', 'Serviços', 'As provas', 'O encaixe'] },
@@ -204,10 +204,10 @@ export const home: Record<Lang, HomeContent> = {
       nots: [
         { title: '24-hour operations', text: 'Round-the-clock operations or monitoring of large IT environments call for another kind of supplier.' },
         { title: 'Tool resale', text: 'No commercial ties to vendors: the recommendation starts from the business problem.' },
-        { title: 'Unbacked promises', text: 'Gains are measured or declared as estimates, never presented as guarantees.' },
         { title: 'Technology unrelated to AI', text: 'The practice works where artificial intelligence is the subject or is in the product.' },
         { title: 'Third-party platforms', text: 'Deploying, configuring and maintaining third-party software is the vendor\'s responsibility.' },
         { title: 'Technical training on tools', text: 'Training on each tool is the responsibility of its vendor.' },
+        { title: 'Managing large engineering teams', text: 'Productivity metrics for development teams call for another kind of supplier.' },
       ],
     },
     rail: { label: 'Sections of this page', items: ['The opportunity', 'The proposal', 'Services', 'The proof', 'The fit'] },
