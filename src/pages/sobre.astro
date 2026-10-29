@@ -4,7 +4,30 @@ import Opening from '../components/Opening.astro';
 import Invite from '../components/Invite.astro';
 import { LINKEDIN } from '../config';
 import Foto from '../components/Foto.astro';
+import Faq from '../components/Faq.astro';
 import { fotoRetrato } from '../assets/imagens';
+
+// Manifesto da GM Digital Bunker™ (29/10/2026): nine statements in the accordion; the tenth closes the section on its own.
+const manifesto = [
+  { q: 'Toda empresa hoje decide sobre inteligência artificial. Poucas decidem com critério.',
+    a: 'Em empresas de pequeno e médio porte, a escolha de uma ferramenta de IA costuma caber a quem decide o negócio – o dono, o diretor, o sócio –, sem um executivo dedicado exclusivamente a tecnologia ao lado e sob a pressão da oferta de fornecedores. A GM Digital Bunker existe para colocar critério onde hoje há impulso.' },
+  { q: 'A prática parte de uma pergunta, não de uma ferramenta: quando é melhor com IA?',
+    a: 'A IA melhora um trabalho quando a exigência da tarefa é compreendida antes da escolha da ferramenta, quando o pedido é estruturado e ancorado em fontes e quando cada resultado é conferido. Fora dessas condições, ela acelera o erro. Por isso a GM Digital Bunker diz também quando não é melhor com IA – e trata essa resposta como parte do serviço, não como falha dele.' },
+  { q: 'A GM Digital Bunker não recebe comissão de nenhuma ferramenta que recomenda.',
+    a: 'A independência não é postura; é a condição que dá valor a um conselho.' },
+  { q: 'O método é público.',
+    a: 'Está no livro <a href="/metodo/livro">Quando é Melhor com IA</a> e opera no <a href="https://ai-strat-hub.netlify.app">AI Strategy Hub</a>, aplicativo gratuito que avalia ferramentas de IA em 14 capacidades para sete perfis de trabalho. Qualquer pessoa pode conferir os critérios que fundamentam cada recomendação da prática. Autoridade que não se deixa conferir é só reputação.' },
+  { q: 'Nenhuma afirmação sem lastro.',
+    a: 'A prática chama essa postura de Zero Alucinação e a aplica à IA e a si mesma: toda afirmação factual é suspeita até prova em contrário, a incerteza é declarada, não escondida, e não se cobra por avaliações que não possam ser sustentadas com evidência atualizada.' },
+  { q: 'A IA produz; a pessoa responde.',
+    a: 'O julgamento humano fica no centro de cada entrega. Quem assina, responde – usar IA não reduz a responsabilidade profissional, exige-a com mais cuidado.' },
+  { q: 'A GM Digital Bunker entrega o artefato, não o relatório.',
+    a: 'O trabalho vai da análise estratégica ao sistema, documento ou material que a empresa passa a usar. Uma estratégia que para no diagnóstico transfere ao cliente a parte mais difícil.' },
+  { q: 'A IA é medida pelo trabalho que chega pronto, não pela inteligência bruta.',
+    a: 'O tempo gasto corrigindo saídas mal ancoradas, reformatando entregas e reconectando sistemas que deveriam dialogar é custo real, e entra na conta.' },
+  { q: 'A prática sabe o que não faz.',
+    a: 'Não opera sistemas em regime contínuo e de larga escala, não revende ferramentas nem serviços de fornecedores, não atua em tecnologia sem relação com IA, não executa tecnicamente em software de terceiros, não dá treinamento técnico em ferramentas de terceiros e não gere grandes equipes de engenharia. Dizer não ao que está fora do escopo é parte de dizer sim com qualidade.' },
+];
 ---
 <Base
   title="Gonçalo Marques, estrategista de tecnologia em IA"
@@ -20,12 +43,33 @@ import { fotoRetrato } from '../assets/imagens';
     lead="A GM Digital Bunker™ é uma prática independente de estratégia tecnológica voltada à aplicação avançada de inteligência artificial, da análise estratégica à produção de artefatos técnicos e de comunicação."
   />
 
-  <section class="section container" aria-labelledby="diferenciais-titulo">
+
+  <section class="band-indigo" aria-labelledby="visao-titulo">
+    <div class="section container">
+      <p class="eyebrow">Visão</p>
+      <div class="statement statement--topo">
+        <p id="visao-titulo">Que toda decisão sobre inteligência artificial em uma empresa seja tomada com critério público, independente e verificável – e que a IA entre no trabalho apenas onde o torna melhor.</p>
+        <p><span class="eyebrow eyebrow--missao">Missão</span>Ajudar empresas de pequeno e médio porte a decidir e executar em tecnologia aplicada a IA, da análise estratégica ao artefato pronto, com método publicado, independência de fornecedor e conferência de cada resultado.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section container section--meio-abaixo" aria-labelledby="diferenciais-titulo">
     <h2 id="diferenciais-titulo" class="text" style="margin-bottom: 32px;">Três diferenciais</h2>
     <div class="grid grid--3">
       <div class="card"><h3 class="h4">Independência de fornecedor</h3><p class="small">A prática não recebe comissão de nenhuma ferramenta que recomenda.</p></div>
       <div class="card"><h3 class="h4">Método próprio e publicado</h3><p class="small">Qualquer pessoa pode conferir os critérios que fundamentam cada recomendação.</p></div>
       <div class="card"><h3 class="h4">Entrega completa</h3><p class="small">O trabalho vai do diagnóstico ao artefato pronto, ou seja, ao sistema, documento ou material que a empresa passa a usar, e não para no relatório.</p></div>
+    </div>
+  </section>
+
+
+  <Faq kind="rows" eyebrow="Manifesto" title="O que a prática defende" items={manifesto} titleId="manifesto-titulo" sectionClass="section--meio-acima section--meio-abaixo" />
+
+  <section class="section container section--meio-acima" aria-labelledby="fecho-titulo">
+    <div class="fecho">
+      <h3 id="fecho-titulo" class="fecho__t">Estratégia de tecnologia em IA para o mundo real.</h3>
+      <p class="fecho__p">Para empresas que precisam decidir e executar, com critério que se pode conferir e resultado que se pode usar.</p>
     </div>
   </section>
 
@@ -56,6 +100,14 @@ import { fotoRetrato } from '../assets/imagens';
 </Base>
 
 <style>
+  /* Vision statement sits first in its band: no top rule or margin. The mission label breathes 32px below it. */
+  .statement--topo { margin-top: 0; padding-top: 0; border-top: 0; }
+  .eyebrow--missao { display: block; margin-top: 32px; color: var(--on-indigo); }
+  /* Closing line of the manifesto: the page's single non-clickable accent mark. */
+  .fecho__t, .fecho__p { margin: 0; }
+  .fecho { border-left: 2px solid var(--accent); padding-left: 24px; max-width: var(--container-text); }
+  .fecho__t { font-family: var(--serif); font-weight: 600; font-size: clamp(28px, 3vw, 34px); line-height: 1.2; font-variation-settings: 'opsz' 40; color: var(--ink); margin-bottom: 8px; text-wrap: balance; }
+  .fecho__p { font-size: 17px; line-height: 1.55; color: var(--ink-body); }
   /* Heading, text and figure share one grid; the figure spans both rows so it runs from the heading's top edge to the text's bottom edge. */
   .artefato { display: grid; gap: 24px 40px; }
   .artefato__t { margin: 0; }

@@ -134,6 +134,9 @@ img { max-width: 100%; height: auto; display: block; }
 /* Layout */
 .container { max-width: var(--container); margin: 0 auto; padding-left: var(--gutter); padding-right: var(--gutter); }
 .section { padding-top: var(--section-y); padding-bottom: var(--section-y); }
+/* Two consecutive sections on the same ground double the gap; halve the touching sides instead. */
+.section--meio-acima { padding-top: calc(var(--section-y) / 2); }
+.section--meio-abaixo { padding-bottom: calc(var(--section-y) / 2); }
 .band { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 
 /* Type */

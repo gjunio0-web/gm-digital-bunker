@@ -5,13 +5,17 @@
 interface Props {
   kind: 'rows' | 'plates';
   title: string;
-  items: { q: string; a: string }[];
+  items: { q: string; a: string }[]; // `a` may carry inline HTML (links, emphasis) authored in the page
+  eyebrow?: string; // optional mono label above the title, as in SectionHeader
+  titleId?: string; // override when a page holds more than one heading of this kind
+  sectionClass?: string; // extra classes on the section, e.g. section--meio-acima
 }
-const { kind, title, items } = Astro.props;
+const { kind, title, items, eyebrow, titleId = 'faq-titulo', sectionClass = '' } = Astro.props;
 const num = (i: number) => String(i + 1).padStart(2, '0');
 ---
-<section class="section container" aria-labelledby="faq-titulo">
-  <h2 id="faq-titulo" class="text" style="margin-bottom: 40px;">{title}</h2>
+<section class:list={['section container', sectionClass]} aria-labelledby={titleId}>
+  {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+  <h2 id={titleId} class="text" style="margin-bottom: 40px;">{title}</h2>
   <div class={`faq-${kind}`} data-faq={kind}>
     {items.map((it, i) => (
       <details class={`faq-${kind}__item`} open={kind === 'plates'}>
@@ -21,7 +25,7 @@ const num = (i: number) => String(i + 1).padStart(2, '0');
           <span class="faq__plus" aria-hidden="true">+</span>
           {kind === 'plates' && <span class="faq-plates__n" aria-hidden="true">{num(i)}</span>}
         </summary>
-        <p class={`faq-${kind}__a`}>{it.a}</p>
+        <p class={`faq-${kind}__a`} set:html={it.a} />
       </details>
     ))}
   </div>
