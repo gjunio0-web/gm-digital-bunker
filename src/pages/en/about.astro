@@ -5,8 +5,31 @@ import Invite from '../../components/Invite.astro';
 import { path } from '../../i18n/routes';
 import { LINKEDIN, HUB } from '../../config';
 import Foto from '../../components/Foto.astro';
+import Faq from '../../components/Faq.astro';
 import { fotoRetrato } from '../../assets/imagens';
 const L = 'en';
+
+// GM Digital Bunker™ manifesto (approved by Gon on 2026-10-29): nine statements in the accordion; the tenth closes the section on its own.
+const manifesto = [
+  { q: 'Every company decides about artificial intelligence today. Few decide with criteria.',
+    a: 'In small and mid-sized companies, the choice of an AI tool usually falls to whoever runs the business – the owner, the director, the partner – with no executive dedicated exclusively to technology at their side and under pressure from vendors\' offers. GM Digital Bunker exists to put criteria where there is now impulse.' },
+  { q: 'The practice starts from a question, not from a tool: when is it better with AI?',
+    a: 'AI improves a piece of work when the demands of the task are understood before the tool is chosen, when the request is structured and anchored in sources, and when every result is checked. Outside those conditions, it accelerates error. That is why GM Digital Bunker also says when it is not better with AI – and treats that answer as part of the service, not as a failure of it.' },
+  { q: 'GM Digital Bunker takes no commission from any tool it recommends.',
+    a: 'Independence is not a posture; it is the condition that gives advice its value.' },
+  { q: 'The method is public.',
+    a: `It is in the book <a href="${path('livro', L)}">When it's Better with AI</a> and runs in the <a href="${HUB}/?lang=en">AI Strategy Hub</a>, a free application that rates AI tools across 14 capabilities for seven work profiles. Anyone can check the criteria behind each of the practice's recommendations. Authority that cannot be checked is only reputation.` },
+  { q: 'No claim without grounding.',
+    a: 'The practice calls this stance Zero Hallucination and applies it to AI and to itself: every factual claim is suspect until proven, uncertainty is declared rather than hidden, and no fee is charged for assessments that cannot be supported by current evidence.' },
+  { q: 'AI produces; a human answers for it.',
+    a: 'Human judgment stays at the center of every delivery. Whoever signs is accountable – using AI does not reduce professional responsibility; it demands more care.' },
+  { q: 'GM Digital Bunker delivers the artifact, not the report.',
+    a: 'The work goes from strategic analysis to the system, document or material the company starts using. A strategy that stops at diagnosis hands the client the hardest part.' },
+  { q: 'AI is measured by the work that arrives finished, not by raw intelligence.',
+    a: 'The time spent correcting poorly grounded output, reformatting deliverables and reconnecting systems that should talk to each other is a real cost, and it goes on the bill.' },
+  { q: 'The practice knows what it does not do.',
+    a: 'It does not run systems around the clock at scale, does not resell vendors\' tools or services, does not work on technology unrelated to AI, does not perform technical execution in third-party software, does not give technical training in third-party tools, and does not manage large engineering teams. Saying no to what is out of scope is part of saying yes with quality.' },
+];
 ---
 <Base
   lang={L}
@@ -24,12 +47,33 @@ const L = 'en';
     lead="GM Digital Bunker™ is an independent technology strategy practice focused on the advanced application of artificial intelligence, from strategic analysis to the production of technical and communication artifacts."
   />
 
-  <section class="section container" aria-labelledby="diferenciais-titulo">
+
+  <section class="band-indigo" aria-labelledby="visao-titulo">
+    <div class="section container">
+      <p class="eyebrow">Vision</p>
+      <div class="statement statement--topo">
+        <p id="visao-titulo">That every decision about artificial intelligence in a company be made with public, independent and verifiable criteria – and that AI enter the work only where it makes the work better.</p>
+        <p><span class="eyebrow eyebrow--missao">Mission</span>To help small and mid-sized companies decide and execute on AI technology, from strategic analysis to the finished artifact, with a published method, vendor independence and verification of every result.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section container section--meio-abaixo" aria-labelledby="diferenciais-titulo">
     <h2 id="diferenciais-titulo" class="text" style="margin-bottom: 32px;">Three differentiators</h2>
     <div class="grid grid--3">
       <div class="card"><h3 class="h4">Vendor independence</h3><p class="small">The practice takes no commission from any tool it recommends.</p></div>
       <div class="card"><h3 class="h4">A method of its own, published</h3><p class="small">Anyone can check the criteria behind each recommendation.</p></div>
       <div class="card"><h3 class="h4">Complete delivery</h3><p class="small">The work goes from diagnosis to the finished artifact, that is, to the system, document or material the company starts using, and does not stop at the report.</p></div>
+    </div>
+  </section>
+
+
+  <Faq kind="rows" eyebrow="Manifesto" title="What the practice stands for" items={manifesto} titleId="manifesto-titulo" sectionClass="section--meio-acima section--meio-abaixo" />
+
+  <section class="section container section--meio-acima" aria-labelledby="fecho-titulo">
+    <div class="fecho">
+      <h3 id="fecho-titulo" class="fecho__t">AI technology strategy for the real world.</h3>
+      <p class="fecho__p">For companies that need to decide and execute, with criteria that can be checked and results that can be used.</p>
     </div>
   </section>
 
@@ -60,6 +104,14 @@ const L = 'en';
 </Base>
 
 <style>
+  /* Vision statement sits first in its band: no top rule or margin. The mission label breathes 32px below it. */
+  .statement--topo { margin-top: 0; padding-top: 0; border-top: 0; }
+  .eyebrow--missao { display: block; margin-top: 32px; color: var(--on-indigo); }
+  /* Closing line of the manifesto: the page's single non-clickable accent mark. */
+  .fecho__t, .fecho__p { margin: 0; }
+  .fecho { border-left: 2px solid var(--accent); padding-left: 24px; max-width: var(--container-text); }
+  .fecho__t { font-family: var(--serif); font-weight: 600; font-size: clamp(28px, 3vw, 34px); line-height: 1.2; font-variation-settings: 'opsz' 40; color: var(--ink); margin-bottom: 8px; text-wrap: balance; }
+  .fecho__p { font-size: 17px; line-height: 1.55; color: var(--ink-body); }
   /* Heading, text and figure share one grid; the figure spans both rows so it runs from the heading's top edge to the text's bottom edge. */
   .artefato { display: grid; gap: 24px 40px; }
   .artefato__t { margin: 0; }
