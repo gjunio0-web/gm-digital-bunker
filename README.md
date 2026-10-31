@@ -37,7 +37,7 @@ Buscar pelos nomes abaixo:
 
 | Item | Onde | O que fazer |
 |---|---|---|
-| Formulário em produção | `src/config.ts` (`FORMULARIO_EM_PRODUCAO = false`) | Ativo em qualidade; em produção, mudar para `true` quando Gon pedir. Até lá os campos aparecem desabilitados em produção, com aviso e e-mail alternativo. |
+| Formulário em produção | `src/config.ts` (`FORMULARIO_EM_PRODUCAO`) | Ativo em produção desde 31/10/2026, a pedido de Gon. Com `false`, os campos aparecem desabilitados só em produção, com aviso e e-mail alternativo. |
 | Página de Privacidade | `src/pages/privacidade.astro` | Texto aprovado por Gon em 15/10/2026, pendente de revisão jurídica. Marcador entre colchetes: razão social e CNPJ. A data de "Última atualização" vem de `src/lib/datas.mjs`. Prazo de guarda: 90 dias (decisão de 31/10/2026). O provedor do formulário é o Firebase (decisão de 30/10/2026). |
 | Formatos, prazos e honorários | `src/pages/servicos/index.astro` (comentário) | Fora do lançamento, conforme o documento de conteúdo. |
 

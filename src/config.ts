@@ -5,9 +5,9 @@ import { EM_PRODUCAO } from './lib/origem.mjs';
 export { DOMINIO, INDEXAVEL, EM_PRODUCAO } from './lib/origem.mjs';
 export const EMAIL_CONTATO = 'contato@gmdigitalbunker.com.br';
 // Contact form backend (Firebase function, one project per environment). Production builds post to
-// gmdb-producao, every other build to gmdb-qualidade. The form stays off in production until Gon
-// asks for it: flip FORMULARIO_EM_PRODUCAO then.
-const FORMULARIO_EM_PRODUCAO = false;
+// gmdb-producao, every other build to gmdb-qualidade. FORMULARIO_EM_PRODUCAO switches the form off
+// in production only (fields disabled, with notice and e-mail); on since 2026-10-31.
+const FORMULARIO_EM_PRODUCAO = true;
 export const FORMULARIO_ATIVO = EM_PRODUCAO ? FORMULARIO_EM_PRODUCAO : true;
 export const ENDPOINT_CONTATO = EM_PRODUCAO
   ? 'https://southamerica-east1-gmdb-producao.cloudfunctions.net/contato'
