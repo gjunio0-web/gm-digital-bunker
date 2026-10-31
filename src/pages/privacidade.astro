@@ -3,8 +3,8 @@ import Base from '../layouts/Base.astro';
 import Opening from '../components/Opening.astro';
 import { EMAIL_CONTATO } from '../config';
 // Draft approved by Gon on 2026-10-15, pending legal review. Bracketed items are placeholders:
-// legal entity and CNPJ, retention period, form provider (Netlify or Firebase, per the next
-// architecture decision) and the publication date.
+// legal entity and CNPJ, retention period and the publication date. The form provider is Firebase
+// (decided on 2026-10-30).
 ---
 <Base title="Privacidade" description="Como a GM Digital Bunker™ trata os dados enviados pelo formulário de contato e os dados técnicos de navegação." pageId="privacidade" ctaSecondary>
   <Opening
@@ -32,7 +32,7 @@ import { EMAIL_CONTATO } from '../config';
       <p>Os dados do formulário são mantidos enquanto durar o contato e, no máximo, por [90 dias] após a última troca de mensagens, quando são excluídos. Se o contato resultar em contrato, os dados passam a ser tratados conforme o contrato. Os registros técnicos do servidor seguem o prazo de retenção do provedor de hospedagem.</p>
 
       <h2>Quem mais tem acesso</h2>
-      <p>O formulário é recebido e armazenado pela [Netlify], empresa que hospeda o site, nos termos da política de privacidade dela. As fontes tipográficas são servidas pelo Google. Nenhum outro serviço recebe dados dos visitantes.</p>
+      <p>O formulário é recebido e armazenado pelo Firebase, serviço do Google, nos termos da política de privacidade do Google. As fontes tipográficas são servidas pelo Google. Nenhum outro serviço recebe dados dos visitantes.</p>
 
       <h2>Seus direitos</h2>
       <p>A LGPD garante a qualquer pessoa o direito de saber se seus dados são tratados, de acessá-los, corrigi-los, pedir a exclusão e revogar o consentimento quando ele for a base do tratamento. Basta escrever para <a href={`mailto:${EMAIL_CONTATO}`}>{EMAIL_CONTATO}</a>; a resposta é dada no prazo da lei. Quem entender que seus direitos não foram respeitados pode recorrer à Autoridade Nacional de Proteção de Dados (ANPD).</p>

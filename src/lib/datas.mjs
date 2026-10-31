@@ -4,7 +4,7 @@
 // Initial values come from the first and last commit of each source file in the repository (14–19/10/2026).
 // Commits up to this day were reviewed and changed no page text (structured data, fonts, images, headers),
 // so `check:seo` only warns about commits after it. Move the day forward after each such review.
-export const revisadoAte = '2026-10-26';
+export const revisadoAte = '2026-10-31';
 
 export const datas = {
   'pt-BR': {
@@ -19,7 +19,7 @@ export const datas = {
     publicacoes: { publicado: '2026-10-14', atualizado: '2026-10-15', arquivos: ['src/pages/publicacoes.astro'] },
     sobre: { publicado: '2026-10-14', atualizado: '2026-10-29', arquivos: ['src/pages/sobre.astro'] },
     contato: { publicado: '2026-10-14', atualizado: '2026-10-15', arquivos: ['src/pages/contato.astro'] },
-    privacidade: { publicado: '2026-10-14', atualizado: '2026-10-15', arquivos: ['src/pages/privacidade.astro'] },
+    privacidade: { publicado: '2026-10-14', atualizado: '2026-10-31', arquivos: ['src/pages/privacidade.astro'] },
   },
   en: {
     inicio: { publicado: '2026-10-15', atualizado: '2026-10-26', arquivos: ['src/pages/en/index.astro', 'src/templates/Home.astro', 'src/content/home.ts'] },
@@ -33,6 +33,6 @@ export const datas = {
     publicacoes: { publicado: '2026-10-15', atualizado: '2026-10-15', arquivos: ['src/pages/en/publications.astro'] },
     sobre: { publicado: '2026-10-15', atualizado: '2026-10-29', arquivos: ['src/pages/en/about.astro'] },
     contato: { publicado: '2026-10-15', atualizado: '2026-10-15', arquivos: ['src/pages/en/contact.astro'] },
-    privacidade: { publicado: '2026-10-15', atualizado: '2026-10-15', arquivos: ['src/pages/en/privacy.astro'] },
+    privacidade: { publicado: '2026-10-15', atualizado: '2026-10-31', arquivos: ['src/pages/en/privacy.astro'] },
   },
 };
