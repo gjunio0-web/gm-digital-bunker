@@ -26,7 +26,7 @@ Buscar pelos nomes abaixo:
 | Item | Onde | O que fazer |
 |---|---|---|
 | Formulário desativado | `src/components/ContactForm.astro` (`DESATIVADO = true`) | Mudar para `false` quando a página de Privacidade for publicada. Até lá os campos aparecem desabilitados, com aviso e e-mail alternativo. |
-| Página de Privacidade | `src/pages/privacidade.astro` | Texto aprovado por Gon em 15/10/2026, pendente de revisão jurídica. Marcadores entre colchetes: razão social e CNPJ, prazo de guarda (sugestão: 90 dias) e data de publicação. O provedor do formulário é o Firebase (decisão de 30/10/2026). |
+| Página de Privacidade | `src/pages/privacidade.astro` | Texto aprovado por Gon em 15/10/2026, pendente de revisão jurídica. Marcadores entre colchetes: razão social e CNPJ e data de publicação. Prazo de guarda: 90 dias (decisão de 31/10/2026). O provedor do formulário é o Firebase (decisão de 30/10/2026). |
 | Formatos, prazos e honorários | `src/pages/servicos/index.astro` (comentário) | Fora do lançamento, conforme o documento de conteúdo. |
 
 ## Idiomas
