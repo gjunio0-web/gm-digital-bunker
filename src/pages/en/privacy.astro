@@ -3,9 +3,13 @@ import Base from '../../layouts/Base.astro';
 import Opening from '../../components/Opening.astro';
 import { path } from '../../i18n/routes';
 import { EMAIL_CONTATO } from '../../config';
+import { datas } from '../../lib/datas.mjs';
 const L = 'en';
 // Translation of the Portuguese draft approved on 2026-10-15; the Portuguese text, once legally
 // reviewed, is the reference. Bracketed items are placeholders, as in the Portuguese page.
+// "Last updated" comes from the page's date in src/lib/datas.mjs, so it changes with the text.
+const atualizado = datas.en.privacidade.atualizado;
+const atualizadoTexto = new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${atualizado}T00:00:00Z`));
 ---
 <Base lang={L} title="Privacy" description="How GM Digital Bunker™ handles the data sent through the contact form and technical browsing data." pageId="privacidade" ctaSecondary>
   <Opening
@@ -43,7 +47,7 @@ const L = 'en';
 
       <h2>Changes</h2>
       <p>This page may change when the site gains new functions. The date of the last update appears below.</p>
-      <p class="meta">Last updated: [publication date].</p>
+      <p class="meta">Last updated: <time datetime={atualizado}>{atualizadoTexto}</time>.</p>
     </div>
   </section>
 </Base>

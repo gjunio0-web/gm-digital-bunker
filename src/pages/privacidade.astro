@@ -2,9 +2,13 @@
 import Base from '../layouts/Base.astro';
 import Opening from '../components/Opening.astro';
 import { EMAIL_CONTATO } from '../config';
+import { datas } from '../lib/datas.mjs';
 // Draft approved by Gon on 2026-10-15, pending legal review. Bracketed items are placeholders:
-// legal entity and CNPJ, and the publication date. The form provider is Firebase
+// legal entity and CNPJ. The form provider is Firebase
 // (decided on 2026-10-30).
+// "Last updated" comes from the page's date in src/lib/datas.mjs, so it changes with the text.
+const atualizado = datas['pt-BR'].privacidade.atualizado;
+const atualizadoTexto = new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${atualizado}T00:00:00Z`));
 ---
 <Base title="Privacidade" description="Como a GM Digital Bunker™ trata os dados enviados pelo formulário de contato e os dados técnicos de navegação." pageId="privacidade" ctaSecondary>
   <Opening
@@ -39,7 +43,7 @@ import { EMAIL_CONTATO } from '../config';
 
       <h2>Alterações</h2>
       <p>Esta página pode mudar quando o site ganhar novas funções. A data da última atualização aparece abaixo.</p>
-      <p class="meta">Última atualização: [data da publicação].</p>
+      <p class="meta">Última atualização: <time datetime={atualizado}>{atualizadoTexto}</time>.</p>
     </div>
   </section>
 </Base>
