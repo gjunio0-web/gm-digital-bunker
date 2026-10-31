@@ -1,8 +1,8 @@
 // Structured data (JSON-LD) for every page: one @graph with the entities of the site –
 // the practice, its founder, the website and the page – plus the entity each page is about
 // (the book, a service, the Hub). Entities are referenced by @id, never repeated.
-// No e-mail, legal name or tax number is emitted until those exist (see the site plan).
-import { AMAZON, AMAZON_EN, DOMINIO, HUB, LINKEDIN, MARCA } from '../config';
+// Legal name and tax number are not emitted until they exist (see the site plan).
+import { AMAZON, AMAZON_EN, DOMINIO, EMAIL_CONTATO, HUB, LINKEDIN, MARCA } from '../config';
 import { home } from '../content/home';
 import { path, type Lang, type PageId } from '../i18n/routes';
 import { datas } from './datas.mjs';
@@ -48,6 +48,7 @@ export function grafo(o: { lang: Lang; pageId: PageId; title: string; descriptio
     name: MARCA,
     url: `${DOMINIO}/`,
     description: home[lang].jsonLdDescription,
+    email: EMAIL_CONTATO,
     areaServed: 'BR',
     address: { '@type': 'PostalAddress', addressLocality: 'São Paulo', addressCountry: 'BR' },
     founder: ref(ID.pessoa),
