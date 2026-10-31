@@ -41,7 +41,7 @@ import { EMAIL_CONTATO, LINKEDIN } from '../config';
 </style>
 
 <script>
-  // After a Netlify submission, the page reloads with ?enviado=1: show the success line
+  // After a successful submission, the form sends the visitor here with ?enviado=1: show the success line
   if (new URLSearchParams(location.search).get('enviado') === '1') {
     const ok = document.getElementById('enviado');
     if (ok) { ok.hidden = false; ok.focus(); }

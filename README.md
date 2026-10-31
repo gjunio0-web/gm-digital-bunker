@@ -17,7 +17,19 @@ Requer Node 18.17 ou superior (recomendado: 20 ou 22).
 
 1. Criar um repositório com este conteúdo e conectá-lo a um novo site na Netlify.
 2. A Netlify lê o `netlify.toml`: comando `npm run build`, pasta `dist`.
-3. Depois do primeiro deploy, o formulário "contato" aparece em Site settings → Forms (só passa a receber envios quando for reativado – ver abaixo).
+
+## Formulário de contato (Firebase)
+
+O formulário envia para uma função do Firebase (pasta `firebase/`), com um projeto por ambiente: `gmdb-qualidade` (qualquer build que não seja produção) e `gmdb-producao`. Região: `southamerica-east1` (São Paulo). A função valida os campos, descarta envios com o campo-isca preenchido, limita a 5 envios por hora por endereço IP (guarda só um resumo criptográfico do IP), grava em Firestore na coleção `contatos` e avisa por e-mail via SMTP2GO. Cada registro expira em 90 dias (política de TTL no campo `expiraEm`).
+
+Publicar a função (no Cloud Shell do console ou em qualquer terminal com o Firebase CLI):
+
+```
+cd firebase/functions && npm ci && cd ..
+firebase deploy --project qualidade --only functions,firestore:rules
+```
+
+A senha do SMTP2GO fica no Secret Manager (`firebase functions:secrets:set SMTP2GO_PASSWORD --project qualidade`). As origens aceitas por ambiente estão em `firebase/functions/.env.<id do projeto>`.
 
 ## Pendências marcadas no código
 
@@ -25,7 +37,7 @@ Buscar pelos nomes abaixo:
 
 | Item | Onde | O que fazer |
 |---|---|---|
-| Formulário desativado | `src/components/ContactForm.astro` (`DESATIVADO = true`) | Mudar para `false` quando a página de Privacidade for publicada. Até lá os campos aparecem desabilitados, com aviso e e-mail alternativo. |
+| Formulário em produção | `src/config.ts` (`FORMULARIO_EM_PRODUCAO = false`) | Ativo em qualidade; em produção, mudar para `true` quando Gon pedir. Até lá os campos aparecem desabilitados em produção, com aviso e e-mail alternativo. |
 | Página de Privacidade | `src/pages/privacidade.astro` | Texto aprovado por Gon em 15/10/2026, pendente de revisão jurídica. Marcador entre colchetes: razão social e CNPJ. A data de "Última atualização" vem de `src/lib/datas.mjs`. Prazo de guarda: 90 dias (decisão de 31/10/2026). O provedor do formulário é o Firebase (decisão de 30/10/2026). |
 | Formatos, prazos e honorários | `src/pages/servicos/index.astro` (comentário) | Fora do lançamento, conforme o documento de conteúdo. |
 
@@ -48,7 +60,7 @@ src/
     Footer.astro
     Opening.astro           abertura das páginas internas (trilha, rótulo, título, grão)
     Invite.astro            convite final em índigo (esconde a barra de ação ao ser alcançado)
-    ContactForm.astro       o único formulário (Netlify Forms), usado na página e no diálogo
+    ContactForm.astro       o único formulário (função do Firebase), usado na página e no diálogo
     ContactDialog.astro     diálogo <dialog> aberto por qualquer "Agendar conversa"
     ActionBar.astro         botão fixo no rodapé da tela em celulares
   pages/                    uma página por endereço em português (12) e, em pages/en/, em inglês (11)

@@ -1,19 +1,20 @@
 ---
 // The one contact form, used by the Contato page and by the dialog.
-// Netlify Forms markup. Disabled until the Privacy page is approved (see README).
-import { EMAIL_CONTATO } from '../config';
+// Posts to the Firebase contact function (see firebase/ and README). With JavaScript, the submission
+// goes through fetch() and the page shows the result; without it, the function answers with a redirect.
+import { EMAIL_CONTATO, ENDPOINT_CONTATO, FORMULARIO_ATIVO } from '../config';
 import { t } from '../i18n/ui';
 import { path, type Lang } from '../i18n/routes';
 interface Props { idPrefix?: string; lang?: Lang; }
 const { idPrefix = 'f', lang = 'pt-BR' } = Astro.props;
 const u = t(lang);
-const DESATIVADO = true;
+const DESATIVADO = !FORMULARIO_ATIVO;
 const id = (s: string) => `${idPrefix}-${s}`;
 // Role options: stable English values; labels come from ui.ts
 const CARGOS = ['owner', 'ceo', 'director', 'manager', 'specialist', 'external', 'other'] as const;
 ---
-<form class="form" name="contato" method="POST" action={`${path('contato', lang)}?enviado=1`} data-netlify="true" data-netlify-honeypot="empresa-site" novalidate data-contato-form data-desativado={DESATIVADO ? 'true' : undefined} data-sending={u.form.sending} data-err-one={u.form.errSummary(1)} data-err-many={u.form.errSummary(2).replace('2', '{n}')}>
-  <input type="hidden" name="form-name" value="contato" />
+<form class="form" name="contato" method="POST" action={ENDPOINT_CONTATO} novalidate data-contato-form data-desativado={DESATIVADO ? 'true' : undefined} data-sending={u.form.sending} data-err-one={u.form.errSummary(1)} data-err-many={u.form.errSummary(2).replace('2', '{n}')} data-sucesso={`${path('contato', lang)}?enviado=1`} data-err-send={u.form.errSend} data-err-limit={u.form.errLimit} data-email={EMAIL_CONTATO}>
+  <input type="hidden" name="lang" value={lang} />
   <p class="visually-hidden"><label>{u.form.honeypot} <input name="empresa-site" tabindex="-1" autocomplete="off" /></label></p>
 
   <div class="form__alert" role="alert" tabindex="-1" hidden data-resumo></div>
@@ -135,7 +136,35 @@ const CARGOS = ['owner', 'ceo', 'director', 'manager', 'specialist', 'external',
       const site = form.querySelector<HTMLInputElement>('[name="site"]');
       if (site && site.value.trim()) site.value = normalizaSite(site.value.trim()) ?? site.value;
       const btn = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+      const rotulo = btn?.textContent || '';
       if (btn) { btn.disabled = true; btn.textContent = form.dataset.sending || '…'; }
+      // Send with fetch; on success go to the contact page's confirmation line
+      e.preventDefault();
+      const falha = (texto: string, campos: string[] = []) => {
+        campos.forEach((c) => valida(c));
+        if (resumo) {
+          resumo.hidden = false;
+          resumo.textContent = `${texto} `;
+          const a = document.createElement('a');
+          a.href = `mailto:${form.dataset.email}`;
+          a.textContent = form.dataset.email || '';
+          resumo.append(a, '.');
+          resumo.focus();
+        }
+        if (btn) { btn.disabled = false; btn.textContent = rotulo; }
+      };
+      fetch(form.action, {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+        body: new URLSearchParams(new FormData(form) as unknown as Record<string, string>),
+      })
+        .then(async (r) => {
+          const corpo = await r.json().catch(() => ({}));
+          if (r.ok && corpo.ok) { location.assign(form.dataset.sucesso || '/'); return; }
+          if (r.status === 429) falha(form.dataset.errLimit || '');
+          else falha(form.dataset.errSend || '', Array.isArray(corpo.erros) ? corpo.erros : []);
+        })
+        .catch(() => falha(form.dataset.errSend || ''));
     });
   });
 </script>

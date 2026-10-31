@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "gmdb-qualidade",
+    "qualidade": "gmdb-qualidade",
+    "producao": "gmdb-producao"
+  }
+}
