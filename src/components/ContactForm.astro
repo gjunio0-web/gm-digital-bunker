@@ -111,7 +111,13 @@ const CARGOS = ['owner', 'ceo', 'director', 'manager', 'specialist', 'external',
       if (msg) msg.hidden = ok;
       return ok;
     };
-    campos.forEach((c) => form.querySelector(`[name="${c}"]`)?.addEventListener('blur', () => valida(c)));
+    // Pressing the submit button blurs the current field first. Showing that field's error at this
+    // point moves the button down before the press ends, so the click is lost. While the button is
+    // pressed, blur validation waits: the submit handler validates every field anyway.
+    let pressionandoEnviar = false;
+    form.querySelector('button[type="submit"]')?.addEventListener('pointerdown', () => { pressionandoEnviar = true; });
+    ['pointerup', 'pointercancel'].forEach((ev) => document.addEventListener(ev, () => { pressionandoEnviar = false; }, true));
+    campos.forEach((c) => form.querySelector(`[name="${c}"]`)?.addEventListener('blur', () => { if (!pressionandoEnviar) valida(c); }));
     // A select is usually left right after choosing: validate on change too
     form.querySelector('[name="cargo"]')?.addEventListener('change', () => valida('cargo'));
     form.addEventListener('submit', (e) => {
