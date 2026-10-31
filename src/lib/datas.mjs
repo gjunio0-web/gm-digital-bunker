@@ -18,7 +18,7 @@ export const datas = {
     livro: { publicado: '2026-10-14', atualizado: '2026-10-16', arquivos: ['src/pages/metodo/livro.astro'] },
     publicacoes: { publicado: '2026-10-14', atualizado: '2026-10-15', arquivos: ['src/pages/publicacoes.astro'] },
     sobre: { publicado: '2026-10-14', atualizado: '2026-10-29', arquivos: ['src/pages/sobre.astro'] },
-    contato: { publicado: '2026-10-14', atualizado: '2026-10-15', arquivos: ['src/pages/contato.astro'] },
+    contato: { publicado: '2026-10-14', atualizado: '2026-10-31', arquivos: ['src/pages/contato.astro'] },
     privacidade: { publicado: '2026-10-14', atualizado: '2026-10-31', arquivos: ['src/pages/privacidade.astro'] },
   },
   en: {
@@ -32,7 +32,7 @@ export const datas = {
     livro: { publicado: '2026-10-15', atualizado: '2026-10-19', arquivos: ['src/pages/en/method/book.astro'] },
     publicacoes: { publicado: '2026-10-15', atualizado: '2026-10-15', arquivos: ['src/pages/en/publications.astro'] },
     sobre: { publicado: '2026-10-15', atualizado: '2026-10-29', arquivos: ['src/pages/en/about.astro'] },
-    contato: { publicado: '2026-10-15', atualizado: '2026-10-15', arquivos: ['src/pages/en/contact.astro'] },
+    contato: { publicado: '2026-10-15', atualizado: '2026-10-31', arquivos: ['src/pages/en/contact.astro'] },
     privacidade: { publicado: '2026-10-15', atualizado: '2026-10-31', arquivos: ['src/pages/en/privacy.astro'] },
   },
 };

@@ -9,6 +9,8 @@ const { idPrefix = 'f', lang = 'pt-BR' } = Astro.props;
 const u = t(lang);
 const DESATIVADO = true;
 const id = (s: string) => `${idPrefix}-${s}`;
+// Role options: stable English values; labels come from ui.ts
+const CARGOS = ['owner', 'ceo', 'director', 'manager', 'specialist', 'external', 'other'] as const;
 ---
 <form class="form" name="contato" method="POST" action={`${path('contato', lang)}?enviado=1`} data-netlify="true" data-netlify-honeypot="empresa-site" novalidate data-contato-form data-desativado={DESATIVADO ? 'true' : undefined} data-sending={u.form.sending} data-err-one={u.form.errSummary(1)} data-err-many={u.form.errSummary(2).replace('2', '{n}')}>
   <input type="hidden" name="form-name" value="contato" />
@@ -30,9 +32,23 @@ const id = (s: string) => `${idPrefix}-${s}`;
     <input id={id('empresa')} name="empresa" type="text" autocomplete="organization" required aria-required="true" aria-describedby={id('empresa-erro')} disabled={DESATIVADO} />
   </div>
   <div class="form__field">
+    <label for={id('cargo')}>{u.form.role} <span>{u.form.required}</span></label>
+    <p class="form__erro" id={id('cargo-erro')} hidden>{u.form.errRole}</p>
+    <select id={id('cargo')} name="cargo" autocomplete="organization-title" required aria-required="true" aria-describedby={id('cargo-erro')} disabled={DESATIVADO}>
+      <option value="" disabled selected>{u.form.roleSelect}</option>
+      {CARGOS.map((c) => <option value={c}>{u.form.roles[c]}</option>)}
+    </select>
+  </div>
+  <div class="form__field">
     <label for={id('email')}>{u.form.email} <span>{u.form.required}</span></label>
     <p class="form__erro" id={id('email-erro')} hidden>{u.form.errEmail}</p>
     <input id={id('email')} name="email" type="email" autocomplete="email" required aria-required="true" aria-describedby={id('email-erro')} disabled={DESATIVADO} />
+  </div>
+  <div class="form__field">
+    <label for={id('site')}>{u.form.website} <span>{u.form.optional}</span></label>
+    <p class="form__ajuda" id={id('site-ajuda')}>{u.form.websiteHelp}</p>
+    <p class="form__erro" id={id('site-erro')} hidden>{u.form.errWebsite}</p>
+    <input id={id('site')} name="site" type="url" inputmode="url" autocomplete="url" aria-describedby={`${id('site-ajuda')} ${id('site-erro')}`} disabled={DESATIVADO} />
   </div>
   <div class="form__field">
     <label for={id('mensagem')}>{u.form.message} <span>{u.form.optional}</span></label>
@@ -50,9 +66,12 @@ const id = (s: string) => `${idPrefix}-${s}`;
   .form__field { display: flex; flex-direction: column; gap: 8px; }
   .form label { font-weight: 600; font-size: 16px; color: var(--ink); }
   .form label span { font-weight: 400; color: var(--muted); }
-  .form input, .form textarea { width: 100%; min-height: 48px; padding: 0 14px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-md); font: 400 17px/1.5 var(--sans); color: var(--ink); }
+  .form input, .form textarea, .form select { width: 100%; min-height: 48px; padding: 0 14px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-md); font: 400 17px/1.5 var(--sans); color: var(--ink); }
   .form textarea { padding: 12px 14px; resize: vertical; }
-  .form input:disabled, .form textarea:disabled { opacity: 0.6; }
+  .form input:disabled, .form textarea:disabled, .form select:disabled { opacity: 0.6; }
+  /* Native option list follows the site theme (dark by default) */
+  .form select { color-scheme: dark; }
+  :global(html[data-theme="light"]) .form select { color-scheme: light; }
   .form [aria-invalid="true"] { border: 2px solid var(--ink); }
   .form__erro { margin: 0; font-weight: 600; font-size: 15px; color: var(--ink); }
   .form__ajuda { margin: 0; font-size: 15px; color: var(--muted); }
@@ -65,21 +84,36 @@ const id = (s: string) => `${idPrefix}-${s}`;
 </style>
 
 <script>
-  // Client-side validation (on blur and on submit), per the information architecture
+  // Client-side validation (on blur and on submit), per the information architecture.
+  // Fields are listed in visual order, so focus goes to the first invalid one from the top.
   document.querySelectorAll<HTMLFormElement>('[data-contato-form]').forEach((form) => {
-    const campos = ['nome', 'empresa', 'email'];
+    const campos = ['nome', 'empresa', 'cargo', 'email', 'site'];
     const rx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // Website: optional; scheme may be omitted (https:// is added). Returns the normalized URL or null.
+    const normalizaSite = (v: string): string | null => {
+      if (/\s/.test(v)) return null;
+      const comEsquema = /^[a-z][a-z0-9+.-]*:\/\//i.test(v) ? v : `https://${v}`;
+      try {
+        const url = new URL(comEsquema);
+        if ((url.protocol === 'http:' || url.protocol === 'https:') && url.hostname.includes('.') && !/\s/.test(url.hostname)) return comEsquema;
+      } catch { /* invalid URL */ }
+      return null;
+    };
     const valida = (name: string) => {
-      const el = form.querySelector<HTMLInputElement>(`[name="${name}"]`);
-      const erro = el?.nextElementSibling instanceof HTMLElement ? null : form.querySelector<HTMLElement>(`#${el?.id}-erro`);
+      const el = form.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${name}"]`);
       if (!el) return true;
       const msg = form.querySelector<HTMLElement>(`#${el.id}-erro`);
-      const ok = name === 'email' ? rx.test(el.value.trim()) : el.value.trim().length > 0;
+      const v = el.value.trim();
+      const ok = name === 'email' ? rx.test(v)
+        : name === 'site' ? v === '' || normalizaSite(v) !== null
+        : v.length > 0;
       el.setAttribute('aria-invalid', ok ? 'false' : 'true');
       if (msg) msg.hidden = ok;
       return ok;
     };
     campos.forEach((c) => form.querySelector(`[name="${c}"]`)?.addEventListener('blur', () => valida(c)));
+    // A select is usually left right after choosing: validate on change too
+    form.querySelector('[name="cargo"]')?.addEventListener('change', () => valida('cargo'));
     form.addEventListener('submit', (e) => {
       if (form.dataset.desativado) { e.preventDefault(); return; }
       const erros = campos.filter((c) => !valida(c));
@@ -87,10 +121,13 @@ const id = (s: string) => `${idPrefix}-${s}`;
       if (erros.length) {
         e.preventDefault();
         if (resumo) { resumo.hidden = false; resumo.textContent = erros.length === 1 ? (form.dataset.errOne || '') : (form.dataset.errMany || '').replace('{n}', String(erros.length)); resumo.focus(); }
-        form.querySelector<HTMLInputElement>(`[name="${erros[0]}"]`)?.focus();
+        form.querySelector<HTMLElement>(`[name="${erros[0]}"]`)?.focus();
         return;
       }
       if (resumo) resumo.hidden = true;
+      // Send the website with its scheme
+      const site = form.querySelector<HTMLInputElement>('[name="site"]');
+      if (site && site.value.trim()) site.value = normalizaSite(site.value.trim()) ?? site.value;
       const btn = form.querySelector<HTMLButtonElement>('button[type="submit"]');
       if (btn) { btn.disabled = true; btn.textContent = form.dataset.sending || '…'; }
     });
