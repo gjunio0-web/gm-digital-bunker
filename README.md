@@ -21,11 +21,10 @@ Requer Node 18.17 ou superior (recomendado: 20 ou 22).
 
 ## Pendências marcadas no código
 
-Buscar por `[dominio]` ou pelos nomes abaixo:
+Buscar pelos nomes abaixo:
 
 | Item | Onde | O que fazer |
 |---|---|---|
-| Domínio | `src/config.ts` e `astro.config.mjs` | O endereço absoluto (canonical, hreflang, Open Graph, dados estruturados) vem da Netlify no build: `DEPLOY_PRIME_URL` no ramo em construção, `URL` no endereço principal, que passa a ser o domínio próprio quando ele for configurado no site. Nada a trocar no código. Para fixar outro endereço, definir a variável `DOMINIO_FIXO`. Em builds locais vale o marcador `dominio.exemplo`. O e-mail `EMAIL_CONTATO` continua marcador até o domínio existir. |
 | Formulário desativado | `src/components/ContactForm.astro` (`DESATIVADO = true`) | Mudar para `false` quando a página de Privacidade for publicada. Até lá os campos aparecem desabilitados, com aviso e e-mail alternativo. |
 | Página de Privacidade | `src/pages/privacidade.astro` | Texto aprovado por Gon em 15/10/2026, pendente de revisão jurídica. Marcadores entre colchetes: razão social e CNPJ, prazo de guarda (sugestão: 90 dias), provedor do formulário (Netlify ou Firebase) e data de publicação. |
 | Formatos, prazos e honorários | `src/pages/servicos/index.astro` (comentário) | Fora do lançamento, conforme o documento de conteúdo. |

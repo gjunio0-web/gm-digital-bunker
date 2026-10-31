@@ -2,13 +2,13 @@
 // Imported by astro.config.mjs and src/config.ts so the two can never disagree.
 //
 // Origin (DOMINIO), in order of precedence:
-//   1. DOMINIO_FIXO – pins the origin explicitly (set it, in the production context only, once the domain exists).
+//   1. DOMINIO_FIXO – pins the origin explicitly (set in the production context only: https://gmdigitalbunker.com.br).
 //   2. Production deploy on Netlify (CONTEXT === 'production') – URL, the site's main address.
 //   3. Any other Netlify build (branch deploys, previews) – DEPLOY_PRIME_URL, the address of that deploy, then URL.
 //   4. A placeholder, for local builds.
 //
 // Indexing (INDEXAVEL): the site is open to search engines only in a production deploy that also has
-// DOMINIO_FIXO set. Until the domain exists, every environment is built with noindex.
+// DOMINIO_FIXO set. Branch deploys, previews and local builds are always built with noindex.
 const PLACEHOLDER = 'https://dominio.exemplo';
 const semBarra = (u) => (u ? u.replace(/\/+$/, '') : undefined);
 

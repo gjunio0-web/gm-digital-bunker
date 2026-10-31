@@ -27,7 +27,7 @@ interface Props {
   noindex?: boolean;    // page never indexed (the 404): no canonical, no hreflang
 }
 const { title, description, current = '', pageId = 'inicio', lang = 'pt-BR', ctaSecondary = false, noActionBar = false, noDialog = false, noindex = false } = Astro.props;
-// Search engines are kept out until the domain exists (src/lib/origem.mjs), and always out of the 404.
+// Only the production build on the custom domain is indexable (src/lib/origem.mjs); the 404 never is.
 const robots = noindex || !INDEXAVEL;
 const u = t(lang);
 const path = Astro.props.path ?? routePath(pageId, lang);
