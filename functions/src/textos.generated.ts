@@ -15,3 +15,12 @@ export const TEXTOS = {
     "footer": "This is an automatic confirmation from the site's contact form. If you did not send this request, please disregard this message."
   }
 } as const;
+export const CARGOS_ROTULO: Record<string, string> = {
+  "owner": "Sócio(a) ou proprietário(a)",
+  "ceo": "CEO ou presidente",
+  "director": "Diretor(a)",
+  "manager": "Gerente ou coordenador(a)",
+  "specialist": "Analista ou especialista",
+  "external": "Consultor(a) externo(a)",
+  "other": "Outro"
+};

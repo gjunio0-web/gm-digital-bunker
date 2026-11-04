@@ -2,7 +2,7 @@
 // the message is logged instead, so tests never reach the provider.
 import { logger } from 'firebase-functions';
 import { EMAIL_CONTATO, REMETENTE, SITE } from './config.js';
-import { TEXTOS } from './textos.generated.js';
+import { CARGOS_ROTULO, TEXTOS } from './textos.generated.js';
 import type { Idioma, Original } from './validacao.js';
 
 const API = 'https://api.smtp2go.com/v3/email/send';
@@ -46,12 +46,13 @@ export function confirmacao(chave: string, para: string, lang: Idioma): Promise<
   return envia(chave, { para, assunto: t.subject, corpo, responderPara: EMAIL_CONTATO });
 }
 
-// Notice to the administrator with the fields as received. Replies go to the person.
+// Notice to the administrator with the fields as received (role shown with its form label).
+// Replies go to the person.
 export function aviso(chave: string, id: string, o: Original, pagina: string | null, recebidaEm: Date): Promise<void> {
   const corpo = [
     `Nome: ${o.nome}`,
     `Empresa: ${o.empresa}`,
-    `Cargo: ${o.cargo}`,
+    `Cargo: ${CARGOS_ROTULO[o.cargo] ?? o.cargo}`,
     `E-mail: ${o.email}`,
     `Site: ${o.site ?? '–'}`,
     `Idioma: ${o.lang}`,
