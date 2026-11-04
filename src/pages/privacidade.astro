@@ -4,8 +4,8 @@ import Opening from '../components/Opening.astro';
 import { EMAIL_CONTATO } from '../config';
 import { datas } from '../lib/datas.mjs';
 // Draft approved by Gon on 2026-10-15, pending legal review. Bracketed items are placeholders:
-// legal entity and CNPJ. The form provider is Firebase
-// (decided on 2026-10-30).
+// legal entity and CNPJ. The form provider is Firebase (decided on 2026-10-30); storage region,
+// IP hash, 30-day rule and SMTP2GO added on 2026-11-04 (spec 01, approved by Gon).
 // "Last updated" comes from the page's date in src/lib/datas.mjs, so it changes with the text.
 const atualizado = datas['pt-BR'].privacidade.atualizado;
 const atualizadoTexto = new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${atualizado}T00:00:00Z`));
@@ -25,7 +25,7 @@ const atualizadoTexto = new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month
 
       <h2>Quais dados o site recolhe</h2>
       <p>O formulário de contato pede nome, empresa, cargo, e-mail e, se a pessoa quiser, o site da empresa e uma mensagem. Esses são os únicos dados pessoais que o site requisita.</p>
-      <p>Ao navegar, o servidor que hospeda o site registra, como qualquer servidor, o endereço IP e dados técnicos da conexão (navegador, páginas acessadas, data e hora). O site carrega as fontes tipográficas dos servidores do Google Fonts; nessa requisição, o endereço IP do visitante chega ao Google.</p>
+      <p>Ao navegar, o servidor que hospeda o site registra, como qualquer servidor, o endereço IP e dados técnicos da conexão (navegador, páginas acessadas, data e hora).</p>
       <p>O site não usa cookies de rastreamento nem ferramentas de análise de audiência. A única informação guardada no navegador é a preferência de tema (escuro ou claro), que fica no próprio aparelho e não é enviada a lugar nenhum.</p>
 
       <h2>Para que os dados servem</h2>
@@ -33,10 +33,10 @@ const atualizadoTexto = new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month
       <p>Os registros técnicos do servidor servem à segurança e ao funcionamento do site.</p>
 
       <h2>Por quanto tempo ficam guardados</h2>
-      <p>Os dados do formulário são mantidos enquanto durar o contato e, no máximo, por 90 dias após a última troca de mensagens, quando são excluídos. Se o contato resultar em contrato, os dados passam a ser tratados conforme o contrato. Os registros técnicos do servidor seguem o prazo de retenção do provedor de hospedagem.</p>
+      <p>Os dados do formulário são mantidos enquanto durar o contato e, no máximo, por 90 dias após a última troca de mensagens, quando são excluídos. Pedidos que não seguem para análise são excluídos em 30 dias. O endereço IP de quem envia o formulário é guardado apenas como resumo criptográfico (hash), sem o endereço em si, e serve só para limitar envios repetidos. Se o contato resultar em contrato, os dados passam a ser tratados conforme o contrato. Os registros técnicos do servidor seguem o prazo de retenção do provedor de hospedagem.</p>
 
       <h2>Quem mais tem acesso</h2>
-      <p>O formulário é recebido e armazenado pelo Firebase, serviço do Google, nos termos da política de privacidade do Google. As fontes tipográficas são servidas pelo próprio site. Nenhum outro serviço recebe dados dos visitantes.</p>
+      <p>O formulário é recebido e armazenado pelo Firebase, serviço do Google Cloud, em servidores na região de São Paulo, nos termos da política de privacidade do Google. Os e-mails de confirmação ao interessado e de aviso à GM Digital Bunker™ são enviados pelo SMTP2GO. As fontes tipográficas são servidas pelo próprio site. Nenhum outro serviço recebe dados dos visitantes.</p>
 
       <h2>Seus direitos</h2>
       <p>A LGPD garante a qualquer pessoa o direito de saber se seus dados são tratados, de acessá-los, corrigi-los, pedir a exclusão e revogar o consentimento quando ele for a base do tratamento. Basta escrever para <a href={`mailto:${EMAIL_CONTATO}`}>{EMAIL_CONTATO}</a>; a resposta é dada no prazo da lei. Quem entender que seus direitos não foram respeitados pode recorrer à Autoridade Nacional de Proteção de Dados (ANPD).</p>

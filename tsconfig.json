@@ -1,1 +1,4 @@
-{ "extends": "astro/tsconfigs/base" }
+{
+  "extends": "astro/tsconfigs/base",
+  "exclude": ["functions", "dist"]
+}

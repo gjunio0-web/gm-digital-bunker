@@ -19,7 +19,7 @@ export const datas = {
     publicacoes: { publicado: '2026-10-14', atualizado: '2026-10-15', arquivos: ['src/pages/publicacoes.astro'] },
     sobre: { publicado: '2026-10-14', atualizado: '2026-10-29', arquivos: ['src/pages/sobre.astro'] },
     contato: { publicado: '2026-10-14', atualizado: '2026-10-31', arquivos: ['src/pages/contato.astro'] },
-    privacidade: { publicado: '2026-10-14', atualizado: '2026-10-31', arquivos: ['src/pages/privacidade.astro'] },
+    privacidade: { publicado: '2026-10-14', atualizado: '2026-11-04', arquivos: ['src/pages/privacidade.astro'] },
   },
   en: {
     inicio: { publicado: '2026-10-15', atualizado: '2026-10-26', arquivos: ['src/pages/en/index.astro', 'src/templates/Home.astro', 'src/content/home.ts'] },
@@ -33,6 +33,6 @@ export const datas = {
     publicacoes: { publicado: '2026-10-15', atualizado: '2026-10-15', arquivos: ['src/pages/en/publications.astro'] },
     sobre: { publicado: '2026-10-15', atualizado: '2026-10-29', arquivos: ['src/pages/en/about.astro'] },
     contato: { publicado: '2026-10-15', atualizado: '2026-10-31', arquivos: ['src/pages/en/contact.astro'] },
-    privacidade: { publicado: '2026-10-15', atualizado: '2026-10-31', arquivos: ['src/pages/en/privacy.astro'] },
+    privacidade: { publicado: '2026-10-15', atualizado: '2026-11-04', arquivos: ['src/pages/en/privacy.astro'] },
   },
 };

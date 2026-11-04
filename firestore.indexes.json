@@ -1,0 +1,37 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "fichas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "recebidaEm", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "fichas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "qualificacao.decisao", "order": "ASCENDING" },
+        { "fieldPath": "recebidaEm", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "fichas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "normalizado.email", "order": "ASCENDING" },
+        { "fieldPath": "recebidaEm", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "fichas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "origem.ip", "order": "ASCENDING" },
+        { "fieldPath": "recebidaEm", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

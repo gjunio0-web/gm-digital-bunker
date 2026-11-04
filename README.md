@@ -20,16 +20,9 @@ Requer Node 18.17 ou superior (recomendado: 20 ou 22).
 
 ## Formulário de contato (Firebase)
 
-O formulário envia para uma função do Firebase (pasta `firebase/`), com um projeto por ambiente: `gmdb-qualidade` (qualquer build que não seja produção) e `gmdb-producao`. Região: `southamerica-east1` (São Paulo). A função valida os campos, descarta envios com o campo-isca preenchido, limita a 5 envios por hora por endereço IP (guarda só um resumo criptográfico do IP), grava em Firestore na coleção `contatos` e avisa por e-mail via SMTP2GO. Cada registro expira em 90 dias (política de TTL no campo `expiraEm`).
+O formulário envia JSON para a função `receberFicha` (spec 01 da análise preliminar de fichas), com um projeto Firebase por ambiente: `gmdb-qualidade` (qualquer build que não seja produção) e `gmdb-producao`. Região: `southamerica-east1` (São Paulo). A função valida os campos, descarta envios com o campo-isca preenchido, aplica os limites por e-mail (por dia) e por resumo criptográfico do IP (por hora), grava `fichas/{id}` no estado `recebida` com o evento `recebida` e envia dois e-mails pelo SMTP2GO: a confirmação ao interessado e o aviso a contato@. A função `expurgar` apaga diariamente as fichas com `expurgoEm` vencido.
 
-Publicar a função (no Cloud Shell do console ou em qualquer terminal com o Firebase CLI):
-
-```
-cd firebase/functions && npm ci && cd ..
-firebase deploy --project qualidade --only functions,firestore:rules
-```
-
-A senha do SMTP2GO fica no Secret Manager (`firebase functions:secrets:set SMTP2GO_PASSWORD --project qualidade`). As origens aceitas por ambiente estão em `firebase/functions/.env.<id do projeto>`.
+O código das funções fica em `functions/`, com deploy separado do site (o build do Astro não o inclui). Comandos, segredos e testes: `functions/README.md`.
 
 ## Pendências marcadas no código
 
@@ -37,8 +30,8 @@ Buscar pelos nomes abaixo:
 
 | Item | Onde | O que fazer |
 |---|---|---|
-| Formulário em produção | `src/config.ts` (`FORMULARIO_EM_PRODUCAO`) | Ativo em produção desde 31/10/2026, a pedido de Gon. Com `false`, os campos aparecem desabilitados só em produção, com aviso e e-mail alternativo. |
-| Página de Privacidade | `src/pages/privacidade.astro` | Texto aprovado por Gon em 15/10/2026, pendente de revisão jurídica. Marcador entre colchetes: razão social e CNPJ. A data de "Última atualização" vem de `src/lib/datas.mjs`. Prazo de guarda: 90 dias (decisão de 31/10/2026). O provedor do formulário é o Firebase (decisão de 30/10/2026). |
+| Formulário em produção | `src/config.ts` (`FORMULARIO_EM_PRODUCAO`) | `false` até `receberFicha` estar publicada em `gmdb-producao` e Gon pedir a troca. Com `false`, os campos aparecem desabilitados só em produção, com aviso e e-mail alternativo. |
+| Página de Privacidade | `src/pages/privacidade.astro` | Texto aprovado por Gon em 15/10/2026, pendente de revisão jurídica. Marcador entre colchetes: razão social e CNPJ. A data de "Última atualização" vem de `src/lib/datas.mjs`. Prazo de guarda: 90 dias (decisão de 31/10/2026); 30 dias para pedidos que não seguem para análise, hash do IP, região e SMTP2GO incluídos em 4/11/2026. O provedor do formulário é o Firebase (decisão de 30/10/2026). |
 | Formatos, prazos e honorários | `src/pages/servicos/index.astro` (comentário) | Fora do lançamento, conforme o documento de conteúdo. |
 
 ## Idiomas
@@ -60,7 +53,7 @@ src/
     Footer.astro
     Opening.astro           abertura das páginas internas (trilha, rótulo, título, grão)
     Invite.astro            convite final em índigo (esconde a barra de ação ao ser alcançado)
-    ContactForm.astro       o único formulário (função do Firebase), usado na página e no diálogo
+    ContactForm.astro       o único formulário (função receberFicha), usado na página e no diálogo
     ContactDialog.astro     diálogo <dialog> aberto por qualquer "Agendar conversa"
     ActionBar.astro         botão fixo no rodapé da tela em celulares
   pages/                    uma página por endereço em português (12) e, em pages/en/, em inglês (11)

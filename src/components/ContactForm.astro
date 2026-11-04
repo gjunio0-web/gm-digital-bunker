@@ -1,8 +1,8 @@
 ---
 // The one contact form, used by the Contato page and by the dialog.
-// Posts to the Firebase contact function (see firebase/ and README). With JavaScript, the submission
-// goes through fetch() and the page shows the result; without it, the function answers with a redirect.
-import { EMAIL_CONTATO, ENDPOINT_CONTATO, FORMULARIO_ATIVO } from '../config';
+// Sends JSON with fetch() to the receberFicha function (spec 01; see functions/ and README) and shows
+// the result in place, without reloading. Sending needs JavaScript; without it, a notice points to e-mail.
+import { EMAIL_CONTATO, FUNCAO_RECEBER_FICHA, FORMULARIO_ATIVO } from '../config';
 import { t } from '../i18n/ui';
 import { path, type Lang } from '../i18n/routes';
 interface Props { idPrefix?: string; lang?: Lang; }
@@ -13,24 +13,29 @@ const id = (s: string) => `${idPrefix}-${s}`;
 // Role options: stable English values; labels come from ui.ts
 const CARGOS = ['owner', 'ceo', 'director', 'manager', 'specialist', 'external', 'other'] as const;
 ---
-<form class="form" name="contato" method="POST" action={ENDPOINT_CONTATO} novalidate data-contato-form data-desativado={DESATIVADO ? 'true' : undefined} data-sending={u.form.sending} data-err-one={u.form.errSummary(1)} data-err-many={u.form.errSummary(2).replace('2', '{n}')} data-sucesso={`${path('contato', lang)}?enviado=1`} data-err-send={u.form.errSend} data-err-limit={u.form.errLimit} data-email={EMAIL_CONTATO}>
+<p class="form__alert form__sucesso" role="status" tabindex="-1" hidden data-contato-sucesso>{u.form.success}</p>
+<form class="form" name="contato" novalidate data-contato-form data-funcao={FUNCAO_RECEBER_FICHA} data-desativado={DESATIVADO ? 'true' : undefined} data-sending={u.form.sending} data-err-one={u.form.errSummary(1)} data-err-many={u.form.errSummary(2).replace('2', '{n}')} data-err-unavailable={u.form.errUnavailable} data-email={EMAIL_CONTATO}>
   <input type="hidden" name="lang" value={lang} />
+  <input type="hidden" name="pagina" value="" />
   <p class="visually-hidden"><label>{u.form.honeypot} <input name="empresa-site" tabindex="-1" autocomplete="off" /></label></p>
 
   <div class="form__alert" role="alert" tabindex="-1" hidden data-resumo></div>
   {DESATIVADO && (
     <p class="form__aviso">{u.form.notice} <a href={`mailto:${EMAIL_CONTATO}`}>{EMAIL_CONTATO}</a>.</p>
   )}
+  {!DESATIVADO && (
+    <noscript><p class="form__aviso">{u.form.noScript} <a href={`mailto:${EMAIL_CONTATO}`}>{EMAIL_CONTATO}</a>.</p></noscript>
+  )}
 
   <div class="form__field">
     <label for={id('nome')}>{u.form.name} <span>{u.form.required}</span></label>
     <p class="form__erro" id={id('nome-erro')} hidden>{u.form.errName}</p>
-    <input id={id('nome')} name="nome" type="text" autocomplete="name" required aria-required="true" aria-describedby={id('nome-erro')} disabled={DESATIVADO} />
+    <input id={id('nome')} name="nome" maxlength="120" type="text" autocomplete="name" required aria-required="true" aria-describedby={id('nome-erro')} disabled={DESATIVADO} />
   </div>
   <div class="form__field">
     <label for={id('empresa')}>{u.form.company} <span>{u.form.required}</span></label>
     <p class="form__erro" id={id('empresa-erro')} hidden>{u.form.errCompany}</p>
-    <input id={id('empresa')} name="empresa" type="text" autocomplete="organization" required aria-required="true" aria-describedby={id('empresa-erro')} disabled={DESATIVADO} />
+    <input id={id('empresa')} name="empresa" maxlength="160" type="text" autocomplete="organization" required aria-required="true" aria-describedby={id('empresa-erro')} disabled={DESATIVADO} />
   </div>
   <div class="form__field">
     <label for={id('cargo')}>{u.form.role} <span>{u.form.required}</span></label>
@@ -43,18 +48,18 @@ const CARGOS = ['owner', 'ceo', 'director', 'manager', 'specialist', 'external',
   <div class="form__field">
     <label for={id('email')}>{u.form.email} <span>{u.form.required}</span></label>
     <p class="form__erro" id={id('email-erro')} hidden>{u.form.errEmail}</p>
-    <input id={id('email')} name="email" type="email" autocomplete="email" required aria-required="true" aria-describedby={id('email-erro')} disabled={DESATIVADO} />
+    <input id={id('email')} name="email" maxlength="254" type="email" autocomplete="email" required aria-required="true" aria-describedby={id('email-erro')} disabled={DESATIVADO} />
   </div>
   <div class="form__field">
     <label for={id('site')}>{u.form.website} <span>{u.form.optional}</span></label>
     <p class="form__ajuda" id={id('site-ajuda')}>{u.form.websiteHelp}</p>
     <p class="form__erro" id={id('site-erro')} hidden>{u.form.errWebsite}</p>
-    <input id={id('site')} name="site" type="url" inputmode="url" autocomplete="url" aria-describedby={`${id('site-ajuda')} ${id('site-erro')}`} disabled={DESATIVADO} />
+    <input id={id('site')} name="site" maxlength="300" type="url" inputmode="url" autocomplete="url" aria-describedby={`${id('site-ajuda')} ${id('site-erro')}`} disabled={DESATIVADO} />
   </div>
   <div class="form__field">
     <label for={id('mensagem')}>{u.form.message} <span>{u.form.optional}</span></label>
     <p class="form__ajuda" id={id('mensagem-ajuda')}>{u.form.messageHelp}</p>
-    <textarea id={id('mensagem')} name="mensagem" rows="5" aria-describedby={id('mensagem-ajuda')} disabled={DESATIVADO}></textarea>
+    <textarea id={id('mensagem')} name="mensagem" rows="5" maxlength="4000" aria-describedby={id('mensagem-ajuda')} disabled={DESATIVADO}></textarea>
   </div>
   <div class="form__foot">
     <button type="submit" class="btn btn--primary" disabled={DESATIVADO}>{u.form.submit}</button>
@@ -64,6 +69,7 @@ const CARGOS = ['owner', 'ceo', 'director', 'manager', 'specialist', 'external',
 
 <style>
   .form { display: flex; flex-direction: column; gap: 24px; }
+  .form[hidden] { display: none; }
   .form__field { display: flex; flex-direction: column; gap: 8px; }
   .form label { font-weight: 600; font-size: 16px; color: var(--ink); }
   .form label span { font-weight: 400; color: var(--muted); }
@@ -88,6 +94,9 @@ const CARGOS = ['owner', 'ceo', 'director', 'manager', 'specialist', 'external',
   // Client-side validation (on blur and on submit), per the information architecture.
   // Fields are listed in visual order, so focus goes to the first invalid one from the top.
   document.querySelectorAll<HTMLFormElement>('[data-contato-form]').forEach((form) => {
+    // Path of the page the form is sent from (spec 01, origem.pagina)
+    const pagina = form.querySelector<HTMLInputElement>('[name="pagina"]');
+    if (pagina) pagina.value = location.pathname;
     const campos = ['nome', 'empresa', 'cargo', 'email', 'site'];
     const rx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     // Website: optional; scheme may be omitted (https:// is added). Returns the normalized URL or null.
@@ -132,39 +141,54 @@ const CARGOS = ['owner', 'ceo', 'director', 'manager', 'specialist', 'external',
         return;
       }
       if (resumo) resumo.hidden = true;
-      // Send the website with its scheme
-      const site = form.querySelector<HTMLInputElement>('[name="site"]');
-      if (site && site.value.trim()) site.value = normalizaSite(site.value.trim()) ?? site.value;
+      e.preventDefault();
       const btn = form.querySelector<HTMLButtonElement>('button[type="submit"]');
       const rotulo = btn?.textContent || '';
       if (btn) { btn.disabled = true; btn.textContent = form.dataset.sending || '…'; }
-      // Send with fetch; on success go to the contact page's confirmation line
-      e.preventDefault();
-      const falha = (texto: string, campos: string[] = []) => {
-        campos.forEach((c) => valida(c));
+      // Error line with the e-mail link; fields flagged by the server get their own message too
+      const falha = (texto: string, camposServidor: string[] = [], comEmail = true) => {
+        camposServidor.forEach((c) => {
+          const el = form.querySelector<HTMLElement>(`[name="${c}"]`);
+          const msg = el ? form.querySelector<HTMLElement>(`#${el.id}-erro`) : null;
+          el?.setAttribute('aria-invalid', 'true');
+          if (msg) msg.hidden = false;
+        });
         if (resumo) {
           resumo.hidden = false;
-          resumo.textContent = `${texto} `;
-          const a = document.createElement('a');
-          a.href = `mailto:${form.dataset.email}`;
-          a.textContent = form.dataset.email || '';
-          resumo.append(a, '.');
+          resumo.textContent = comEmail ? `${texto} ` : texto;
+          if (comEmail) {
+            const a = document.createElement('a');
+            a.href = `mailto:${form.dataset.email}`;
+            a.textContent = form.dataset.email || '';
+            resumo.append(a, '.');
+          }
           resumo.focus();
         }
         if (btn) { btn.disabled = false; btn.textContent = rotulo; }
       };
-      fetch(form.action, {
+      // Fields go as typed (the server keeps the original and normalizes apart)
+      fetch(form.dataset.funcao || '', {
         method: 'POST',
-        headers: { Accept: 'application/json' },
-        body: new URLSearchParams(new FormData(form) as unknown as Record<string, string>),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.fromEntries(new FormData(form))),
       })
         .then(async (r) => {
           const corpo = await r.json().catch(() => ({}));
-          if (r.ok && corpo.ok) { location.assign(form.dataset.sucesso || '/'); return; }
-          if (r.status === 429) falha(form.dataset.errLimit || '');
-          else falha(form.dataset.errSend || '', Array.isArray(corpo.erros) ? corpo.erros : []);
+          if (r.status === 201) {
+            // Success: the confirmation line takes the form's place
+            const ok = form.previousElementSibling as HTMLElement | null;
+            form.hidden = true;
+            if (ok?.hasAttribute('data-contato-sucesso')) { ok.hidden = false; ok.focus(); }
+            return;
+          }
+          if (r.status === 400 && Array.isArray(corpo.erros) && corpo.erros.length) {
+            const n = corpo.erros.length;
+            falha(n === 1 ? (form.dataset.errOne || '') : (form.dataset.errMany || '').replace('{n}', String(n)), corpo.erros, false);
+            return;
+          }
+          falha(form.dataset.errUnavailable || '');
         })
-        .catch(() => falha(form.dataset.errSend || ''));
+        .catch(() => falha(form.dataset.errUnavailable || ''));
     });
   });
 </script>
