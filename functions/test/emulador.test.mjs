@@ -1,6 +1,7 @@
 // End-to-end test against the Firebase emulators (functions + firestore), run by `npm run emulador`.
-// Cases: a valid ficha, the honeypot, an invalid ficha and a ficha above the per-e-mail limit.
-import { test } from 'node:test';
+// Reception: a valid ficha, the honeypot, an invalid ficha, an origin not allowed and the per-e-mail limit.
+// Qualification (the trigger runs with the simulated model): analisar, responder_breve and descartar.
+import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 const PROJETO = 'gmdb-qualidade';
@@ -15,24 +16,77 @@ const envia = (corpo, origem = ORIGEM) =>
 const le = (caminho) => fetch(`${FIRESTORE}/${caminho}`, { headers: { Authorization: 'Bearer owner' } }).then((r) => r.json());
 const lista = async (caminho) => (await le(caminho)).documents ?? [];
 
+// More than 5 fichas come from the same IP here: raise the per-IP limit for the run (per-e-mail stays at 3).
+before(async () => {
+  const r = await fetch(`${FIRESTORE}/config/pipeline?updateMask.fieldPaths=limiteFichasPorIpPorHora`, {
+    method: 'PATCH',
+    headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: { limiteFichasPorIpPorHora: { integerValue: '50' } } }),
+  });
+  assert.equal(r.status, 200);
+});
+
 const valida = { nome: 'Teste', empresa: 'ACME', cargo: 'ceo', email: 'teste@acme.com.br', site: 'acme.com.br', mensagem: '', lang: 'pt-BR', pagina: '/contato' };
 
-test('valid ficha: 201, stored in state recebida with event and expurgoEm = recebidaEm + 90 days', async () => {
+// Waits until the qualificar trigger has written the ficha.
+const qualificada = async (id) => {
+  for (let i = 0; i < 40; i++) {
+    const f = (await le(`fichas/${id}`)).fields;
+    if (f?.qualificacao || f?.erro?.mapValue) return f;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`ficha ${id} not qualified`);
+};
+const evento = async (id, tipo) => (await lista(`fichas/${id}/eventos`)).find((e) => e.fields.tipo.stringValue === tipo);
+
+test('valid ficha: 201, stored with the recebida event and expurgoEm = recebidaEm + 90 days', async () => {
   const res = await envia(valida);
   assert.equal(res.status, 201);
   const { id } = await res.json();
   const f = (await le(`fichas/${id}`)).fields;
-  assert.equal(f.estado.stringValue, 'recebida');
   assert.equal(f.original.mapValue.fields.site.stringValue, 'acme.com.br');
   assert.equal(f.normalizado.mapValue.fields.site.stringValue, 'https://acme.com.br');
   assert.equal(f.origem.mapValue.fields.pagina.stringValue, '/contato');
   assert.match(f.origem.mapValue.fields.ip.stringValue, /^[0-9a-f]{64}$/);
   const dias = (Date.parse(f.expurgoEm.timestampValue) - Date.parse(f.recebidaEm.timestampValue)) / DIA_MS;
   assert.equal(dias, 90);
-  const eventos = await lista(`fichas/${id}/eventos`);
-  assert.equal(eventos.length, 1);
-  assert.equal(eventos[0].fields.tipo.stringValue, 'recebida');
+  assert.ok(await evento(id, 'recebida'));
   assert.equal(f.erro.nullValue, null);
+});
+
+test('qualificar: corporate e-mail, no message, decision role: analisar, coletando (autoAnalisar default)', async () => {
+  const { id } = await (await envia({ ...valida, email: 'q1@acme.com.br' })).json();
+  const f = await qualificada(id);
+  const q = f.qualificacao.mapValue.fields;
+  assert.equal(q.decisao.stringValue, 'analisar');
+  assert.equal(q.dominioCorporativo.booleanValue, true);
+  assert.equal(q.cargoDecisor.booleanValue, true);
+  assert.equal(q.siteResolvido.stringValue, 'https://acme.com.br');
+  assert.equal(q.classificacaoMensagem.nullValue, null);
+  assert.equal(f.estado.stringValue, 'coletando');
+  const dias = (Date.parse(f.expurgoEm.timestampValue) - Date.parse(f.recebidaEm.timestampValue)) / DIA_MS;
+  assert.equal(dias, 90);
+  assert.equal((await evento(id, 'qualificada')).fields.detalhe.mapValue.fields.decisao.stringValue, 'analisar');
+});
+
+test('qualificar: free e-mail without message: resposta_breve, expurgoEm = recebidaEm + 30 days', async () => {
+  const { id } = await (await envia({ ...valida, email: 'q2@gmail.com', site: '' })).json();
+  const f = await qualificada(id);
+  assert.equal(f.qualificacao.mapValue.fields.decisao.stringValue, 'responder_breve');
+  assert.equal(f.estado.stringValue, 'resposta_breve');
+  const dias = (Date.parse(f.expurgoEm.timestampValue) - Date.parse(f.recebidaEm.timestampValue)) / DIA_MS;
+  assert.equal(dias, 30);
+});
+
+test('qualificar: message classified as spam (simulated model): descartada, metricas incremented', async () => {
+  const { id } = await (await envia({ ...valida, email: 'q3@acme.com.br', mensagem: 'isto é spam' })).json();
+  const f = await qualificada(id);
+  const q = f.qualificacao.mapValue.fields;
+  assert.equal(q.decisao.stringValue, 'descartar');
+  assert.equal(q.classificacaoMensagem.mapValue.fields.tipoContato.stringValue, 'spam');
+  assert.equal(f.estado.stringValue, 'descartada');
+  const meses = await lista('metricas');
+  assert.ok(meses.some((m) => Number(m.fields.qualificacao.mapValue.fields.descartar?.integerValue) >= 1));
 });
 
 test('honeypot: 200 and nothing stored', async () => {
