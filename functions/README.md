@@ -22,7 +22,7 @@ Região de todas as funções: `REGIAO` em `src/config.ts` (`southamerica-east1`
 | `src/receberFicha.ts` | Recepção: CORS, campo-isca, limites, gravação, evento, e-mails |
 | `src/email.ts` | E-mails pela API HTTP do SMTP2GO (no emulador, só registra no log) |
 | `src/expurgar.ts` | Expurgo diário da árvore de cada ficha vencida |
-| `src/seed.ts` | Grava `config/pipeline` e `config/metodo` uma única vez |
+| `src/seed.ts` | Grava `config/pipeline` e `config/metodo`; rodado de novo, só acrescenta campos ausentes, sem sobrescrever |
 | `scripts/textos.mjs` | Copia os textos dos e-mails de `src/i18n/ui.ts` do site para `src/textos.generated.ts` (roda no build) |
 | `../firestore.rules`, `../firestore.indexes.json` | Regras (spec 01, seção 5) e índices |
 
@@ -69,7 +69,7 @@ gcloud secrets versions list IP_HASH_SALT --project gmdb-qualidade
 
 ```
 cd functions && npm ci
-npm run seed -- gmdb-qualidade        # once; does not overwrite existing documents
+npm run seed -- gmdb-qualidade        # re-runnable; only adds missing fields, never overwrites
 cd ..
 firebase deploy --project qualidade --only functions:receberFicha,functions:expurgar,firestore:rules,firestore:indexes
 ```

@@ -7,7 +7,7 @@
   "scripts": {
     "textos": "node scripts/textos.mjs",
     "build": "npm run textos && tsc -p tsconfig.json",
-    "test": "npm run build && node --test test/validacao.test.mjs test/textos.test.mjs",
+    "test": "npm run build && node --test test/validacao.test.mjs test/textos.test.mjs test/pipeline.test.mjs",
     "test:emulador": "node --test test/emulador.test.mjs",
     "emulador": "npm run build && firebase emulators:exec --project gmdb-qualidade --only functions,firestore \"npm run test:emulador\"",
     "seed": "npm run build && node lib/seed.js"

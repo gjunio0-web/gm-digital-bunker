@@ -1,10 +1,12 @@
-// One-off: writes config/pipeline with the spec 01 defaults and an empty config/metodo.
+// One-off and re-runnable: writes config/pipeline with the spec 01 defaults and an empty config/metodo.
 // Usage (from functions/, with gcloud credentials for the project):
 //   npm run seed -- gmdb-qualidade
-// Refuses to overwrite existing documents: they are adjustable without deploy and may have been edited.
+// Existing documents are never overwritten (they are adjustable without deploy and may have been
+// edited): only fields missing from config/pipeline are added, e.g. the fontes block of spec 01 v0.3.
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { PIPELINE_PADRAO } from './config.js';
+import { camposAusentes } from './seedCampos.js';
 
 const projectId = process.argv[2];
 if (!projectId) {
@@ -15,14 +17,21 @@ initializeApp({ projectId });
 const db = getFirestore();
 
 for (const [caminho, dados] of [
-  ['config/pipeline', { ...PIPELINE_PADRAO }],
+  ['config/pipeline', PIPELINE_PADRAO as unknown as Record<string, unknown>],
   ['config/metodo', {}],
 ] as const) {
-  try {
-    await db.doc(caminho).create(dados);
+  const ref = db.doc(caminho);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    await ref.create(dados);
     console.log(`${caminho}: created`);
-  } catch (e) {
-    if ((e as { code?: number }).code === 6) console.log(`${caminho}: already exists, left unchanged`);
-    else throw e;
+    continue;
   }
+  const faltam = camposAusentes(dados, snap.data() ?? {});
+  if (!Object.keys(faltam).length) {
+    console.log(`${caminho}: already complete, left unchanged`);
+    continue;
+  }
+  await ref.update(faltam);
+  console.log(`${caminho}: added ${Object.keys(faltam).join(', ')}`);
 }
