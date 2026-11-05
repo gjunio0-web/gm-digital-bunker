@@ -6,6 +6,7 @@ import { datas } from '../lib/datas.mjs';
 // Draft approved by Gon on 2026-10-15, pending legal review. Bracketed items are placeholders:
 // legal entity and CNPJ. The form provider is Firebase (decided on 2026-10-30); storage region,
 // IP hash, 30-day rule and SMTP2GO added on 2026-11-04 (spec 01, approved by Gon).
+// AI processing, enrichment sources and international transfer added on 2026-11-05 (spec 03, section 8.2, approved by Gon).
 // "Last updated" comes from the page's date in src/lib/datas.mjs, so it changes with the text.
 const atualizado = datas['pt-BR'].privacidade.atualizado;
 const atualizadoTexto = new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${atualizado}T00:00:00Z`));
@@ -25,18 +26,20 @@ const atualizadoTexto = new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month
 
       <h2>Quais dados o site recolhe</h2>
       <p>O formulário de contato pede nome, empresa, cargo, e-mail e, se a pessoa quiser, o site da empresa e uma mensagem. Esses são os únicos dados pessoais que o site requisita.</p>
+      <p>Para preparar a resposta a quem envia o formulário de contato, a GM Digital Bunker™ complementa os dados do formulário com informações públicas sobre a empresa: registro na Receita Federal, conteúdo do site e do perfil público da empresa no Instagram, notícias e bases comerciais de empresas consultadas pelo domínio. Sobre quem preencheu o formulário, apenas dados profissionais: cargo, função, senioridade, empresa atual e localização, obtidos de fonte comercial a partir do e-mail corporativo ou de buscas públicas. Não são coletados trajetória profissional, redes sociais pessoais nem dados de familiares.</p>
       <p>Ao navegar, o servidor que hospeda o site registra, como qualquer servidor, o endereço IP e dados técnicos da conexão (navegador, páginas acessadas, data e hora).</p>
       <p>O site não usa cookies de rastreamento nem ferramentas de análise de audiência. A única informação guardada no navegador é a preferência de tema (escuro ou claro), que fica no próprio aparelho e não é enviada a lugar nenhum.</p>
 
       <h2>Para que os dados servem</h2>
       <p>Os dados do formulário servem apenas para responder ao contato e, se for o caso, marcar a conversa inicial. Não são usados para envio de novidades ou propaganda, não são vendidos nem cedidos a terceiros. A base legal é o interesse legítimo em responder a quem pede contato e, quando a conversa avança, as providências preliminares a um contrato.</p>
+      <p>Esses dados alimentam uma análise preliminar feita por modelos de inteligência artificial, que ajuda a preparar a resposta. A resposta é escrita e enviada por uma pessoa; a única mensagem automática é a confirmação de recebimento.</p>
       <p>Os registros técnicos do servidor servem à segurança e ao funcionamento do site.</p>
 
       <h2>Por quanto tempo ficam guardados</h2>
-      <p>Os dados do formulário são mantidos enquanto durar o contato e, no máximo, por 90 dias após a última troca de mensagens, quando são excluídos. Pedidos que não seguem para análise são excluídos em 30 dias. O endereço IP de quem envia o formulário é guardado apenas como resumo criptográfico (hash), sem o endereço em si, e serve só para limitar envios repetidos. Se o contato resultar em contrato, os dados passam a ser tratados conforme o contrato. Os registros técnicos do servidor seguem o prazo de retenção do provedor de hospedagem.</p>
+      <p>Os dados do formulário são mantidos enquanto durar o contato e, no máximo, por 90 dias após a última troca de mensagens, quando são excluídos. Pedidos que não seguem para análise são excluídos em 30 dias. As informações obtidas para a análise seguem os mesmos prazos e são excluídas junto com os dados do formulário. O endereço IP de quem envia o formulário é guardado apenas como resumo criptográfico (hash), sem o endereço em si, e serve só para limitar envios repetidos. Se o contato resultar em contrato, os dados passam a ser tratados conforme o contrato. Os registros técnicos do servidor seguem o prazo de retenção do provedor de hospedagem.</p>
 
       <h2>Quem mais tem acesso</h2>
-      <p>O formulário é recebido e armazenado pelo Firebase, serviço do Google Cloud, em servidores na região de São Paulo, nos termos da política de privacidade do Google. Os e-mails de confirmação ao interessado e de aviso à GM Digital Bunker™ são enviados pelo SMTP2GO. As fontes tipográficas são servidas pelo próprio site. Nenhum outro serviço recebe dados dos visitantes.</p>
+      <p>O formulário é recebido e armazenado pelo Firebase, serviço do Google Cloud, em servidores na região de São Paulo, nos termos da política de privacidade do Google. Os e-mails de confirmação ao interessado e de aviso à GM Digital Bunker™ são enviados pelo SMTP2GO. As fontes tipográficas são servidas pelo próprio site. A análise preliminar é processada pela Anthropic, nos Estados Unidos, que recebe os dados do formulário e realiza buscas públicas cujas consultas podem conter o nome da pessoa e da empresa. Quando a empresa usa e-mail corporativo, esse endereço é enviado ao Hunter, na França, para confirmar dados profissionais. Outros serviços consultados recebem apenas dados da empresa (número do CNPJ, domínio do site ou perfil público), nunca dados da pessoa. A França integra a União Europeia, reconhecida pela ANPD como de nível adequado de proteção; para os Estados Unidos, a transferência segue as garantias contratuais do fornecedor. Nenhum outro serviço recebe dados dos visitantes.</p>
 
       <h2>Seus direitos</h2>
       <p>A LGPD garante a qualquer pessoa o direito de saber se seus dados são tratados, de acessá-los, corrigi-los, pedir a exclusão e revogar o consentimento quando ele for a base do tratamento. Basta escrever para <a href={`mailto:${EMAIL_CONTATO}`}>{EMAIL_CONTATO}</a>; a resposta é dada no prazo da lei. Quem entender que seus direitos não foram respeitados pode recorrer à Autoridade Nacional de Proteção de Dados (ANPD).</p>
