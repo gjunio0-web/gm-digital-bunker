@@ -1,0 +1,11 @@
+rules_version = '2';
+// Client access to Cloud Storage is closed. The method files live in the private bucket
+// <project>-metodo, read only by the functions' service account through IAM (spec 01, section 6);
+// these rules matter only if Firebase Storage is ever enabled, and in the emulator.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

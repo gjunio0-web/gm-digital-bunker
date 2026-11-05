@@ -1,6 +1,6 @@
 # Funções do Firebase – análise preliminar de fichas
 
-Item 1 da spec 01: `receberFicha` (HTTPS, recebe o formulário) e `expurgar` (agendada, diária às 03:00 de São Paulo). Item 3: `qualificar` (gatilho na criação da ficha; regras em código e, quando há mensagem ou o cargo é "other", uma chamada curta ao modelo de `config/pipeline.modeloColeta`).
+Item 1 da spec 01: `receberFicha` (HTTPS, recebe o formulário) e `expurgar` (agendada, diária às 03:00 de São Paulo). Item 3: `qualificar` (gatilho na criação da ficha; regras em código e, quando há mensagem ou o cargo é "other", uma chamada curta ao modelo de `config/pipeline.modeloColeta`). Item 5: `publicarMetodo` (HTTPS privada; publica a pasta `metodo/` no bucket privado e grava `config/metodo`).
 
 **Ramos:** trabalho só em `quality-env`. `main` (produção) só avança por pedido explícito de Gon.
 
@@ -27,6 +27,11 @@ Região de todas as funções: `REGIAO` em `src/config.ts` (`southamerica-east1`
 | `src/claude.ts` | Messages API da Claude por HTTP, com `SISTEMA_BASE` em cache e saída por esquema JSON (no emulador, classificação simulada) |
 | `src/custo.ts` | Custo estimado por chamada, pela tabela de preços por modelo |
 | `src/configurar.ts` | Grava campos de `config/pipeline` (só com autorização de Gon) |
+| `src/metodoArquivos.ts` | Ordem fixa dos cinco arquivos do método, resumo (bytes, SHA-256), filtro por seção |
+| `src/metodo.ts` | Leitura do método publicado pelas funções, com cache por versão na instância |
+| `src/publicarMetodo.ts` | Publicação do método: grava os arquivos em `gs://<projeto>-metodo/metodo/<versao>/`, conta os tokens pela Claude API e grava `config/metodo` |
+| `scripts/publicar-metodo.mjs` | Chama `publicarMetodo` com a identidade de quem roda (Cloud Shell) |
+| `../storage.rules` | Acesso de cliente ao Storage fechado (vale no emulador e se o Firebase Storage for ativado) |
 | `src/seed.ts` | Grava `config/pipeline` e `config/metodo`; rodado de novo, só acrescenta campos ausentes, sem sobrescrever |
 | `scripts/textos.mjs` | Copia os textos dos e-mails de `src/i18n/ui.ts` do site para `src/textos.generated.ts` (roda no build) |
 | `../firestore.rules`, `../firestore.indexes.json` | Regras (spec 01, seção 5) e índices |
@@ -36,8 +41,8 @@ Região de todas as funções: `REGIAO` em `src/config.ts` (`southamerica-east1`
 ```
 cd functions
 npm ci
-npm test            # build + testes de validação, textos, pipeline e regras da qualificação
-npm run emulador    # build + emuladores (functions, firestore) + teste de ponta a ponta
+npm test            # build + testes de validação, textos, pipeline, regras da qualificação e método
+npm run emulador    # build + emuladores (functions, firestore, storage) + teste de ponta a ponta
 ```
 
 O emulador precisa de Java e do Firebase CLI e lê os segredos de `functions/.secret.local` (fora do Git):
@@ -87,3 +92,24 @@ Rode os comandos `firebase` a partir da raiz do repositório: o apelido `qualida
 O deploy roda o build antes (`predeploy`). `--only functions:receberFicha,functions:expurgar` evita que o CLI apague funções que não estão neste código (a antiga `contato`, enquanto existir).
 
 Produção: os mesmos passos com `producao` / `gmdb-producao`, só por pedido explícito de Gon. Depois, `FORMULARIO_EM_PRODUCAO = true` em `src/config.ts` do site.
+
+## Método (`metodo/`)
+
+Os cinco arquivos ficam em `metodo/` na raiz do repositório. Depois de qualquer commit que os altere:
+
+```
+cd functions
+npm run publicar-metodo -- gmdb-qualidade
+```
+
+O script recusa alterações sem commit em `metodo/`; a versão é o hash curto do último commit que alterou a pasta. A função `publicarMetodo` é privada (sem invocação pública) e recebe a identidade de quem roda o script. As versões anteriores ficam no bucket, porque cada ficha registra a versão que usou.
+
+Bucket (uma vez por projeto): privado, com acesso uniforme e bloqueio de acesso público; leitura só pela conta de serviço das funções:
+
+```
+gcloud storage buckets create gs://gmdb-qualidade-metodo --project gmdb-qualidade --location southamerica-east1 --uniform-bucket-level-access --public-access-prevention
+gcloud storage buckets add-iam-policy-binding gs://gmdb-qualidade-metodo --member serviceAccount:91928500287-compute@developer.gserviceaccount.com --role roles/storage.objectAdmin
+```
+
+(`objectAdmin` porque a própria função de publicação grava os arquivos; as demais funções só leem.)
+

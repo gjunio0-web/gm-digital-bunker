@@ -1,8 +1,13 @@
 // End-to-end test against the Firebase emulators (functions + firestore), run by `npm run emulador`.
 // Reception: a valid ficha, the honeypot, an invalid ficha, an origin not allowed and the per-e-mail limit.
 // Qualification (the trigger runs with the simulated model): analisar, responder_breve and descartar.
+// Method: publicarMetodo stores the files and config/metodo; leMetodo reads them back in the fixed order.
 import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { initializeApp } from 'firebase-admin/app';
+import { leMetodo } from '../lib/metodo.js';
+import { ARQUIVOS_METODO } from '../lib/metodoArquivos.js';
 
 const PROJETO = 'gmdb-qualidade';
 const FUNCAO = `http://127.0.0.1:5001/${PROJETO}/southamerica-east1/receberFicha`;
@@ -112,4 +117,34 @@ test('above the per-e-mail limit (3 per day): 429', async () => {
   for (let i = 0; i < 3; i++) assert.equal((await envia(outro)).status, 201);
   // Same address in another case still counts (normalized e-mail).
   assert.equal((await envia({ ...outro, email: 'limite@ACME.com.br' })).status, 429);
+});
+
+test('publicarMetodo: files stored, config/metodo written; leMetodo returns the fixed order and the chosen sections', async () => {
+  const raiz = new URL('../../metodo/', import.meta.url);
+  const arquivos = [...ARQUIVOS_METODO].reverse().map((nome) => ({ nome, conteudo: readFileSync(new URL(nome, raiz), 'utf8') }));
+  const res = await fetch(`http://127.0.0.1:5001/${PROJETO}/southamerica-east1/publicarMetodo`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versao: 'abc1234', arquivos }),
+  });
+  assert.equal(res.status, 200);
+  const r = await res.json();
+  assert.equal(r.caminhoStorage, `gs://${PROJETO}-metodo/metodo/abc1234/`);
+  const cfg = (await le('config/metodo')).fields;
+  assert.equal(cfg.versao.stringValue, 'abc1234');
+  assert.equal(Object.keys(cfg.arquivos.mapValue.fields).length, 5);
+  const bytes = Number(cfg.arquivos.mapValue.fields['livro-selecao.md'].mapValue.fields.bytes.integerValue);
+  assert.equal(bytes, readFileSync(new URL('livro-selecao.md', raiz)).length);
+
+  initializeApp({ projectId: PROJETO });
+  const m = await leMetodo({ 'mapa-alavancas.md': [1, 2, 3, 4], 'glossario.md': 'tudo' });
+  assert.equal(m.versao, 'abc1234');
+  assert.deepEqual(m.blocos.map((b) => b.nome), ['glossario.md', 'mapa-alavancas.md']);
+  assert.equal(m.blocos[0].texto, readFileSync(new URL('glossario.md', raiz), 'utf8'));
+  assert.doesNotMatch(m.blocos[1].texto, /^## 5\. /m);
+});
+
+test('publicarMetodo: refuses an incomplete set of files', async () => {
+  const res = await fetch(`http://127.0.0.1:5001/${PROJETO}/southamerica-east1/publicarMetodo`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versao: 'abc1234', arquivos: [{ nome: 'glossario.md', conteudo: 'x' }] }),
+  });
+  assert.equal(res.status, 400);
 });

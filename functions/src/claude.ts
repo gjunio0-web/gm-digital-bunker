@@ -57,6 +57,23 @@ export async function chamaClaude(c: Chamada): Promise<Resposta> {
   }
 }
 
+// Tokens of one text as a system block (count_tokens, free; an estimate per the docs): the count
+// with the block minus the count of the same request without it.
+export async function contaTokens(chave: string, modelo: string, texto: string): Promise<number> {
+  const conta = async (system?: string) => {
+    const res = await fetch(`${API}/count_tokens`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': chave, 'anthropic-version': VERSAO },
+      body: JSON.stringify({ model: modelo, ...(system ? { system: [{ type: 'text', text: system }] } : {}), messages: [{ role: 'user', content: '.' }] }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    const r = (await res.json().catch(() => null)) as { input_tokens?: number; error?: { type?: string } } | null;
+    if (!res.ok || typeof r?.input_tokens !== 'number') throw new Error(`count_tokens HTTP ${res.status}: ${r?.error?.type ?? 'no body'}`);
+    return r.input_tokens;
+  };
+  return (await conta(texto)) - (await conta());
+}
+
 // Emulator stand-in for the qualification call: keyword rules over the message, zero usage.
 export function simulaClassificacao(mensagem: string | null): Resposta {
   const m = (mensagem ?? '').toLowerCase();
