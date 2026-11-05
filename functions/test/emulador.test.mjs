@@ -5,11 +5,14 @@
 import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { initializeApp } from 'firebase-admin/app';
+import { deleteApp, initializeApp } from 'firebase-admin/app';
 import { leMetodo } from '../lib/metodo.js';
 import { ARQUIVOS_METODO } from '../lib/metodoArquivos.js';
 
 const PROJETO = 'gmdb-qualidade';
+// The in-process admin app must talk to the emulators, never to the real project.
+process.env.FIRESTORE_EMULATOR_HOST ??= '127.0.0.1:8080';
+process.env.FIREBASE_STORAGE_EMULATOR_HOST ??= '127.0.0.1:9199';
 const FUNCAO = `http://127.0.0.1:5001/${PROJETO}/southamerica-east1/receberFicha`;
 const FIRESTORE = `http://127.0.0.1:8080/v1/projects/${PROJETO}/databases/(default)/documents`;
 const ORIGEM = 'http://localhost:4321';
@@ -119,7 +122,7 @@ test('above the per-e-mail limit (3 per day): 429', async () => {
   assert.equal((await envia({ ...outro, email: 'limite@ACME.com.br' })).status, 429);
 });
 
-test('publicarMetodo: files stored, config/metodo written; leMetodo returns the fixed order and the chosen sections', async () => {
+test('publicarMetodo: files stored, config/metodo written; leMetodo returns the fixed order and the chosen sections', { timeout: 30_000 }, async () => {
   const raiz = new URL('../../metodo/', import.meta.url);
   const arquivos = [...ARQUIVOS_METODO].reverse().map((nome) => ({ nome, conteudo: readFileSync(new URL(nome, raiz), 'utf8') }));
   const res = await fetch(`http://127.0.0.1:5001/${PROJETO}/southamerica-east1/publicarMetodo`, {
@@ -134,8 +137,14 @@ test('publicarMetodo: files stored, config/metodo written; leMetodo returns the 
   const bytes = Number(cfg.arquivos.mapValue.fields['livro-selecao.md'].mapValue.fields.bytes.integerValue);
   assert.equal(bytes, readFileSync(new URL('livro-selecao.md', raiz)).length);
 
-  initializeApp({ projectId: PROJETO });
-  const m = await leMetodo({ 'mapa-alavancas.md': [1, 2, 3, 4], 'glossario.md': 'tudo' });
+  // In-process admin app against the emulators; deleted at the end so the test runner can exit.
+  const app = initializeApp({ projectId: PROJETO });
+  let m;
+  try {
+    m = await leMetodo({ 'mapa-alavancas.md': [1, 2, 3, 4], 'glossario.md': 'tudo' });
+  } finally {
+    await deleteApp(app);
+  }
   assert.equal(m.versao, 'abc1234');
   assert.deepEqual(m.blocos.map((b) => b.nome), ['glossario.md', 'mapa-alavancas.md']);
   assert.equal(m.blocos[0].texto, readFileSync(new URL('glossario.md', raiz), 'utf8'));
