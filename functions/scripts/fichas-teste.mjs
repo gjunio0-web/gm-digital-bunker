@@ -1,7 +1,8 @@
 // Test fichas for the collection (phase 3): written straight into Firestore, never through the form,
 // so no e-mail is sent. Names and e-mails are invented; companies are real (domain from the file).
-// Usage (from functions/, in Cloud Shell): npm run fichas-teste -- gmdb-qualidade ~/fichas-teste.json
-// The file is a JSON list of {nome, empresa, cargo, email, site, mensagem}; it stays outside the repo.
+// Usage (from functions/, in Cloud Shell): npm run fichas-teste -- gmdb-qualidade test/fichas-teste.json
+// The file is a JSON list of {nome, empresa, cargo, email, site, mensagem}; test/fichas-teste.json holds
+// the phase 3 sample (invented names and e-mails; a fictitious company on a reserved .example domain).
 // Steps: create the fichas (qualificar runs on creation), wait for the qualification, move the
 // "analisar" ones to "coletando", wait for "coletada" and print a report per stage (no personal data).
 import { readFileSync } from 'node:fs';
