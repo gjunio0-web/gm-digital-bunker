@@ -3,6 +3,8 @@
 // Usage (from functions/, in Cloud Shell): npm run fichas-teste -- gmdb-qualidade test/fichas-teste.json
 // The file is a JSON list of {nome, empresa, cargo, email, site, mensagem}; test/fichas-teste.json holds
 // the phase 3 sample (invented names and e-mails; a fictitious company on a reserved .example domain).
+// Re-run: npm run fichas-teste -- gmdb-qualidade --reexecutar moves the test fichas in "coletada" back
+// to "coletando"; stages already "concluida" with the same method version are skipped, failed ones run again.
 // Steps: create the fichas (qualificar runs on creation), wait for the qualification, move the
 // "analisar" ones to "coletando", wait for "coletada" and print a report per stage (no personal data).
 import { readFileSync } from 'node:fs';
@@ -29,8 +31,17 @@ async function ate(ref, condicao, limiteMs, passoMs = 3000) {
   }
 }
 
-const entradas = JSON.parse(readFileSync(arquivo, 'utf8'));
+const reexecutar = arquivo === '--reexecutar';
+const entradas = reexecutar ? [] : JSON.parse(readFileSync(arquivo, 'utf8'));
 const criadas = [];
+if (reexecutar) {
+  const q = await db.collection('fichas').where('teste', '==', true).where('estado', '==', 'coletada').get();
+  for (const d of q.docs) {
+    await d.ref.update({ estado: 'coletando', estadoEm: Timestamp.now() });
+    criadas.push({ empresa: d.get('original.empresa'), ref: d.ref, decisao: 'analisar', reexecucao: true });
+    console.log(`re-run ${d.id} – ${d.get('original.empresa')}`);
+  }
+}
 for (const e of entradas) {
   const v = valida({ ...e, lang: 'pt-BR', 'empresa-site': '' });
   if (!v.ok) throw new Error(`invalid test ficha for ${e.empresa}: ${v.erros.join(', ')}`);
@@ -52,7 +63,7 @@ for (const e of entradas) {
   console.log(`created ${ref.id} – ${e.empresa}`);
 }
 
-for (const c of criadas) {
+for (const c of criadas.filter((x) => !x.reexecucao)) {
   const d = await ate(c.ref, (x) => x?.qualificacao || x?.erro, 120_000);
   c.decisao = d?.qualificacao?.decisao ?? `erro: ${d?.erro?.mensagem ?? 'timeout'}`;
   if (d?.estado === 'qualificada' && d.qualificacao.decisao === 'analisar') await c.ref.update({ estado: 'coletando', estadoEm: Timestamp.now() });

@@ -13,7 +13,7 @@ import { noEmulador } from './claude.js';
 import { custoDe } from './custo.js';
 import { CARGOS_ROTULO } from './textos.generated.js';
 import { dominioDe } from './qualificacao.js';
-import { chamaColeta, chaveUrl, type RespostaColeta } from './coleta/claudeColeta.js';
+import { chamaColeta, chaveUrl, ErroColeta, type RespostaColeta } from './coleta/claudeColeta.js';
 import { formatoInvalido, normalizaEnvelope, type Envelope, type FonteColeta } from './coleta/envelope.js';
 import { CHAVES, ETAPAS, INSTRUCAO_CANDIDATOS, MAX_BUSCAS, MAX_LEITURAS, METODO_DA_ETAPA, mensagemDaEtapa, type DadosFicha, type Etapa } from './coleta/etapas.js';
 import { leSite, type LeituraSite } from './coleta/site.js';
@@ -39,11 +39,16 @@ interface Contexto {
   totais: { tokensEntrada: number; tokensSaida: number; buscas: number; usd: number };
 }
 
-interface Saida {
-  envelope: Envelope;
-  uso: { tokensEntrada: number; tokensSaida: number; buscas: number; usd: number };
+// What a stage consumed, kept even when it fails: model calls (complete or partial) and provider calls.
+interface Rastro {
+  rs: RespostaColeta[];
   chamadas: Partial<Record<Fornecedor, number>>;
 }
+
+const registraChamada = (c: Contexto, t: Rastro, f: Fornecedor) => {
+  c.chamadas[f]++;
+  t.chamadas[f] = (t.chamadas[f] ?? 0) + 1;
+};
 
 const agoraIso = () => new Date().toISOString();
 
@@ -54,7 +59,7 @@ function pode(c: Contexto, f: Fornecedor): boolean {
 }
 
 // One model call of a stage, with the search budget reserved and refunded.
-async function chama(c: Contexto, etapa: Etapa, usuario: string, maxBuscas: number, valida: (j: unknown) => string | null): Promise<RespostaColeta> {
+async function chama(c: Contexto, t: Rastro, etapa: Etapa, usuario: string, maxBuscas: number, valida: (j: unknown) => string | null): Promise<RespostaColeta> {
   const reserva = Math.max(0, Math.min(maxBuscas, c.buscasRestantes));
   c.buscasRestantes -= reserva;
   try {
@@ -62,9 +67,12 @@ async function chama(c: Contexto, etapa: Etapa, usuario: string, maxBuscas: numb
     const metodo = met ? (await leMetodo(met)).blocos.map((b) => ({ nome: b.nome, texto: b.texto })) : [];
     const r = await chamaColeta({ chave: c.chaves.claude, modelo: c.p.modeloColeta, metodo, usuario, maxBuscas: reserva, maxLeituras: MAX_LEITURAS, valida });
     c.buscasRestantes += reserva - Math.min(reserva, r.buscas);
+    t.rs.push(r);
     return r;
   } catch (e) {
-    c.buscasRestantes += reserva;
+    const gastas = e instanceof ErroColeta ? Math.min(reserva, e.parcial.buscas) : 0;
+    if (e instanceof ErroColeta) t.rs.push(e.parcial);
+    c.buscasRestantes += reserva - gastas;
     throw e;
   }
 }
@@ -86,11 +94,15 @@ function simula(etapa: Etapa, fontes: FonteColeta[]): RespostaColeta {
 }
 
 // Model call of a stage with the envelope, then source verification.
-async function envelopeDaEtapa(c: Contexto, etapa: Etapa, fontes: FonteColeta[], insumos: Record<string, unknown>, maxBuscas: number, extraVerificadas: string[] = []): Promise<{ env: Envelope; r: RespostaColeta }> {
+async function envelopeDaEtapa(c: Contexto, t: Rastro, etapa: Etapa, fontes: FonteColeta[], insumos: Record<string, unknown>, maxBuscas: number, extraVerificadas: string[] = []): Promise<Envelope> {
   const usuario = mensagemDaEtapa(etapa, c.ficha, c.qualificacao, fontes, insumos);
-  const r = noEmulador() ? simula(etapa, fontes) : await chama(c, etapa, usuario, maxBuscas, (j) => formatoInvalido(j, CHAVES[etapa]));
+  let r: RespostaColeta;
+  if (noEmulador()) {
+    r = simula(etapa, fontes);
+    t.rs.push(r);
+  } else r = await chama(c, t, etapa, usuario, maxBuscas, (j) => formatoInvalido(j, CHAVES[etapa]));
   const verificadas = new Set([...fontes.map((f) => chaveUrl(f.url)), ...extraVerificadas.map(chaveUrl), ...r.urlsConsultadas]);
-  return { env: normalizaEnvelope(r.json as Record<string, any>, verificadas, agoraIso()), r };
+  return normalizaEnvelope(r.json as Record<string, any>, verificadas, agoraIso());
 }
 
 const usoDe = (c: Contexto, rs: RespostaColeta[]) => {
@@ -109,9 +121,8 @@ const usoDe = (c: Contexto, rs: RespostaColeta[]) => {
 
 // --- Stages ---------------------------------------------------------------------------------
 
-async function empresaDigital(c: Contexto): Promise<Saida> {
+async function empresaDigital(c: Contexto, t: Rastro): Promise<Envelope> {
   const fontes: FonteColeta[] = [];
-  const chamadas: Partial<Record<Fornecedor, number>> = {};
   const site = c.qualificacao.siteResolvido as string | null;
   const leitura = site && !noEmulador() ? await leSite(site) : null;
   c.site = leitura;
@@ -120,8 +131,7 @@ async function empresaDigital(c: Contexto): Promise<Saida> {
   let apollo: unknown = 'não consultado';
   const dominio = site ? new URL(site).hostname.replace(/^www\./, '') : null;
   if (dominio && pode(c, 'apollo')) {
-    c.chamadas.apollo++;
-    chamadas.apollo = 1;
+    registraChamada(c, t, 'apollo');
     const a = await consultaApollo(c.chaves.apollo, dominio).catch(() => ({ status: 0, dados: null }));
     apollo = a.dados ?? `sem correspondência (HTTP ${a.status})`;
     if (a.dados) fontes.push({ url: `https://api.apollo.io/api/v1/organizations/enrich?domain=${dominio}`, titulo: 'Apollo – enriquecimento de empresa pelo domínio', tipo: 'api', consultadoEm: agoraIso() });
@@ -129,8 +139,7 @@ async function empresaDigital(c: Contexto): Promise<Saida> {
 
   let instagram: Instagram | null = null;
   if (leitura?.instagram && pode(c, 'apify')) {
-    c.chamadas.apify++;
-    chamadas.apify = 1;
+    registraChamada(c, t, 'apify');
     instagram = (await consultaApify(c.chaves.apify, leitura.instagram).catch(() => ({ status: 0, dados: null }))).dados;
     if (instagram) fontes.push({ url: `https://www.instagram.com/${instagram.perfil}/`, titulo: 'Instagram da empresa (Apify)', tipo: 'api', consultadoEm: agoraIso() });
   }
@@ -143,7 +152,7 @@ async function empresaDigital(c: Contexto): Promise<Saida> {
     apollo,
     instagram: instagram ? { ...instagram, origemPerfil: 'site' } : leitura?.instagram ? `perfil linkado no site: ${leitura.instagram} (sem dados do Apify)` : 'sem link de Instagram no site',
   };
-  const { env, r } = await envelopeDaEtapa(c, 'empresa_digital', fontes, insumos, MAX_BUSCAS.empresa_digital);
+  const env = await envelopeDaEtapa(c, t, 'empresa_digital', fontes, insumos, MAX_BUSCAS.empresa_digital);
 
   // Profile found by search: Apify only if the profile name cites the company (spec 03, 4.2).
   const ig = env.conteudo.instagram as Record<string, any> | null;
@@ -151,8 +160,7 @@ async function empresaDigital(c: Contexto): Promise<Saida> {
     const palavras = c.ficha.empresa.toLowerCase().normalize('NFD').replace(/[^\p{L}\p{N} ]/gu, '').split(/\s+/).filter((w) => w.length >= 4);
     const perfil = String(ig.perfil).replace(/^@/, '').toLowerCase();
     if (palavras.some((w) => perfil.includes(w))) {
-      c.chamadas.apify++;
-      chamadas.apify = 1;
+      registraChamada(c, t, 'apify');
       const d = (await consultaApify(c.chaves.apify, perfil).catch(() => ({ status: 0, dados: null }))).dados;
       if (d) {
         const idx = env.fontes.push({ url: `https://www.instagram.com/${d.perfil}/`, titulo: 'Instagram (Apify), perfil achado por busca', tipo: 'api', consultadoEm: agoraIso() }) - 1;
@@ -161,12 +169,10 @@ async function empresaDigital(c: Contexto): Promise<Saida> {
       }
     }
   }
-  return { envelope: env, uso: usoDe(c, [r]), chamadas };
+  return env;
 }
 
-async function empresaRegistro(c: Contexto): Promise<Saida> {
-  const chamadas: Partial<Record<Fornecedor, number>> = {};
-  const rs: RespostaColeta[] = [];
+async function empresaRegistro(c: Contexto, t: Rastro): Promise<Envelope> {
   const fontes: FonteColeta[] = [];
   const extras: string[] = [];
   let candidatos = (c.site?.cnpjs ?? []).map((cnpj) => ({ cnpj, origem: 'site', url: c.site!.paginas[0]?.url ?? '' }));
@@ -179,8 +185,7 @@ async function empresaRegistro(c: Contexto): Promise<Saida> {
       `<insumo nome="empresa_digital">\n${JSON.stringify({ presencaGeografica: c.conteudos.empresa_digital?.presencaGeografica ?? null, apollo: c.conteudos.empresa_digital?.apollo ?? null })}\n</insumo>`,
       INSTRUCAO_CANDIDATOS,
     ].join('\n');
-    const r = await chama(c, 'empresa_registro', usuario, MAX_BUSCAS.empresa_registro, (j) => (Array.isArray((j as any)?.candidatos) ? null : 'candidatos missing'));
-    rs.push(r);
+    const r = await chama(c, t, 'empresa_registro', usuario, MAX_BUSCAS.empresa_registro, (j) => (Array.isArray((j as any)?.candidatos) ? null : 'candidatos missing'));
     extras.push(...r.urlsConsultadas);
     buscasPrincipal = 0;
     candidatos = ((r.json as any).candidatos as any[])
@@ -193,8 +198,7 @@ async function empresaRegistro(c: Contexto): Promise<Saida> {
   const registros: (RegistroBrasilApi | { cnpj: string; erro: string })[] = [];
   for (const k of candidatos) {
     if (!pode(c, 'brasilapi')) break;
-    c.chamadas.brasilapi++;
-    chamadas.brasilapi = (chamadas.brasilapi ?? 0) + 1;
+    registraChamada(c, t, 'brasilapi');
     const b = await consultaBrasilApi(k.cnpj).catch(() => ({ status: 0, registro: null }));
     if (b.registro) {
       registros.push(b.registro);
@@ -207,39 +211,31 @@ async function empresaRegistro(c: Contexto): Promise<Saida> {
     registrosBrasilApi: registros.length ? registros : undefined,
     empresaDigital: c.conteudos.empresa_digital ?? 'etapa empresa_digital sem conteúdo',
   };
-  const { env, r } = await envelopeDaEtapa(c, 'empresa_registro', fontes, insumos, buscasPrincipal, extras);
-  rs.push(r);
-  return { envelope: env, uso: usoDe(c, rs), chamadas };
+  return envelopeDaEtapa(c, t, 'empresa_registro', fontes, insumos, buscasPrincipal, extras);
 }
 
-async function empresaPessoas(c: Contexto): Promise<Saida> {
-  const chamadas: Partial<Record<Fornecedor, number>> = {};
+async function empresaPessoas(c: Contexto, t: Rastro): Promise<Envelope> {
   const fontes: FonteColeta[] = [];
   let hunter: unknown = 'não consultado';
   if (!c.qualificacao.dominioCorporativo) hunter = 'não consultado: e-mail de domínio gratuito';
   else if (pode(c, 'hunter')) {
-    c.chamadas.hunter++;
-    chamadas.hunter = 1;
+    registraChamada(c, t, 'hunter');
     const h = await consultaHunter(c.chaves.hunter, c.email).catch(() => ({ status: 0, dados: null }));
     hunter = h.dados ?? `sem correspondência (HTTP ${h.status})`;
     if (h.dados) fontes.push({ url: 'https://api.hunter.io/v2/people/find', titulo: 'Hunter – enriquecimento pelo e-mail corporativo', tipo: 'api', consultadoEm: agoraIso() });
   }
-  const { env, r } = await envelopeDaEtapa(c, 'empresa_pessoas', fontes, { hunter }, MAX_BUSCAS.empresa_pessoas);
-  return { envelope: env, uso: usoDe(c, [r]), chamadas };
+  return envelopeDaEtapa(c, t, 'empresa_pessoas', fontes, { hunter }, MAX_BUSCAS.empresa_pessoas);
 }
 
-async function simples(c: Contexto, etapa: Etapa, insumos: Record<string, unknown>): Promise<Saida> {
-  const { env, r } = await envelopeDaEtapa(c, etapa, [], insumos, MAX_BUSCAS[etapa]);
-  return { envelope: env, uso: usoDe(c, [r]), chamadas: {} };
-}
+const simples = (c: Contexto, t: Rastro, etapa: Etapa, insumos: Record<string, unknown>) => envelopeDaEtapa(c, t, etapa, [], insumos, MAX_BUSCAS[etapa]);
 
-const EXECUTA: Record<Etapa, (c: Contexto) => Promise<Saida>> = {
+const EXECUTA: Record<Etapa, (c: Contexto, t: Rastro) => Promise<Envelope>> = {
   empresa_digital: empresaDigital,
   empresa_registro: empresaRegistro,
   empresa_pessoas: empresaPessoas,
-  empresa_noticias: (c) => simples(c, 'empresa_noticias', {}),
-  setor: (c) => simples(c, 'setor', { empresa_registro: c.conteudos.empresa_registro ?? 'sem conteúdo', empresa_digital: c.conteudos.empresa_digital ?? 'sem conteúdo' }),
-  mercado: (c) => simples(c, 'mercado', { setor: c.conteudos.setor ?? 'sem conteúdo' }),
+  empresa_noticias: (c, t) => simples(c, t, 'empresa_noticias', {}),
+  setor: (c, t) => simples(c, t, 'setor', { empresa_registro: c.conteudos.empresa_registro ?? 'sem conteúdo', empresa_digital: c.conteudos.empresa_digital ?? 'sem conteúdo' }),
+  mercado: (c, t) => simples(c, t, 'mercado', { setor: c.conteudos.setor ?? 'sem conteúdo' }),
 };
 
 // Runs one stage and writes its document; never throws (a failed stage does not stop the others).
@@ -252,36 +248,35 @@ async function roda(c: Contexto, etapa: Etapa): Promise<void> {
   }
   const inicio = Date.now();
   await doc.update({ status: 'executando', iniciadoEm: Timestamp.now() });
-  const usoVazio = { chamadasBrasilapi: 0, chamadasApollo: 0, chamadasApify: 0, chamadasHunter: 0 };
+  const t: Rastro = { rs: [], chamadas: {} };
+  let resultado: { status: 'concluida'; envelope: Envelope } | { status: 'falhou'; mensagem: string };
   try {
-    const s = await EXECUTA[etapa](c);
-    c.conteudos[etapa] = s.envelope.conteudo;
-    c.totais.tokensEntrada += s.uso.tokensEntrada;
-    c.totais.tokensSaida += s.uso.tokensSaida;
-    c.totais.buscas += s.uso.buscas;
-    c.totais.usd += s.uso.usd;
-    await doc.update({
-      status: 'concluida',
-      ...s.envelope,
-      modelo: noEmulador() ? 'simulado' : c.p.modeloColeta,
-      uso: {
-        tokensEntrada: s.uso.tokensEntrada, tokensSaida: s.uso.tokensSaida, buscas: s.uso.buscas, duracaoMs: Date.now() - inicio,
-        chamadasBrasilapi: s.chamadas.brasilapi ?? 0, chamadasApollo: s.chamadas.apollo ?? 0, chamadasApify: s.chamadas.apify ?? 0, chamadasHunter: s.chamadas.hunter ?? 0,
-      },
-      concluidoEm: Timestamp.now(),
-      tentativa: FieldValue.increment(1),
-    });
+    resultado = { status: 'concluida', envelope: await EXECUTA[etapa](c, t) };
   } catch (e) {
-    const mensagem = String((e as Error)?.message ?? e).slice(0, 300);
-    logger.warn('coletar: stage failed', { id: c.id, etapa, mensagem });
+    resultado = { status: 'falhou', mensagem: String((e as Error)?.message ?? e).slice(0, 300) };
+    logger.warn('coletar: stage failed', { id: c.id, etapa, mensagem: resultado.mensagem });
+  }
+  // Usage counted whether the stage succeeded or not (partial model calls and provider calls included).
+  const u = usoDe(c, t.rs);
+  c.totais.tokensEntrada += u.tokensEntrada;
+  c.totais.tokensSaida += u.tokensSaida;
+  c.totais.buscas += u.buscas;
+  c.totais.usd += u.usd;
+  const uso = {
+    tokensEntrada: u.tokensEntrada, tokensSaida: u.tokensSaida, buscas: u.buscas, duracaoMs: Date.now() - inicio,
+    chamadasBrasilapi: t.chamadas.brasilapi ?? 0, chamadasApollo: t.chamadas.apollo ?? 0, chamadasApify: t.chamadas.apify ?? 0, chamadasHunter: t.chamadas.hunter ?? 0,
+  };
+  const modelo = noEmulador() ? 'simulado' : c.p.modeloColeta;
+  if (resultado.status === 'concluida') {
+    c.conteudos[etapa] = resultado.envelope.conteudo;
+    await doc.update({ status: 'concluida', ...resultado.envelope, modelo, uso, concluidoEm: Timestamp.now(), tentativa: FieldValue.increment(1) });
+  } else {
     await doc.update({
-      status: 'falhou', conteudo: {}, fontes: [], afirmacoes: [], confianca: { grau: 'baixa', motivo: `falha: ${mensagem}` },
-      modelo: c.p.modeloColeta, uso: { tokensEntrada: 0, tokensSaida: 0, buscas: 0, duracaoMs: Date.now() - inicio, ...usoVazio },
-      concluidoEm: Timestamp.now(), tentativa: FieldValue.increment(1),
+      status: 'falhou', conteudo: {}, fontes: [], afirmacoes: [], confianca: { grau: 'baixa', motivo: `falha: ${resultado.mensagem}` },
+      modelo, uso, concluidoEm: Timestamp.now(), tentativa: FieldValue.increment(1),
     });
   }
-  const status = (await doc.get()).get('status');
-  await c.ref.collection('eventos').add({ em: Timestamp.now(), ator: { tipo: 'ia', id: 'coletar' }, tipo: 'coleta_etapa', detalhe: { etapa, status } });
+  await c.ref.collection('eventos').add({ em: Timestamp.now(), ator: { tipo: 'ia', id: 'coletar' }, tipo: 'coleta_etapa', detalhe: { etapa, status: resultado.status } });
 }
 
 export const coletar = onDocumentUpdated(

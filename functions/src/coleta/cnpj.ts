@@ -63,7 +63,13 @@ export function filtraBrasilApi(cnpj: string, r: Record<string, unknown>): Regis
   };
 }
 
+// Two more attempts after HTTP 429 (rate limit), waiting 3 s and then 6 s.
 export async function consultaBrasilApi(cnpj: string): Promise<{ status: number; registro: RegistroBrasilApi | null }> {
-  const { status, corpo } = await chamaJson(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {}, 15_000);
+  let { status, corpo } = await chamaJson(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {}, 15_000);
+  for (const espera of [3_000, 6_000]) {
+    if (status !== 429) break;
+    await new Promise((r) => setTimeout(r, espera));
+    ({ status, corpo } = await chamaJson(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {}, 15_000));
+  }
   return { status, registro: status === 200 && corpo && typeof corpo === 'object' ? filtraBrasilApi(cnpj, corpo as Record<string, unknown>) : null };
 }

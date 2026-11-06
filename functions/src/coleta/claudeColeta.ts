@@ -26,6 +26,17 @@ export interface RespostaColeta {
 
 type Bloco = { type: string; text?: string; content?: unknown; url?: string };
 
+// Output budget of a collection call. Adaptive thinking is on by default on Claude Haiku 5.5 and
+// counts toward max_tokens (Claude docs, effort); 8,000 was not enough in the phase 3 test.
+export const MAX_TOKENS_COLETA = 32_000;
+
+// Failure that still carries what the call consumed, so the stage cost is not lost.
+export class ErroColeta extends Error {
+  constructor(mensagem: string, readonly parcial: RespostaColeta) {
+    super(mensagem);
+  }
+}
+
 // URL comparison key: no scheme, no www, no fragment, no trailing slash.
 export const chaveUrl = (u: string) => u.trim().replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/#.*$/, '').replace(/\/+$/, '').toLowerCase();
 
@@ -95,12 +106,17 @@ export async function chamaColeta(p: PedidoColeta): Promise<RespostaColeta> {
   for (let rodada = 0; rodada < 2; rodada++) {
     let texto = '';
     for (let volta = 0; volta < 4; volta++) {
-      const r = await envia(p.chave, { model: p.modelo, max_tokens: 8000, system, messages, ...(tools.length ? { tools } : {}) });
+      let r;
+      try {
+        r = await envia(p.chave, { model: p.modelo, max_tokens: MAX_TOKENS_COLETA, system, messages, ...(tools.length ? { tools } : {}) });
+      } catch (e) {
+        throw new ErroColeta(String((e as Error).message), total);
+      }
       soma(r.usage);
       urlsDosResultados(r.content).forEach((u) => total.urlsConsultadas.add(chaveUrl(u)));
       messages.push({ role: 'assistant', content: r.content });
       if (r.stop_reason === 'pause_turn') continue;
-      if (r.stop_reason !== 'end_turn') throw new Error(`Claude API stop_reason ${r.stop_reason}`);
+      if (r.stop_reason !== 'end_turn') throw new ErroColeta(`Claude API stop_reason ${r.stop_reason} (output ${r.usage.output_tokens} tokens)`, total);
       texto = r.content.filter((b) => b.type === 'text').map((b) => b.text ?? '').join('');
       break;
     }
@@ -117,5 +133,5 @@ export async function chamaColeta(p: PedidoColeta): Promise<RespostaColeta> {
     // One correction round, without new searches (spec 02, section 0, item 4).
     messages.push({ role: 'user', content: `A resposta anterior não está no formato pedido (${erro.slice(0, 300)}). Sem novas buscas, devolva somente o objeto JSON corrigido.` });
   }
-  throw new Error(`invalid answer after correction: ${erro?.slice(0, 200)}`);
+  throw new ErroColeta(`invalid answer after correction: ${erro?.slice(0, 200)}`, total);
 }
