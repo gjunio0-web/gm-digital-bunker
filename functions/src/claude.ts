@@ -3,8 +3,8 @@
 // In the emulator nothing is sent: simulaClassificacao answers instead.
 import type { Uso } from './custo.js';
 
-const API = 'https://api.anthropic.com/v1/messages';
-const VERSAO = '2023-06-01';
+export const API = 'https://api.anthropic.com/v1/messages';
+export const VERSAO = '2023-06-01';
 
 // SISTEMA_BASE, literal text of spec 02, section 0.
 export const SISTEMA_BASE =

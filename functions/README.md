@@ -1,6 +1,6 @@
 # Funções do Firebase – análise preliminar de fichas
 
-Item 1 da spec 01: `receberFicha` (HTTPS, recebe o formulário) e `expurgar` (agendada, diária às 03:00 de São Paulo). Item 3: `qualificar` (gatilho na criação da ficha; regras em código e, quando há mensagem ou o cargo é "other", uma chamada curta ao modelo de `config/pipeline.modeloColeta`). Item 5: `publicarMetodo` (HTTPS privada; publica a pasta `metodo/` no bucket privado e grava `config/metodo`).
+Item 1 da spec 01: `receberFicha` (HTTPS, recebe o formulário) e `expurgar` (agendada, diária às 03:00 de São Paulo). Item 3: `qualificar` (gatilho na criação da ficha; regras em código e, quando há mensagem ou o cargo é "other", uma chamada curta ao modelo de `config/pipeline.modeloColeta`). Item 4: `coletar` (gatilho quando a ficha passa a `coletando`; seis etapas com o modelo de coleta, busca na web e as fontes da spec 03). Item 5: `publicarMetodo` (HTTPS privada; publica a pasta `metodo/` no bucket privado e grava `config/metodo`).
 
 **Ramos:** trabalho só em `quality-env`. `main` (produção) só avança por pedido explícito de Gon.
 
@@ -32,6 +32,15 @@ Região de todas as funções: `REGIAO` em `src/config.ts` (`southamerica-east1`
 | `src/publicarMetodo.ts` | Publicação do método: grava os arquivos em `gs://<projeto>-metodo/metodo/<versao>/`, conta os tokens pela Claude API e grava `config/metodo` |
 | `scripts/publicar-metodo.mjs` | Chama `publicarMetodo` com a identidade de quem roda (Cloud Shell) |
 | `../storage.rules` | Acesso de cliente ao Storage fechado (vale no emulador e se o Firebase Storage for ativado) |
+| `src/coletar.ts` | Coleta: trava por transação, ordem das seis etapas, gravação de `coleta/{etapa}`, eventos, custo |
+| `src/coleta/rede.ts` | Leitura protegida de endereços vindos do formulário (sem rede interna, até 2 MB, 10 s) e chamadas aos fornecedores |
+| `src/coleta/site.ts` | Até seis páginas do site, links, Instagram, tecnologias, CNPJs (privacidade e termos só para o CNPJ) |
+| `src/coleta/cnpj.ts` | Padrão e dígitos verificadores do CNPJ; BrasilAPI só pelo número; sócios só com nome e qualificação |
+| `src/coleta/fornecedores.ts` | Apollo (empresa pelo domínio), Apify (Instagram da empresa), Hunter (só os campos da tabela 5.1 da spec 03) |
+| `src/coleta/claudeColeta.ts` | Chamadas da coleta: busca e leitura de páginas como ferramentas do servidor, JSON validado no código, uma correção |
+| `src/coleta/envelope.ts` | Envelope da spec 02 §2: fontes verificadas, índices, regra de preenchimento |
+| `src/coleta/etapas.ts`, `textosSpec.ts` | Tetos de busca, arquivos do método, instruções e esquemas de cada etapa (textos da spec 02) |
+| `scripts/fichas-teste.mjs` | Fichas de teste gravadas direto no Firestore (sem e-mails), levadas à coleta, com relatório por etapa |
 | `src/seed.ts` | Grava `config/pipeline` e `config/metodo`; rodado de novo, só acrescenta campos ausentes, sem sobrescrever |
 | `scripts/textos.mjs` | Copia os textos dos e-mails de `src/i18n/ui.ts` do site para `src/textos.generated.ts` (roda no build) |
 | `../firestore.rules`, `../firestore.indexes.json` | Regras (spec 01, seção 5) e índices |
@@ -51,9 +60,12 @@ O emulador precisa de Java e do Firebase CLI e lê os segredos de `functions/.se
 SMTP2GO_API_KEY=emulator-not-used
 IP_HASH_SALT=emulator-salt
 CLAUDE_API_KEY=emulator-not-used
+APOLLO_API_KEY=emulator-not-used
+APIFY_TOKEN=emulator-not-used
+HUNTER_API_KEY=emulator-not-used
 ```
 
-No emulador nenhum e-mail é enviado e a Claude API não é chamada (a qualificação usa uma classificação simulada).
+No emulador nenhum e-mail é enviado e nenhuma API externa é chamada: a qualificação e a coleta usam respostas simuladas, e o site e os fornecedores não são consultados.
 
 ## Segredos (Secret Manager)
 
@@ -66,6 +78,10 @@ openssl rand -hex 32 | firebase functions:secrets:set IP_HASH_SALT --data-file=-
 firebase functions:secrets:set SMTP2GO_API_KEY --project qualidade
 # Typed at the masked prompt (bound to qualificar and the later pipeline functions)
 firebase functions:secrets:set CLAUDE_API_KEY --project qualidade
+# Enrichment keys (bound to coletar only; the function cannot be deployed before they exist)
+firebase functions:secrets:set APOLLO_API_KEY --project gmdb-qualidade
+firebase functions:secrets:set APIFY_TOKEN --project gmdb-qualidade
+firebase functions:secrets:set HUNTER_API_KEY --project gmdb-qualidade
 ```
 
 Conferir só a existência, sem imprimir o valor:

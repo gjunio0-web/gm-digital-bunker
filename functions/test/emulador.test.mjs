@@ -2,6 +2,7 @@
 // Reception: a valid ficha, the honeypot, an invalid ficha, an origin not allowed and the per-e-mail limit.
 // Qualification (the trigger runs with the simulated model): analisar, responder_breve and descartar.
 // Method: publicarMetodo stores the files and config/metodo; leMetodo reads them back in the fixed order.
+// Collection (after the method is published): six stages with the simulated model, ficha in coletada.
 import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -156,4 +157,26 @@ test('publicarMetodo: refuses an incomplete set of files', async () => {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versao: 'abc1234', arquivos: [{ nome: 'glossario.md', conteudo: 'x' }] }),
   });
   assert.equal(res.status, 400);
+});
+
+test('coletar: analisar with autoAnalisar on goes through the six stages (simulated) to coletada', { timeout: 60_000 }, async () => {
+  const { id } = await (await envia({ ...valida, email: 'q4@acme.com.br', mensagem: 'Queremos sair das planilhas.' })).json();
+  let f;
+  for (let i = 0; i < 120; i++) {
+    f = (await le(`fichas/${id}`)).fields;
+    if (f.estado.stringValue === 'coletada' || f.erro?.mapValue) break;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  assert.equal(f.estado.stringValue, 'coletada');
+  assert.equal(f.versaoMetodo.stringValue, 'abc1234');
+  const etapas = await lista(`fichas/${id}/coleta`);
+  assert.equal(etapas.length, 6);
+  for (const e of etapas) {
+    assert.equal(e.fields.status.stringValue, 'concluida', e.fields.etapa.stringValue);
+    assert.equal(e.fields.modelo.stringValue, 'simulado');
+    assert.equal(e.fields.versaoMetodo.stringValue, 'abc1234');
+  }
+  const eventos = await lista(`fichas/${id}/eventos`);
+  assert.equal(eventos.filter((e) => e.fields.tipo.stringValue === 'coleta_iniciada').length, 1);
+  assert.equal(eventos.filter((e) => e.fields.tipo.stringValue === 'coleta_etapa').length, 6);
 });

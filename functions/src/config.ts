@@ -19,6 +19,10 @@ export const SITE = 'gmdigitalbunker.com.br';
 export const SMTP2GO_API_KEY = defineSecret('SMTP2GO_API_KEY');
 export const IP_HASH_SALT = defineSecret('IP_HASH_SALT');
 export const CLAUDE_API_KEY = defineSecret('CLAUDE_API_KEY');
+// Enrichment keys (spec 01, section 5; spec 03, section 8.1), bound only to coletar.
+export const APOLLO_API_KEY = defineSecret('APOLLO_API_KEY');
+export const APIFY_TOKEN = defineSecret('APIFY_TOKEN');
+export const HUNTER_API_KEY = defineSecret('HUNTER_API_KEY');
 
 // Enrichment providers of config/pipeline.fontes (spec 01 v0.3, section 2; spec 03, section 7.1).
 // A provider without its key in Secret Manager stays inactive without error.
