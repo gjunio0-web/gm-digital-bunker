@@ -1,5 +1,6 @@
 // Single place for constants shared by the functions (spec 01, section 4).
 import { defineSecret } from 'firebase-functions/params';
+import { PESOS_PADRAO, type Pesos } from './graduacao.js';
 
 // Region of every function (the Firestore database lives in the same region).
 export const REGIAO = 'southamerica-east1';
@@ -51,6 +52,8 @@ export const PIPELINE_PADRAO = {
     apify: { ativo: true, maxChamadasPorFicha: 1 },
     hunter: { ativo: true, maxChamadasPorFicha: 1 },
   },
+  // Lead grading weights (spec 04, sections 2.1 to 2.4; spec 01, config/pipeline), versioned.
+  pesosQualificacao: PESOS_PADRAO,
 } as const;
 
 export interface Pipeline {
@@ -64,6 +67,7 @@ export interface Pipeline {
   limiteFichasPorEmailPorDia: number;
   limiteFichasPorIpPorHora: number;
   fontes: Record<Fornecedor, Fonte>;
+  pesosQualificacao: Pesos;
 }
 
 export const DIA_MS = 24 * 60 * 60 * 1000;

@@ -1,4 +1,6 @@
-// Cloud Functions entry point (spec 01). Item 1: reception of the form and the daily purge; item 3: qualification; item 4: collection; item 5: method publication.
+// Cloud Functions entry point (spec 01). Item 1: reception of the form and the daily purge; item 5: method
+// publication; method change of 6/11/2026 (spec 04): coleta mínima with qualificar and graduar (triagem),
+// then the rest of the collection. qualificar is a retired no-op trigger until it is deleted.
 import { initializeApp } from 'firebase-admin/app';
 
 initializeApp();
@@ -7,4 +9,5 @@ export { receberFicha } from './receberFicha.js';
 export { expurgar } from './expurgar.js';
 export { qualificar } from './qualificar.js';
 export { publicarMetodo } from './publicarMetodo.js';
+export { coletarMinima } from './coletarMinima.js';
 export { coletar } from './coletar.js';

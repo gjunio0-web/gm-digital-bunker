@@ -17,6 +17,9 @@ export interface Chamada {
   modelo: string;
   usuario: string;
   esquema: object;
+  // Method files as extra system blocks, each with cache_control (spec 02, section 0).
+  metodo?: { nome: string; texto: string }[];
+  // Adaptive thinking counts toward max_tokens, so the default leaves room for it.
   maxTokens?: number;
 }
 
@@ -30,8 +33,11 @@ const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export async function chamaClaude(c: Chamada): Promise<Resposta> {
   const corpo = JSON.stringify({
     model: c.modelo,
-    max_tokens: c.maxTokens ?? 2048,
-    system: [{ type: 'text', text: SISTEMA_BASE, cache_control: { type: 'ephemeral' } }],
+    max_tokens: c.maxTokens ?? 16_000,
+    system: [
+      { type: 'text', text: SISTEMA_BASE, cache_control: { type: 'ephemeral' } },
+      ...(c.metodo ?? []).map((m) => ({ type: 'text', text: `<metodo arquivo="${m.nome}">\n${m.texto}\n</metodo>`, cache_control: { type: 'ephemeral' } })),
+    ],
     messages: [{ role: 'user', content: c.usuario }],
     output_config: { format: { type: 'json_schema', schema: c.esquema } },
   });
@@ -40,7 +46,7 @@ export async function chamaClaude(c: Chamada): Promise<Resposta> {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': c.chave, 'anthropic-version': VERSAO },
       body: corpo,
-      signal: AbortSignal.timeout(90_000),
+      signal: AbortSignal.timeout(180_000),
     });
     if ((res.status === 429 || res.status >= 500) && tentativa === 1) {
       await espera(2_000);
@@ -81,7 +87,9 @@ export function simulaClassificacao(mensagem: string | null): Resposta {
   return {
     json: {
       tipoContato, pedido: m ? 'pedido simulado' : null, dor: null, ferramentasCitadas: [], gatilho: null,
-      falaDeProblemaOuFerramenta: 'nenhum', idiomaMensagem: 'pt', observacao: 'classificação simulada no emulador',
+      falaDeProblemaOuFerramenta: m ? 'problema' : 'nenhum', idiomaMensagem: 'pt', observacao: 'classificação simulada no emulador',
+      estruturaTecnologia: { categoria: m ? 'enxuta' : 'sem_sinal', evidencia: 'simulação' },
+      portaIndicada: m.includes('conselho') ? { porta: 'conselho', sinais: ['simulação', 'simulação'] } : { porta: 'indeterminada', sinais: [] },
     },
     uso: { input_tokens: 0, output_tokens: 0 },
   };

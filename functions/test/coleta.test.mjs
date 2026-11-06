@@ -8,7 +8,7 @@ import { instagramDe, linksDe, tecnologiasDe, textoDe } from '../lib/coleta/site
 import { filtraHunter } from '../lib/coleta/fornecedores.js';
 import { formatoInvalido, normalizaEnvelope } from '../lib/coleta/envelope.js';
 import { chaveUrl, extraiJson, urlsDosResultados } from '../lib/coleta/claudeColeta.js';
-import { CHAVES, ETAPAS, mensagemDaEtapa, orcamentoBuscas } from '../lib/coleta/etapas.js';
+import { CHAVES, ETAPAS, mensagemDaEtapa, orcamentoBuscas, orcamentoPrimeiraPassagem } from '../lib/coleta/etapas.js';
 import { ESQUEMAS } from '../lib/coleta/textosSpec.js';
 import { custoDe } from '../lib/custo.js';
 
@@ -106,7 +106,7 @@ test('answer parsing: JSON inside text, URLs from search and fetch results', () 
 test('stage prompts: delimiters, verbatim schema from spec 02, sources with indices, no full e-mail', () => {
   const ficha = { nome: 'Ana', empresa: 'ACME', cargo: 'ceo', rotuloCargo: 'CEO ou presidente', dominioEmail: 'acme.com.br', site: 'https://acme.com.br', mensagem: 'Oi', lang: 'pt-BR' };
   for (const e of ETAPAS) {
-    const m = mensagemDaEtapa(e, ficha, { decisao: 'analisar' }, [{ url: 'https://acme.com.br/', titulo: 'Home', tipo: 'pagina', consultadoEm: 'x' }], { teste: 1 });
+    const m = mensagemDaEtapa(e, ficha, { rotulo: 'qualificacao', valor: { decisao: 'prosseguir' } }, [{ url: 'https://acme.com.br/', titulo: 'Home', tipo: 'pagina', consultadoEm: 'x' }], { teste: 1 });
     assert.match(m, /<ficha>[\s\S]*<\/ficha>/);
     assert.match(m, /\[0\] pagina – Home – https:\/\/acme\.com\.br\//);
     assert.ok(m.includes(ESQUEMAS[e]));
@@ -116,6 +116,21 @@ test('stage prompts: delimiters, verbatim schema from spec 02, sources with indi
 
 test('cost: searches add US$ 0.01 each', () => {
   assert.equal(custoDe('claude-haiku-5-5', { input_tokens: 0, output_tokens: 0 }, 3).usdEstimado, 0.03);
+});
+
+test('first pass: coleta mínima and the remaining stages share one ceiling', () => {
+  assert.equal(orcamentoPrimeiraPassagem(20, 6), 14);
+  assert.equal(orcamentoPrimeiraPassagem(20, 2), 16); // limited to what the four remaining stages can use
+  assert.equal(orcamentoPrimeiraPassagem(20, 25), 0);
+});
+
+test('stage message: coleta mínima gets only the signals block, never the qualification; vagasNoSite asked in empresa_digital', () => {
+  const ficha = { nome: 'Ana', empresa: 'ACME', cargo: 'ceo', rotuloCargo: 'CEO', dominioEmail: 'acme.com.br', site: 'https://acme.com.br', mensagem: null, lang: 'pt-BR' };
+  const m = mensagemDaEtapa('empresa_digital', ficha, { rotulo: 'sinais', valor: { dominioCorporativo: true, siteResolvido: 'https://acme.com.br' } }, [], {});
+  assert.match(m, /<sinais>[\s\S]*siteResolvido[\s\S]*<\/sinais>/);
+  assert.doesNotMatch(m, /<qualificacao>/);
+  assert.match(m, /"vagasNoSite"/);
+  assert.ok(CHAVES.empresa_digital.includes('vagasNoSite'));
 });
 
 test('search budget is per run, limited by the stages that run', () => {

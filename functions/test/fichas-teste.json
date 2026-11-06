@@ -1,12 +1,7 @@
 [
-  { "nome": "Ana Teste", "empresa": "Capal Cooperativa Agroindustrial", "cargo": "director", "email": "teste.gmdb@capal.coop.br", "site": "capal.coop.br",
-    "mensagem": "Somos uma cooperativa agroindustrial e queremos entender onde a IA ajuda no atendimento aos cooperados e no planejamento da produção." },
-  { "nome": "Bruno Teste", "empresa": "Ciser", "cargo": "manager", "email": "teste.gmdb@ciser.com.br", "site": "ciser.com.br",
-    "mensagem": "Temos muitos processos em planilhas entre vendas e produção e queremos avaliar onde a IA pode ajudar." },
-  { "nome": "Carla Teste", "empresa": "GAT Logística", "cargo": "ceo", "email": "teste.gmdb@gatlogistica.com.br", "site": "gatlogistica.com.br",
-    "mensagem": "Recebemos propostas de fornecedores de IA para roteirização e armazenagem e precisamos de uma segunda opinião antes de contratar." },
-  { "nome": "Diego Teste", "empresa": "Elite 90 Pro", "cargo": "owner", "email": "teste.gmdb@coachruiz.com.br", "site": "coachruiz.com.br",
-    "mensagem": "Somos um negócio pequeno de coaching e queremos organizar a triagem de candidatos e o atendimento." },
-  { "nome": "Elisa Teste", "empresa": "Metalúrgica Vale Fictício Ltda", "cargo": "owner", "email": "contato@metalurgica-ficticia.example", "site": "metalurgica-ficticia.example",
-    "mensagem": "Queremos usar IA na produção." }
+  {"nome": "Ana Teste", "empresa": "Capal Cooperativa Agroindustrial", "cargo": "director", "email": "teste.gmdb@capal.coop.br", "site": "capal.coop.br", "mensagem": "Somos uma cooperativa agroindustrial e queremos entender onde a IA ajuda no atendimento aos cooperados e no planejamento da produção.", "pagina": "/servicos/conselho-de-ia"},
+  {"nome": "Bruno Teste", "empresa": "Ciser", "cargo": "manager", "email": "teste.gmdb@ciser.com.br", "site": "ciser.com.br", "mensagem": "Temos muitos processos em planilhas entre vendas e produção e queremos avaliar onde a IA pode ajudar.", "pagina": "/servicos/estrategia-e-plataforma-digital-com-ia"},
+  {"nome": "Carla Teste", "empresa": "GAT Logística", "cargo": "ceo", "email": "teste.gmdb@gatlogistica.com.br", "site": "gatlogistica.com.br", "mensagem": "Recebemos propostas de fornecedores de IA para roteirização e armazenagem e precisamos de uma segunda opinião antes de contratar.", "pagina": "/casos/elite-90-pro"},
+  {"nome": "Diego Teste", "empresa": "Elite 90 Pro", "cargo": "owner", "email": "teste.gmdb@coachruiz.com.br", "site": "coachruiz.com.br", "mensagem": "Somos um negócio pequeno de coaching e queremos organizar a triagem de candidatos e o atendimento.", "pagina": "/metodo/livro"},
+  {"nome": "Elisa Teste", "empresa": "Metalúrgica Vale Fictício Ltda", "cargo": "owner", "email": "contato@metalurgica-ficticia.example", "site": "metalurgica-ficticia.example", "mensagem": "Queremos usar IA na produção.", "pagina": "/contato"}
 ]

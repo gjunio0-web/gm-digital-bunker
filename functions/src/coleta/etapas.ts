@@ -12,10 +12,20 @@ export const MAX_BUSCAS: Record<Etapa, number> = {
 };
 export const MAX_LEITURAS = 2;
 
-// Search budget of one collection run (decision of Gon, 6/11/2026): the per-ficha ceiling applies to each
-// run, not to the sum of runs. A re-run gets a fresh budget, limited to what the stages it runs can use.
+// Stages of the coleta mínima (every ficha) and of the rest of the collection (fichas sent to analysis).
+export const ETAPAS_MINIMAS: readonly Etapa[] = ['empresa_digital', 'empresa_registro'];
+export const ETAPAS_RESTANTES: readonly Etapa[] = ['empresa_pessoas', 'empresa_noticias', 'setor', 'mercado'];
+
+// Search budget of one collection run (spec 01, config/pipeline; decisions of Gon of 6/11/2026): the
+// ceiling applies to each run. A re-run gets a budget of its own, limited to what its stages can use.
 export function orcamentoBuscas(teto: number, etapas: readonly Etapa[]): number {
   return Math.max(0, Math.min(teto, etapas.reduce((t, e) => t + MAX_BUSCAS[e], 0)));
+}
+
+// First pass: the coleta mínima and the remaining stages share one ceiling; the remaining stages get
+// what the coleta mínima left, limited to what they can use.
+export function orcamentoPrimeiraPassagem(teto: number, buscasMinima: number): number {
+  return Math.max(0, Math.min(teto - buscasMinima, orcamentoBuscas(teto, ETAPAS_RESTANTES)));
 }
 
 export const METODO_DA_ETAPA: Partial<Record<Etapa, Partial<Record<ArquivoMetodo, readonly number[] | 'tudo'>>>> = {
@@ -24,11 +34,18 @@ export const METODO_DA_ETAPA: Partial<Record<Etapa, Partial<Record<ArquivoMetodo
 
 export const CHAVES: Record<Etapa, readonly string[]> = {
   empresa_registro: ['confirmado', 'origemCnpj', 'criteriosValidacao', 'candidatosRejeitados', 'escolhido'],
-  empresa_digital: ['oQueVende', 'paraQuem', 'canais', 'propostaDeValorDeclarada', 'produtosOuServicos', 'presencaGeografica', 'sinaisDeMaturidadeDigital', 'canaisDeAtendimento', 'idiomasDoSite', 'cnpjEncontradoNoSite', 'apollo', 'instagram'],
+  empresa_digital: ['oQueVende', 'paraQuem', 'canais', 'propostaDeValorDeclarada', 'produtosOuServicos', 'presencaGeografica', 'sinaisDeMaturidadeDigital', 'canaisDeAtendimento', 'idiomasDoSite', 'cnpjEncontradoNoSite', 'vagasNoSite', 'apollo', 'instagram'],
   empresa_pessoas: ['signatario', 'empresa'],
   empresa_noticias: ['itens', 'leitura'],
   setor: ['setor', 'concorrentes', 'regulacao', 'pressoes', 'casosDeUsoRecorrentes'],
   mercado: ['tam', 'sam', 'som', 'dinamica', 'ligacaoComProblemaDeclarado', 'direcaoDoPotencial', 'justificativa'],
+};
+
+// Fields added after the spec text that textosSpec.ts copies (decision of Gon of 6/11/2026: vagasNoSite,
+// the growth signal of the triagem, spec 04 section 2.1; spec 02 to be updated in the specs chat).
+const ESQUEMA_ACRESCIMOS: Partial<Record<Etapa, string>> = {
+  empresa_digital:
+    'Acrescente a "conteudo" o campo "vagasNoSite": { "abertas": "sim | nao | indeterminado", "evidencia": "string|null – página e vaga(s) do próprio site, como sinal de crescimento" }.',
 };
 
 // Additional rules from spec 02 and spec 03 that are not in the instruction paragraph.
@@ -54,12 +71,19 @@ export interface DadosFicha {
 
 const json = (v: unknown) => JSON.stringify(v, null, 1);
 
-// User message: same ficha and qualification block for every stage, the code-provided sources
+// What the stages receive besides the ficha (spec 02, section 2): in the coleta mínima only
+// dominioCorporativo and siteResolvido (block "sinais"); afterwards the whole qualification.
+export interface BlocoContexto {
+  rotulo: 'sinais' | 'qualificacao';
+  valor: unknown;
+}
+
+// User message: same ficha and context block for every stage, the code-provided sources
 // with their indices, the stage inputs, the instruction and the answer format.
 export function mensagemDaEtapa(
   etapa: Etapa,
   ficha: DadosFicha,
-  qualificacao: unknown,
+  contexto: BlocoContexto,
   fontesIniciais: FonteColeta[],
   insumos: Record<string, unknown>,
   instrucaoSubstituta?: string,
@@ -81,7 +105,7 @@ export function mensagemDaEtapa(
     `mensagem: ${ficha.mensagem ?? '–'}`,
     `idioma da ficha: ${ficha.lang}`,
     '</ficha>',
-    `<qualificacao>\n${json(qualificacao)}\n</qualificacao>`,
+    `<${contexto.rotulo}>\n${json(contexto.valor)}\n</${contexto.rotulo}>`,
     `<fontes>\n${fontes}\n</fontes>`,
     blocos,
     `Etapa: ${etapa}.`,
@@ -92,6 +116,7 @@ export function mensagemDaEtapa(
     'A lista "fontes" começa com as fontes de <fontes>, na mesma ordem e com os mesmos índices; acrescente depois as que você consultar, cada uma {"url", "titulo", "tipo": "busca | pagina | api", "consultadoEm": "ISO-8601"}. Use só endereços que você de fato consultou.',
     'Cada afirmação é {"texto", "tipo": "fato | inferencia | nao_encontrado", "fonteIdx": [índices de "fontes"]}. Cada campo de "conteudo" com valor precisa de ao menos uma afirmação com fonteIdx não vazio; o que não foi encontrado vira afirmação "nao_encontrado" dizendo o que foi buscado.',
     `Esquema de "conteudo":\n${ESQUEMAS[etapa]}`,
+    ESQUEMA_ACRESCIMOS[etapa] ?? '',
   ].filter(Boolean).join('\n');
 }
 

@@ -1,16 +1,22 @@
-// qualificar rules (spec 02, section 1): signals, when the model is called, and the decision.
+// qualificar rules (spec 02, section 1; spec 04): signals of the coleta mínima and of qualificar, the
+// output schema with estruturaTecnologia and portaIndicada, and the decision descartar or prosseguir.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { decide, ehProvedorGratuito, precisaModelo, sinais, validaClassificacao, ESQUEMA_CLASSIFICACAO, promptQualificacao } from '../lib/qualificacao.js';
+import {
+  decide, ehProvedorGratuito, sinais, sinaisIniciais, validaClassificacao, ESQUEMA_CLASSIFICACAO, NIVEL_CARGO, promptQualificacao,
+} from '../lib/qualificacao.js';
 import { custoDe } from '../lib/custo.js';
 
 const ficha = (o = {}, site = null) => {
   const original = { nome: 'Ana', empresa: 'ACME', cargo: 'ceo', email: 'ana@acme.com.br', site, mensagem: null, lang: 'pt-BR', ...o };
   return { original, normalizado: { email: original.email.toLowerCase(), site: site ? `https://${site}` : null } };
 };
-const classe = (tipoContato) => ({
+const classe = (tipoContato, extra = {}) => ({
   tipoContato, pedido: null, dor: null, ferramentasCitadas: [], gatilho: null,
   falaDeProblemaOuFerramenta: 'nenhum', idiomaMensagem: 'pt', observacao: null,
+  estruturaTecnologia: { categoria: 'sem_sinal', evidencia: 'nenhum sinal no site' },
+  portaIndicada: { porta: 'indeterminada', sinais: [] },
+  ...extra,
 });
 
 test('free providers, including Brazilian suffixes; corporate domains are not', () => {
@@ -20,62 +26,43 @@ test('free providers, including Brazilian suffixes; corporate domains are not', 
   for (const d of ['acme.com.br', 'gmdigitalbunker.com.br', 'terra.agr.br', 'mail.acme.com']) assert.equal(ehProvedorGratuito(d), false, d);
 });
 
-test('corporate e-mail with message: model called, analisar', () => {
-  const { original, normalizado } = ficha({ mensagem: 'Queremos sair das planilhas.' });
-  const s = sinais(original, normalizado);
-  assert.deepEqual(s, { dominioCorporativo: true, cargoDecisor: true, temMensagem: true, siteInformado: false, siteResolvido: 'https://acme.com.br' });
-  assert.equal(precisaModelo(original, s), true);
-  assert.equal(decide(s, classe('empresa')).decisao, 'analisar');
+test('coleta mínima signals: corporate domain resolves the site; informed site wins; free e-mail without site gives none', () => {
+  assert.deepEqual(sinaisIniciais(ficha().normalizado), { dominioCorporativo: true, siteResolvido: 'https://acme.com.br' });
+  assert.deepEqual(sinaisIniciais(ficha({}, 'outra.com.br').normalizado), { dominioCorporativo: true, siteResolvido: 'https://outra.com.br' });
+  assert.deepEqual(sinaisIniciais(ficha({ email: 'ana@gmail.com' }).normalizado), { dominioCorporativo: false, siteResolvido: null });
 });
 
-test('free e-mail without message: no model, responder_breve', () => {
-  const { original, normalizado } = ficha({ email: 'ana@gmail.com', cargo: 'manager' });
-  const s = sinais(original, normalizado);
-  assert.equal(s.dominioCorporativo, false);
-  assert.equal(s.cargoDecisor, false);
-  assert.equal(s.siteResolvido, null);
-  assert.equal(precisaModelo(original, s), false);
-  assert.deepEqual(decide(s, null), { decisao: 'responder_breve', motivo: 'e-mail gratuito sem mensagem' });
+test('role level (spec 04, Decisão axis): decisor, intermediario, outro; cargoDecisor derived', () => {
+  assert.deepEqual(NIVEL_CARGO, { owner: 'decisor', ceo: 'decisor', director: 'decisor', manager: 'intermediario', specialist: 'outro', external: 'outro', other: 'outro' });
+  const { original, normalizado } = ficha({ cargo: 'manager', mensagem: '   ' }, 'outra.com.br');
+  assert.deepEqual(sinais(original, normalizado), { nivelCargo: 'intermediario', cargoDecisor: false, temMensagem: false, siteInformado: true });
+  assert.equal(sinais(ficha({ cargo: 'director' }).original, ficha().normalizado).cargoDecisor, true);
 });
 
-test('spam: descartar', () => {
-  const { original, normalizado } = ficha({ mensagem: 'Compre seguidores' });
-  assert.deepEqual(decide(sinais(original, normalizado), classe('spam')), { decisao: 'descartar', motivo: 'tipoContato = spam' });
+test('decision: only spam is discarded; person, student and supplier go on to the triagem', () => {
+  assert.deepEqual(decide(classe('spam')), { decisao: 'descartar', motivo: 'tipoContato = spam' });
+  for (const t of ['empresa', 'pessoa_fisica', 'estudante', 'fornecedor', 'indeterminado']) assert.equal(decide(classe(t)).decisao, 'prosseguir', t);
 });
 
-test('role "other" without message: model called', () => {
-  const { original, normalizado } = ficha({ cargo: 'other' });
-  const s = sinais(original, normalizado);
-  assert.equal(s.temMensagem, false);
-  assert.equal(precisaModelo(original, s), true);
-  assert.equal(decide(s, classe('indeterminado')).decisao, 'analisar');
-});
-
-test('student: responder_breve', () => {
-  const { original, normalizado } = ficha({ mensagem: 'Sou estudante e faço um TCC.' });
-  assert.deepEqual(decide(sinais(original, normalizado), classe('estudante')), { decisao: 'responder_breve', motivo: 'tipoContato = estudante' });
-});
-
-test('informed site wins over the e-mail domain; whitespace-only message counts as none', () => {
-  const { original, normalizado } = ficha({ mensagem: '   ' }, 'outra.com.br');
-  const s = sinais(original, normalizado);
-  assert.equal(s.siteInformado, true);
-  assert.equal(s.siteResolvido, 'https://outra.com.br');
-  assert.equal(s.temMensagem, false);
-});
-
-test('output check rejects values outside the schema; schema objects are closed', () => {
-  assert.throws(() => validaClassificacao({ ...classe('cliente') }));
-  assert.throws(() => validaClassificacao({ ...classe('empresa'), ferramentasCitadas: [1] }));
+test('output check: the two new fields are required and closed; values outside the schema are rejected', () => {
   assert.deepEqual(validaClassificacao(classe('empresa')), classe('empresa'));
+  assert.throws(() => validaClassificacao({ ...classe('empresa'), estruturaTecnologia: { categoria: 'grande', evidencia: 'x' } }));
+  assert.throws(() => validaClassificacao({ ...classe('empresa'), portaIndicada: { porta: 'projeto', sinais: [1] } }));
+  assert.throws(() => validaClassificacao({ ...classe('cliente') }));
+  const { portaIndicada, ...semPorta } = classe('empresa');
+  assert.throws(() => validaClassificacao(semPorta));
   assert.equal(ESQUEMA_CLASSIFICACAO.additionalProperties, false);
-  assert.equal(ESQUEMA_CLASSIFICACAO.required.length, 8);
+  assert.equal(ESQUEMA_CLASSIFICACAO.required.length, 10);
+  assert.equal(ESQUEMA_CLASSIFICACAO.properties.estruturaTecnologia.additionalProperties, false);
+  assert.deepEqual(ESQUEMA_CLASSIFICACAO.properties.portaIndicada.properties.porta.enum, ['projeto', 'conselho', 'workshop', 'combinacao', 'indeterminada']);
 });
 
-test('prompt sends only the e-mail domain', () => {
+test('prompt: only the e-mail domain, the origin page and the two coleta mínima blocks', () => {
   const { original, normalizado } = ficha({ mensagem: 'Oi' });
-  const p = promptQualificacao(original, normalizado, 'CEO ou presidente');
-  assert.match(p, /<ficha>[\s\S]*acme\.com\.br[\s\S]*<\/ficha>/);
+  const p = promptQualificacao(original, normalizado, 'CEO ou presidente', '/servicos/conselho-de-ia', { oQueVende: 'parafusos' }, { confirmado: false });
+  assert.match(p, /<ficha>[\s\S]*acme\.com\.br[\s\S]*página de origem: \/servicos\/conselho-de-ia[\s\S]*<\/ficha>/);
+  assert.match(p, /<coleta etapa="empresa_digital">[\s\S]*parafusos[\s\S]*<\/coleta>/);
+  assert.match(p, /<coleta etapa="empresa_registro">[\s\S]*"confirmado": false[\s\S]*<\/coleta>/);
   assert.doesNotMatch(p, /ana@/);
 });
 
