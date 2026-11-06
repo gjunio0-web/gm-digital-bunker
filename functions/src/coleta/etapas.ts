@@ -12,6 +12,12 @@ export const MAX_BUSCAS: Record<Etapa, number> = {
 };
 export const MAX_LEITURAS = 2;
 
+// Search budget of one collection run (decision of Gon, 6/11/2026): the per-ficha ceiling applies to each
+// run, not to the sum of runs. A re-run gets a fresh budget, limited to what the stages it runs can use.
+export function orcamentoBuscas(teto: number, etapas: readonly Etapa[]): number {
+  return Math.max(0, Math.min(teto, etapas.reduce((t, e) => t + MAX_BUSCAS[e], 0)));
+}
+
 export const METODO_DA_ETAPA: Partial<Record<Etapa, Partial<Record<ArquivoMetodo, readonly number[] | 'tudo'>>>> = {
   setor: { 'glossario.md': 'tudo', 'mapa-alavancas.md': [1, 2, 3, 4] },
 };

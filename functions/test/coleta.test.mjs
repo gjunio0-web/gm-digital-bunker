@@ -8,7 +8,7 @@ import { instagramDe, linksDe, tecnologiasDe, textoDe } from '../lib/coleta/site
 import { filtraHunter } from '../lib/coleta/fornecedores.js';
 import { formatoInvalido, normalizaEnvelope } from '../lib/coleta/envelope.js';
 import { chaveUrl, extraiJson, urlsDosResultados } from '../lib/coleta/claudeColeta.js';
-import { CHAVES, ETAPAS, mensagemDaEtapa } from '../lib/coleta/etapas.js';
+import { CHAVES, ETAPAS, mensagemDaEtapa, orcamentoBuscas } from '../lib/coleta/etapas.js';
 import { ESQUEMAS } from '../lib/coleta/textosSpec.js';
 import { custoDe } from '../lib/custo.js';
 
@@ -115,4 +115,11 @@ test('stage prompts: delimiters, verbatim schema from spec 02, sources with indi
 
 test('cost: searches add US$ 0.01 each', () => {
   assert.equal(custoDe('claude-haiku-5-5', { input_tokens: 0, output_tokens: 0 }, 3).usdEstimado, 0.03);
+});
+
+test('search budget is per run, limited by the stages that run', () => {
+  assert.equal(orcamentoBuscas(20, ETAPAS), 20); // full run: 22 possible, ceiling 20
+  assert.equal(orcamentoBuscas(20, ['empresa_registro', 'empresa_pessoas']), 8);
+  assert.equal(orcamentoBuscas(5, ['empresa_registro', 'empresa_pessoas']), 5);
+  assert.equal(orcamentoBuscas(20, []), 0);
 });

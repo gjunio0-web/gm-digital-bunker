@@ -15,7 +15,7 @@ import { CARGOS_ROTULO } from './textos.generated.js';
 import { dominioDe } from './qualificacao.js';
 import { chamaColeta, chaveUrl, ErroColeta, type RespostaColeta } from './coleta/claudeColeta.js';
 import { formatoInvalido, normalizaEnvelope, type Envelope, type FonteColeta } from './coleta/envelope.js';
-import { CHAVES, ETAPAS, INSTRUCAO_CANDIDATOS, MAX_BUSCAS, MAX_LEITURAS, METODO_DA_ETAPA, mensagemDaEtapa, type DadosFicha, type Etapa } from './coleta/etapas.js';
+import { CHAVES, ETAPAS, INSTRUCAO_CANDIDATOS, MAX_BUSCAS, MAX_LEITURAS, METODO_DA_ETAPA, mensagemDaEtapa, orcamentoBuscas, type DadosFicha, type Etapa } from './coleta/etapas.js';
 import { leSite, type LeituraSite } from './coleta/site.js';
 import { cnpjValido, consultaBrasilApi, type RegistroBrasilApi } from './coleta/cnpj.js';
 import { consultaApify, consultaApollo, consultaHunter, type Instagram } from './coleta/fornecedores.js';
@@ -300,7 +300,9 @@ export const coletar = onDocumentUpdated(
       // Claim: the transaction gives up if another delivery of the event got here first.
       const agora = Timestamp.now();
       let ficou = false;
+      let aRodar: Etapa[] = [];
       await db.runTransaction(async (tx) => {
+        aRodar = [];
         const f = (await tx.get(ref)).data();
         const docs = await Promise.all(ETAPAS.map((e) => tx.get(ref.collection('coleta').doc(e))));
         if (!f || f.estado !== 'coletando' || !(f.estadoEm as Timestamp).isEqual(depois.estadoEm as Timestamp)) return;
@@ -309,6 +311,7 @@ export const coletar = onDocumentUpdated(
         docs.forEach((d, i) => {
           const v = d.data();
           if (v?.status === 'concluida' && v.versaoMetodo === versao) return;
+          aRodar.push(ETAPAS[i]);
           tx.set(d.ref, { etapa: ETAPAS[i], status: 'pendente', versaoMetodo: versao, tentativa: v?.tentativa ?? 0 });
         });
         tx.create(ref.collection('eventos').doc(), { em: agora, ator: { tipo: 'sistema', id: 'coletar' }, tipo: 'coleta_iniciada', detalhe: { versaoMetodo: versao } });
@@ -328,7 +331,7 @@ export const coletar = onDocumentUpdated(
         chaves: noEmulador()
           ? { claude: '', apollo: '', apify: '', hunter: '' }
           : { claude: CLAUDE_API_KEY.value(), apollo: APOLLO_API_KEY.value(), apify: APIFY_TOKEN.value(), hunter: HUNTER_API_KEY.value() },
-        buscasRestantes: Math.max(0, p.tetoBuscasPorFicha - Number(depois.custo?.buscas ?? 0)),
+        buscasRestantes: orcamentoBuscas(p.tetoBuscasPorFicha, aRodar),
         chamadas: { brasilapi: 0, apollo: 0, apify: 0, hunter: 0 },
         conteudos: {},
         site: null,
