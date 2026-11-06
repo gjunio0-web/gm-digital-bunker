@@ -90,6 +90,10 @@ test('envelope: content with values and no sourced statement gets "campos sem fo
 test('answer parsing: JSON inside text, URLs from search and fetch results', () => {
   assert.deepEqual(extraiJson('Aqui está:\n{"a": {"b": 1}}\nfim'), { a: { b: 1 } });
   assert.throws(() => extraiJson('sem json'));
+  // text with braces after the object (the Capal failure in the phase 3 run)
+  assert.deepEqual(extraiJson('{"a": "x}y", "b": [1]}\nObs.: {nota} final'), { a: 'x}y', b: [1] });
+  assert.deepEqual(extraiJson('Antes {não é json} depois {"ok": true}'), { ok: true });
+  assert.deepEqual(extraiJson('{"q": "aspas \\" e } dentro"}'), { q: 'aspas " e } dentro' });
   const urls = urlsDosResultados([
     { type: 'web_search_tool_result', content: [{ type: 'web_search_result', url: 'https://x.com/1' }, { type: 'web_search_result', url: 'https://y.com' }] },
     { type: 'web_fetch_tool_result', content: { type: 'web_fetch_result', url: 'https://z.com/p' } },

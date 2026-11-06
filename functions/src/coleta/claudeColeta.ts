@@ -40,11 +40,35 @@ export class ErroColeta extends Error {
 // URL comparison key: no scheme, no www, no fragment, no trailing slash.
 export const chaveUrl = (u: string) => u.trim().replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/#.*$/, '').replace(/\/+$/, '').toLowerCase();
 
+// First complete JSON object in the answer. Braces inside strings are ignored, so text written
+// before or after the object (even with braces of its own) does not break the parse.
 export function extraiJson(texto: string): unknown {
-  const i = texto.indexOf('{');
-  const f = texto.lastIndexOf('}');
-  if (i < 0 || f <= i) throw new Error('no JSON object in the answer');
-  return JSON.parse(texto.slice(i, f + 1));
+  for (let i = texto.indexOf('{'); i >= 0; i = texto.indexOf('{', i + 1)) {
+    const f = fimDoObjeto(texto, i);
+    if (f < 0) continue;
+    try {
+      return JSON.parse(texto.slice(i, f + 1));
+    } catch {
+      // not valid JSON from this brace; try the next one
+    }
+  }
+  throw new Error('no JSON object in the answer');
+}
+
+// Index of the brace that closes the object opened at `inicio`, or -1.
+function fimDoObjeto(t: string, inicio: number): number {
+  let nivel = 0;
+  let emTexto = false;
+  for (let k = inicio; k < t.length; k++) {
+    const c = t[k];
+    if (emTexto) {
+      if (c === '\\') k++;
+      else if (c === '"') emTexto = false;
+    } else if (c === '"') emTexto = true;
+    else if (c === '{') nivel++;
+    else if (c === '}' && --nivel === 0) return k;
+  }
+  return -1;
 }
 
 // URLs actually returned by web_search / web_fetch in the answer blocks.
