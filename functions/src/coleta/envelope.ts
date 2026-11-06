@@ -21,6 +21,8 @@ export interface Envelope {
   fontes: FonteColeta[];
   afirmacoes: Afirmacao[];
   confianca: { grau: 'alta' | 'media' | 'baixa'; motivo: string };
+  // Sources the model cited that the code could not verify (kept for diagnosis, same retention as the ficha).
+  fontesRemovidas: { url: string; titulo: string; tipo: string }[];
 }
 
 const GRAUS = ['alta', 'media', 'baixa'];
@@ -51,10 +53,10 @@ export function normalizaEnvelope(bruto: Record<string, any>, verificadas: Set<s
   const motivos: string[] = [];
   const mapa = new Map<number, number>();
   const fontes: FonteColeta[] = [];
-  let removidas = 0;
+  const fontesRemovidas: Envelope['fontesRemovidas'] = [];
   (bruto.fontes as any[]).forEach((f, i) => {
     if (!verificadas.has(chaveUrl(f.url))) {
-      removidas++;
+      fontesRemovidas.push({ url: f.url.slice(0, 500), titulo: typeof f.titulo === 'string' ? f.titulo.slice(0, 200) : '', tipo: String(f.tipo ?? '').slice(0, 20) });
       return;
     }
     mapa.set(i, fontes.length);
@@ -65,7 +67,7 @@ export function normalizaEnvelope(bruto: Record<string, any>, verificadas: Set<s
       consultadoEm: typeof f.consultadoEm === 'string' && f.consultadoEm ? f.consultadoEm : agoraIso,
     });
   });
-  if (removidas) motivos.push(`${removidas} fonte(s) não verificada(s) removida(s)`);
+  if (fontesRemovidas.length) motivos.push(`${fontesRemovidas.length} fonte(s) não verificada(s) removida(s)`);
 
   let semFonte = 0;
   const afirmacoes: Afirmacao[] = (bruto.afirmacoes as any[]).map((a) => {
@@ -84,5 +86,6 @@ export function normalizaEnvelope(bruto: Record<string, any>, verificadas: Set<s
     fontes,
     afirmacoes,
     confianca: { grau, motivo: [motivoModelo, ...motivos].filter(Boolean).join('; ') },
+    fontesRemovidas,
   };
 }

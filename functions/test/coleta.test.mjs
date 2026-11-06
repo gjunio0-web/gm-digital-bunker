@@ -76,6 +76,7 @@ test('envelope: unverified sources removed, indices remapped, confidence lowered
   assert.equal(n.confianca.grau, 'baixa');
   assert.match(n.confianca.motivo, /1 fonte\(s\) não verificada\(s\)/);
   assert.match(n.confianca.motivo, /1 afirmação\(ões\) sem fonte/);
+  assert.equal(n.fontesRemovidas.length, 1);
 });
 
 test('envelope: content with values and no sourced statement gets "campos sem fonte"; clean envelope keeps its grade', () => {

@@ -6,7 +6,7 @@
 // Re-run: npm run fichas-teste -- gmdb-qualidade --reexecutar moves the test fichas in "coletada" back
 // to "coletando"; stages already "concluida" with the same method version are skipped, failed ones run again.
 // Options of the re-run: --etapas=empresa_registro,empresa_pessoas also runs these stages again even if
-// concluded; --uma-por-vez runs one ficha at a time (no burst of calls to the same provider). The cost
+// concluded; --ficha=<id> limits the re-run to one test ficha; --uma-por-vez runs one ficha at a time (no burst of calls to the same provider). The cost
 // printed for a re-run is the cost of that re-run only.
 // Steps: create the fichas (qualificar runs on creation), wait for the qualification, move the
 // "analisar" ones to "coletando", wait for "coletada" and print a report per stage (no personal data).
@@ -19,9 +19,10 @@ const ETAPAS = ['empresa_digital', 'empresa_registro', 'empresa_pessoas', 'empre
 const opcoes = process.argv.slice(2).filter((a) => a.startsWith('--') && a !== '--reexecutar');
 const [projeto, arquivo] = process.argv.slice(2).filter((a) => !opcoes.includes(a));
 const umaPorVez = opcoes.includes('--uma-por-vez');
+const soFicha = (opcoes.find((a) => a.startsWith('--ficha=')) ?? '--ficha=').slice(8);
 const forcar = (opcoes.find((a) => a.startsWith('--etapas=')) ?? '--etapas=').slice(9).split(',').filter(Boolean);
 const invalidas = forcar.filter((e) => !ETAPAS.includes(e));
-if (invalidas.length || opcoes.some((a) => a !== '--uma-por-vez' && !a.startsWith('--etapas='))) {
+if (invalidas.length || opcoes.some((a) => a !== '--uma-por-vez' && !a.startsWith('--etapas=') && !a.startsWith('--ficha='))) {
   console.error(`Unknown option or stage: ${[...invalidas, ...opcoes].join(' ')}`);
   process.exit(1);
 }
@@ -49,6 +50,7 @@ const criadas = [];
 if (reexecutar) {
   const q = await db.collection('fichas').where('teste', '==', true).where('estado', '==', 'coletada').get();
   for (const d of q.docs) {
+    if (soFicha && d.id !== soFicha) continue;
     criadas.push({ empresa: d.get('original.empresa'), ref: d.ref, decisao: 'analisar', reexecucao: true });
     console.log(`re-run ${d.id} – ${d.get('original.empresa')}`);
   }
