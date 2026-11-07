@@ -151,3 +151,10 @@ test('rejected confidence names the received value (diagnosis of the phase A fai
 test('setor has a larger output budget and wait, within the 540 s of the function', () => {
   assert.deepEqual(LIMITES_DA_ETAPA, { setor: { maxTokens: 64_000, timeoutMs: 360_000 } });
 });
+
+test('spec 02 v0.10 texts: head-count schemas and the new sentence of empresa_pessoas', async () => {
+  const { ESQUEMAS, INSTRUCOES } = await import('../lib/coleta/textosSpec.js');
+  assert.match(ESQUEMAS.empresa_digital, /"funcionariosEstimados": \{ "faixa": [^}]*"minimo": [^}]*"maximo"/);
+  assert.match(ESQUEMAS.empresa_pessoas, /"funcionariosEstimados": \{ "faixa": [^}]*"minimo": [^}]*"maximo": [^}]*"fonte"/);
+  assert.match(INSTRUCOES.empresa_pessoas, /Quando houver estimativa de funcionários, devolva número ou intervalo numérico, com a fonte; sem fonte, null\.$/);
+});

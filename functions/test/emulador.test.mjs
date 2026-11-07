@@ -130,8 +130,12 @@ test('Priorizar: coleta mínima → qualificar → triagem → rest of the colle
   assert.equal(mapa(l.acao).prazoEm.nullValue, null); // deadline after the analysis
   assert.equal(mapa(l.modificadores).confianca.stringValue, 'baixa'); // simulated blocks have low confidence
   assert.equal(dias(f), 90);
+  assert.equal(mapa(l.modificadores).confiancaMotivo.stringValue, 'Registro e Presença digital com confiança baixa');
+  assert.equal(mapa(mapa(mapa(l.eixos).aderencia).porte).fonteFuncionarios.stringValue, 'apollo');
   const etapas = await lista(`fichas/${id}/coleta`);
   assert.equal(etapas.length, 6);
+  const digital = etapas.find((e) => e.fields.etapa.stringValue === 'empresa_digital').fields;
+  assert.deepEqual(digital.paginasLidas.arrayValue.values.map((v) => v.stringValue), ['https://acme.com.br/']);
   for (const e of etapas) {
     assert.equal(e.fields.status.stringValue, 'concluida', e.fields.etapa.stringValue);
     assert.equal(e.fields.versaoMetodo.stringValue, 'abc1234');
@@ -164,7 +168,9 @@ test('Declinar: free e-mail, no site, no message → resposta_breve, 30-day rete
   assert.equal(mapa(mapa(mapa(l.eixos).aderencia).porte).categoria.stringValue, 'nenhuma_empresa');
   assert.ok(mapa(l.acao).prazoEm.timestampValue);
   assert.equal(dias(f), 30);
-  assert.equal((await lista(`fichas/${id}/coleta`)).length, 2); // only the coleta mínima
+  const minima = await lista(`fichas/${id}/coleta`);
+  assert.equal(minima.length, 2); // only the coleta mínima
+  assert.equal(minima.find((e) => e.fields.etapa.stringValue === 'empresa_digital').fields.paginasLidas.arrayValue.values, undefined); // empty list
 });
 
 test('spam: descartada, quadrant still computed, 30-day retention, metrics', { timeout: 60_000 }, async () => {

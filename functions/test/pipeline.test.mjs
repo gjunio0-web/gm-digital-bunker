@@ -26,3 +26,16 @@ test('seed adds only what is missing and never overwrites', () => {
     ['fontes.apify', 'fontes.apollo.maxChamadasPorFicha', 'fontes.brasilapi', 'fontes.hunter']);
   assert.deepEqual(camposAusentes(PIPELINE_PADRAO, PIPELINE_PADRAO), {});
 });
+
+test('pesosQualificacao.paginasOrigem: seed adds the list when missing; a stored list replaces the default', async () => {
+  const { camposAusentes } = await import('../lib/seedCampos.js');
+  const { combinaPipeline } = await import('../lib/pipeline.js');
+  const { PIPELINE_PADRAO } = await import('../lib/config.js');
+  const guardado = { pesosQualificacao: { versao: '1', limiarQuadrante: 15 } };
+  const faltam = camposAusentes(PIPELINE_PADRAO, guardado);
+  assert.equal(faltam['pesosQualificacao.paginasOrigem'].length, 14);
+  assert.equal(faltam['pesosQualificacao.limiarQuadrante'], undefined);
+  const proprio = combinaPipeline({ pesosQualificacao: { paginasOrigem: [{ pagina: 'contato', pontos: 2 }] } });
+  assert.deepEqual(proprio.pesosQualificacao.paginasOrigem, [{ pagina: 'contato', pontos: 2 }]);
+  assert.equal(combinaPipeline({}).pesosQualificacao.paginasOrigem.length, 14);
+});

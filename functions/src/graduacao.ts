@@ -42,7 +42,6 @@ export const PESOS_PADRAO = {
     mensagem: 8,
     problemaOuFerramenta: { problema: 8, ambos: 8, ferramenta: 3, nenhum: 0 },
     gatilho: 6,
-    paginaOrigem: { porta: 4, casos: 3, institucional: 1, outra: 0 },
     noticia: 4,
   },
   clareza: {
@@ -50,6 +49,24 @@ export const PESOS_PADRAO = {
     hipotese: 5,
     direcao: 5,
   },
+  // Origin pages with points (spec 01, config/pipeline; spec 04, 2.1): paths already normalized, "*" for
+  // one or more segments; pages not listed score 0. English paths are the site's real routes.
+  paginasOrigem: [
+    { pagina: 'servicos/conselho-de-ia', pontos: 4 },
+    { pagina: 'servicos/estrategia-e-plataforma-digital-com-ia', pontos: 4 },
+    { pagina: 'servicos/workshop-quando-e-melhor-com-ia', pontos: 4 },
+    { pagina: 'en/services/ai-advisory', pontos: 4 },
+    { pagina: 'en/services/ai-strategy-and-digital-platform', pontos: 4 },
+    { pagina: 'en/services/when-its-better-with-ai-workshop', pontos: 4 },
+    { pagina: 'casos/*', pontos: 3 },
+    { pagina: 'en/cases/*', pontos: 3 },
+    { pagina: 'metodo', pontos: 1 },
+    { pagina: 'metodo/livro', pontos: 1 },
+    { pagina: 'sobre', pontos: 1 },
+    { pagina: 'en/method', pontos: 1 },
+    { pagina: 'en/method/book', pontos: 1 },
+    { pagina: 'en/about', pontos: 1 },
+  ] as { pagina: string; pontos: number }[],
   deducoes: { curioso_sem_orcamento: 8, expectativa_de_revenda: 8, outro: 4, teto: 16 },
   graus: { A: { minimo: 70, prazoDiasUteis: 2 }, B: { minimo: 50, prazoDiasUteis: 3 }, C: { minimo: 30, prazoDiasUteis: 4 }, D: { minimo: 0, prazoDiasUteis: 5 } },
 };
@@ -134,27 +151,42 @@ export function porte(e: EntradaGraduacao, w: Pesos): { categoria: string; ponto
   return { categoria: 'indeterminado', pontos: p.indeterminado };
 }
 
-// Origin page (decision 6/11): service pages of a door, cases, method/book/about; anything else 0.
-export function classePagina(pagina: string | null): 'porta' | 'casos' | 'institucional' | 'outra' {
-  const p = (pagina ?? '').toLowerCase().replace(/\/+$/, '');
-  if (/^\/(servicos|en\/services)\/[^/]+$/.test(p)) return 'porta';
-  if (/^\/(casos|en\/cases)\/[^/]+$/.test(p)) return 'casos';
-  if (/^\/(metodo|metodo\/livro|sobre|en\/method|en\/method\/book|en\/about)$/.test(p)) return 'institucional';
-  return 'outra';
+// Origin page (spec 01, section 2, lead): query and fragment removed, leading and trailing slashes removed,
+// lower case; the en/ prefix is kept. "/servicos/conselho-de-ia/" and "servicos/conselho-de-ia" are equal.
+export function normalizaPagina(pagina: string | null | undefined): string | null {
+  if (typeof pagina !== 'string') return null;
+  const p = pagina.split(/[?#]/)[0].trim().replace(/^\/+|\/+$/g, '').toLowerCase();
+  return p || null;
 }
 
-// Confidence and its reason (spec 04, section 2.5, v0.11): low without a confirmed CNPJ, with legal size
-// "Demais" and no head count from any source, or with two or more low blocks; medium with pending issues
-// or exactly one low block. A missing or failed block counts as low.
+// Points of a normalized page in the list; "x/*" matches x/ followed by one or more segments.
+export function pontosDaPagina(pagina: string | null, lista: Pesos['paginasOrigem']): number {
+  if (!pagina) return 0;
+  for (const { pagina: item, pontos } of lista) {
+    if (item.endsWith('/*') ? pagina.startsWith(item.slice(0, -1)) && pagina.length > item.length - 1 : pagina === item) return pontos;
+  }
+  return 0;
+}
+
+const NOMES_BLOCOS = { registro: 'Registro', digital: 'Presença digital', pessoas: 'Pessoas' } as const;
+const juntaNomes = (n: string[]) => (n.length <= 1 ? n.join('') : `${n.slice(0, -1).join(', ')} e ${n[n.length - 1]}`);
+
+// Confidence and its reason (spec 04, section 2.5; spec 01, section 2, recording rules): low without a
+// confirmed CNPJ, with legal size "Demais" and no head count from any source, or with two or more low
+// blocks; medium with pending issues or exactly one low block; a missing or failed block counts as low.
+// The reason that sets the level comes first, the others after it, joined by " · "; "sem ressalvas" when high.
 export function confianca(e: EntradaGraduacao): { nivel: GrauConfianca; motivo: string } {
-  const blocos = e.momento === 'triagem' ? [e.confiancaBlocos.registro, e.confiancaBlocos.digital] : [e.confiancaBlocos.registro, e.confiancaBlocos.digital, e.confiancaBlocos.pessoas];
-  const baixas = blocos.filter((b) => b === 'baixa' || b === null).length;
-  if (!e.cnpjConfirmado) return { nivel: 'baixa', motivo: 'CNPJ não confirmado' };
-  if (e.porteLegal === 'demais' && e.funcionarios === null) return { nivel: 'baixa', motivo: 'porte sem estimativa de funcionários' };
-  if (baixas >= 2) return { nivel: 'baixa', motivo: 'dois ou mais blocos com confiança baixa' };
-  if (e.comPendencias) return { nivel: 'media', motivo: 'análise com pendências' };
-  if (baixas === 1) return { nivel: 'media', motivo: 'um bloco com confiança baixa' };
-  return { nivel: 'alta', motivo: 'CNPJ confirmado e blocos sem confiança baixa' };
+  const chaves = e.momento === 'triagem' ? (['registro', 'digital'] as const) : (['registro', 'digital', 'pessoas'] as const);
+  const baixos = chaves.filter((k) => e.confiancaBlocos[k] === 'baixa' || e.confiancaBlocos[k] === null).map((k) => NOMES_BLOCOS[k]);
+  const deBaixa: string[] = [];
+  const deMedia: string[] = [];
+  if (!e.cnpjConfirmado) deBaixa.push('CNPJ não confirmado');
+  if (e.cnpjConfirmado && e.porteLegal === 'demais' && e.funcionarios === null) deBaixa.push('porte sem estimativa de funcionários');
+  if (baixos.length >= 2) deBaixa.push(`${juntaNomes(baixos)} com confiança baixa`);
+  if (e.comPendencias) deMedia.push('análise com pendências');
+  if (baixos.length === 1) deMedia.push(`${baixos[0]} com confiança baixa`);
+  const motivos = [...deBaixa, ...deMedia];
+  return { nivel: deBaixa.length ? 'baixa' : deMedia.length ? 'media' : 'alta', motivo: motivos.length ? motivos.join(' · ') : 'sem ressalvas' };
 }
 
 const DESTINOS: Record<Quadrante, Destino> = { priorizar: 'convidar', qualificar: 'verificar_aderencia', nutrir: 'nutrir', declinar: 'encerrar' };
@@ -189,12 +221,12 @@ export function gradua(e: EntradaGraduacao, w: Pesos = PESOS_PADRAO): Lead {
 
   // Axis 3 – Intenção.
   const i = w.intencao;
-  const pag = classePagina(e.paginaOrigem);
+  const pagina = normalizaPagina(e.paginaOrigem);
   const intencao: Parcela[] = [
     { criterio: 'mensagem', valor: e.temMensagem, pontos: e.temMensagem ? i.mensagem : 0, marca: null },
     { criterio: 'problemaOuFerramenta', valor: e.problemaOuFerramenta, pontos: e.problemaOuFerramenta ? i.problemaOuFerramenta[e.problemaOuFerramenta] : 0, marca: null },
     { criterio: 'gatilho', valor: e.gatilho, pontos: e.gatilho ? i.gatilho : 0, marca: null },
-    { criterio: 'paginaOrigem', valor: e.paginaOrigem, pontos: i.paginaOrigem[pag], marca: null },
+    { criterio: 'paginaOrigem', valor: pagina, pontos: pontosDaPagina(pagina, w.paginasOrigem), marca: null },
     e.noticia === null
       ? { criterio: 'noticia', valor: null, pontos: 0, marca: 'noticias_nao_coletadas' }
       : { criterio: 'noticia', valor: e.noticia, pontos: e.noticia ? i.noticia : 0, marca: null },
@@ -229,7 +261,7 @@ export function gradua(e: EntradaGraduacao, w: Pesos = PESOS_PADRAO): Lead {
     decisao: { pontos: soma(decisao), maximo: max(d.nivelCargo) + max(d.cargoConfirmado) + d.dominioCorporativo, parcelas: decisao },
     intencao: {
       pontos: soma(intencao),
-      maximo: i.mensagem + max(i.problemaOuFerramenta) + i.gatilho + max(i.paginaOrigem) + i.noticia,
+      maximo: i.mensagem + max(i.problemaOuFerramenta) + i.gatilho + Math.max(0, ...w.paginasOrigem.map((x) => x.pontos)) + i.noticia,
       parcelas: intencao,
     },
     clareza: { pontos: soma(clareza), maximo: max(c.porta) + c.hipotese + c.direcao, parcelas: clareza },
@@ -323,12 +355,11 @@ export function prazoDaTriagem(l: Lead, recebidaEm: Date): Date | null {
   return prazoEmDiasUteis(recebidaEm, l.acao.prazoDiasUteis);
 }
 
-// Head count from Apollo or a text range ("51-200", "7.500"): the upper bound, as the spec asks.
-export function limiteSuperior(v: unknown): number | null {
-  if (typeof v === 'number' && Number.isFinite(v)) return v;
-  if (typeof v !== 'string') return null;
-  const nums = (v.match(/\d{1,3}(?:[.,]\d{3})+|\d+/g) ?? []).map((s) => Number(s.replace(/[.,]/g, '')));
-  return nums.length ? Math.max(...nums) : null;
+// Deadline of an analysed ficha (spec 01, section 2, prazoEm): from the moment the analysis is ready,
+// recorded at the end of verificar (phase B); none for spam.
+export function prazoDaAnalise(l: Lead, prontaEm: Date): Date | null {
+  if (l.modificadores.spam) return null;
+  return prazoEmDiasUteis(prontaEm, l.acao.prazoDiasUteis);
 }
 
 // Legal size from the BrasilAPI "porte" text.
@@ -353,6 +384,24 @@ export function porteDoRegistro(registro: Doc): PorteLegal | null {
   return porteLegalDe(doCodigo?.porte ?? null) ?? (doModelo === 'ME' || doModelo === 'EPP' || doModelo === 'demais' ? doModelo : null);
 }
 
+// Head count used for the size (spec 04, 2.1; spec 01, fonteFuncionarios): the maximo of Apollo first;
+// only in the analysis, the maximo of the Pessoas stage when Apollo has none.
+export function estimativaFuncionarios(digital: Doc, pessoas: Doc, momento: Momento): { funcionarios: number | null; fonteFuncionarios: 'apollo' | 'pessoas' | null } {
+  const fe = digital?.conteudo?.apollo?.funcionariosEstimados;
+  // Documents written before the normalization keep the raw Apollo number in insumosCodigo.
+  const apollo = fe && typeof fe === 'object' ? numero(fe.maximo) : numero(digital?.insumosCodigo?.apolloFuncionarios);
+  if (apollo !== null) return { funcionarios: apollo, fonteFuncionarios: 'apollo' };
+  const doPessoas = momento === 'analise' && pessoas?.status === 'concluida' ? numero(pessoas.conteudo?.empresa?.funcionariosEstimados?.maximo) : null;
+  if (doPessoas !== null) return { funcionarios: doPessoas, fonteFuncionarios: 'pessoas' };
+  return { funcionarios: null, fonteFuncionarios: null };
+}
+const numero = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+
+// Site read (spec 01, coleta/empresa_digital.paginasLidas): at least one page delivered to the model;
+// documents without the field fall back to the code flag of the phase A.
+export const siteLido = (digital: Doc): boolean =>
+  Array.isArray(digital?.paginasLidas) ? digital.paginasLidas.length > 0 : digital?.insumosCodigo?.siteLido === true;
+
 export function entradaTriagem(ficha: Record<string, any>, digital: Doc, registro: Doc): EntradaGraduacao {
   const q = ficha.qualificacao ?? {};
   const cm = q.classificacaoMensagem ?? {};
@@ -365,9 +414,8 @@ export function entradaTriagem(ficha: Record<string, any>, digital: Doc, registr
     porteLegal: cnpjConfirmado ? porteDoRegistro(registro) : null,
     cnpjConfirmado,
     // Triagem: only the Apollo head count (spec 04, 2.1).
-    funcionarios: limiteSuperior(cd.apolloFuncionarios ?? digital?.conteudo?.apollo?.funcionariosEstimados ?? null),
-    fonteFuncionarios: 'apollo',
-    siteLido: cd.siteLido === true,
+    ...estimativaFuncionarios(digital, undefined, 'triagem'),
+    siteLido: siteLido(digital),
     apolloEncontrado: cd.apolloEncontrado === true,
     // vagasNoSite.ha = true (spec 02 v0.9, 2.2; spec 04, 2.1); the model may write it as text.
     sinalCrescimento: digital?.conteudo?.vagasNoSite?.ha === true || digital?.conteudo?.vagasNoSite?.ha === 'true',

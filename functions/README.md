@@ -36,6 +36,7 @@ Região de todas as funções: `REGIAO` em `src/config.ts` (`southamerica-east1`
 | `scripts/publicar-metodo.mjs` | Chama `publicarMetodo` com a identidade de quem roda (Cloud Shell) |
 | `../storage.rules` | Acesso de cliente ao Storage fechado (vale no emulador e se o Firebase Storage for ativado) |
 | `src/coletar.ts` | Coleta restante e reexecuções: trava por transação, orçamento de buscas, ordem das etapas, eventos, custo |
+| `src/coleta/funcionarios.ts` | Normalização da estimativa de funcionários em faixa, mínimo e máximo (spec 02 v0.10) |
 | `src/coleta/motor.ts` | Motor das etapas, comum às duas funções: contexto, tetos por fornecedor, chamada ao modelo, as seis etapas, `insumosCodigo`, gravação de `coleta/{etapa}`, Instagram pelo Apify |
 | `src/coleta/rede.ts` | Leitura protegida de endereços vindos do formulário (sem rede interna, até 2 MB, 10 s) e chamadas aos fornecedores |
 | `src/coleta/site.ts` | Até seis páginas do site, links, Instagram, tecnologias, CNPJs (privacidade e termos só para o CNPJ) |

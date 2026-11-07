@@ -16,6 +16,7 @@ import { leSite, type LeituraSite } from './site.js';
 import { cnpjValido, consultaBrasilApi, type RegistroBrasilApi } from './cnpj.js';
 import { consultaApify, consultaApollo, consultaHunter, type Instagram } from './fornecedores.js';
 import type { SinaisIniciais } from '../qualificacao.js';
+import { normalizaFuncionarios } from './funcionarios.js';
 
 export interface Contexto {
   id: string;
@@ -36,6 +37,8 @@ export interface Contexto {
   conteudos: Partial<Record<Etapa, Record<string, unknown>>>;
   codigo: Partial<Record<Etapa, Record<string, unknown>>>;
   site: LeituraSite | null;
+  // URLs of the site pages the code delivered to the model in this run (spec 01, paginasLidas).
+  paginasLidas?: string[];
   totais: { tokensEntrada: number; tokensSaida: number; buscas: number; usd: number };
 }
 
@@ -150,6 +153,7 @@ async function empresaDigital(c: Contexto, t: Rastro): Promise<Envelope> {
   const site = c.sinais.siteResolvido;
   const leitura = site && !noEmulador() ? await leSite(site) : null;
   c.site = leitura;
+  c.paginasLidas = noEmulador() ? (/média/i.test(c.ficha.empresa) ? ['https://acme.com.br/'] : []) : (leitura?.paginas ?? []).map((pg) => pg.url);
   for (const pg of leitura?.paginas ?? []) fontes.push({ url: pg.url, titulo: pg.titulo || pg.tipo, tipo: 'pagina', consultadoEm: agoraIso() });
 
   let apollo: unknown = 'não consultado';
@@ -208,6 +212,11 @@ async function empresaDigital(c: Contexto, t: Rastro): Promise<Envelope> {
       env.conteudo.instagram = instagramDoApify(d, 'busca');
       env.afirmacoes.push({ texto: `Perfil de Instagram ${d.perfil}, achado por busca, com dados do Apify (inferência: perfil da empresa).`, tipo: 'inferencia', fonteIdx: [idx] });
     }
+  }
+  // Apollo head count written by the code as {faixa, minimo, maximo} (spec 02 v0.10, 2.2), not by the model.
+  const ap = env.conteudo.apollo && typeof env.conteudo.apollo === 'object' ? (env.conteudo.apollo as Record<string, unknown>) : null;
+  if (ap || apolloEncontrado) {
+    env.conteudo.apollo = { setorFornecedor: null, localizacao: null, ...(ap ?? {}), funcionariosEstimados: normalizaFuncionarios(noEmulador() ? c.codigo.empresa_digital?.apolloFuncionarios : apolloFuncionarios) };
   }
   return env;
 }
@@ -270,7 +279,14 @@ async function empresaPessoas(c: Contexto, t: Rastro): Promise<Envelope> {
     hunter = h.dados ?? `sem correspondência (HTTP ${h.status})`;
     if (h.dados) fontes.push({ url: 'https://api.hunter.io/v2/people/find', titulo: 'Hunter – enriquecimento pelo e-mail corporativo', tipo: 'api', consultadoEm: agoraIso() });
   }
-  return envelopeDaEtapa(c, t, 'empresa_pessoas', fontes, { hunter }, MAX_BUSCAS.empresa_pessoas);
+  const env = await envelopeDaEtapa(c, t, 'empresa_pessoas', fontes, { hunter }, MAX_BUSCAS.empresa_pessoas);
+  // Head count of the stage: faixa and fonte as the model gave them, minimo and maximo by the code (spec 02 v0.10, 2.3).
+  const emp = env.conteudo.empresa && typeof env.conteudo.empresa === 'object' ? (env.conteudo.empresa as Record<string, any>) : null;
+  if (emp) {
+    const fe = emp.funcionariosEstimados && typeof emp.funcionariosEstimados === 'object' ? emp.funcionariosEstimados : { faixa: emp.funcionariosEstimados ?? null };
+    emp.funcionariosEstimados = { ...normalizaFuncionarios(fe.faixa), fonte: typeof fe.fonte === 'string' ? fe.fonte : null };
+  }
+  return env;
 }
 
 const simples = (c: Contexto, t: Rastro, etapa: Etapa, insumos: Record<string, unknown>) => envelopeDaEtapa(c, t, etapa, [], insumos, MAX_BUSCAS[etapa]);
@@ -321,13 +337,15 @@ export async function roda(c: Contexto, etapa: Etapa): Promise<void> {
   };
   const modelo = noEmulador() ? 'simulado' : c.p.modeloColeta;
   const insumosCodigo = c.codigo[etapa] ?? null;
+  // Pages read: only in empresa_digital, recorded by the code even when the stage fails (empty when none).
+  const extra = etapa === 'empresa_digital' ? { paginasLidas: c.paginasLidas ?? [] } : {};
   if (resultado.status === 'concluida') {
     c.conteudos[etapa] = resultado.envelope.conteudo;
-    await doc.update({ status: 'concluida', ...resultado.envelope, insumosCodigo, modelo, uso, concluidoEm: Timestamp.now(), tentativa: FieldValue.increment(1) });
+    await doc.update({ status: 'concluida', ...resultado.envelope, ...extra, insumosCodigo, modelo, uso, concluidoEm: Timestamp.now(), tentativa: FieldValue.increment(1) });
   } else {
     await doc.update({
       status: 'falhou', conteudo: {}, fontes: [], afirmacoes: [], confianca: { grau: 'baixa', motivo: `falha: ${resultado.mensagem}` },
-      insumosCodigo, modelo, uso, concluidoEm: Timestamp.now(), tentativa: FieldValue.increment(1),
+      ...extra, insumosCodigo, modelo, uso, concluidoEm: Timestamp.now(), tentativa: FieldValue.increment(1),
     });
   }
   await c.ref.collection('eventos').add({ em: Timestamp.now(), ator: { tipo: 'ia', id: 'coletar' }, tipo: 'coleta_etapa', detalhe: { etapa, status: resultado.status } });

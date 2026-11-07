@@ -49,13 +49,6 @@ export const CHAVES: Record<Etapa, readonly string[]> = {
   mercado: ['tam', 'sam', 'som', 'dinamica', 'ligacaoComProblemaDeclarado', 'direcaoDoPotencial', 'justificativa'],
 };
 
-// Fields added after the spec text that textosSpec.ts copies: vagasNoSite, the growth signal of the
-// triagem (spec 02 v0.9, section 2.2; spec 04, section 2.1).
-const ESQUEMA_ACRESCIMOS: Partial<Record<Etapa, string>> = {
-  empresa_digital:
-    'Acrescente a "conteudo" o campo "vagasNoSite": { "ha": "true | false | indeterminado", "evidencia": "string|null – página de carreiras ou trecho do site, com fonte" }.',
-};
-
 // Additional rules from spec 02 and spec 03 that are not in the instruction paragraph.
 const REGRAS_EXTRAS: Partial<Record<Etapa, string>> = {
   empresa_registro:
@@ -124,7 +117,6 @@ export function mensagemDaEtapa(
     'A lista "fontes" começa com as fontes de <fontes>, na mesma ordem e com os mesmos índices; acrescente depois as que você consultar, cada uma {"url", "titulo", "tipo": "busca | pagina | api", "consultadoEm": "ISO-8601"}. Use só endereços que você de fato consultou.',
     'Cada afirmação é {"texto", "tipo": "fato | inferencia | nao_encontrado", "fonteIdx": [índices de "fontes"]}. Cada campo de "conteudo" com valor precisa de ao menos uma afirmação com fonteIdx não vazio; o que não foi encontrado vira afirmação "nao_encontrado" dizendo o que foi buscado.',
     `Esquema de "conteudo":\n${ESQUEMAS[etapa]}`,
-    ESQUEMA_ACRESCIMOS[etapa] ?? '',
   ].filter(Boolean).join('\n');
 }
 

@@ -1,10 +1,11 @@
 // graduar (spec 04, sections 2 to 5; decisions of Gon of 6/11/2026): axes with items and marks,
 // quadrant, grade, destination, confidence, deadline in business days, retention and next state.
 import { test } from 'node:test';
+import { normalizaFuncionarios } from '../lib/coleta/funcionarios.js';
 import assert from 'node:assert/strict';
 import {
-  PESOS_PADRAO, classePagina, confianca, diaUtil, entradaTriagem, feriados, gradua, guardaCurta, limiteSuperior, pascoa, porte,
-  porteLegalDe, prazoDaTriagem, prazoEmDiasUteis, proximoEstado,
+  PESOS_PADRAO, confianca, diaUtil, entradaTriagem, estimativaFuncionarios, feriados, gradua, guardaCurta, normalizaPagina, pascoa,
+  pontosDaPagina, porte, porteLegalDe, prazoDaAnalise, prazoDaTriagem, prazoEmDiasUteis, proximoEstado, siteLido,
 } from '../lib/graduacao.js';
 
 // A triagem input with everything neutral; each test changes what it checks.
@@ -70,12 +71,18 @@ test('Intenção: message, problem or tool, trigger, origin page, news marked in
   assert.equal(gradua(base({ temMensagem: true, problemaOuFerramenta: 'ferramenta' })).eixos.intencao.pontos, 11);
 });
 
-test('origin page classes (decision 5): service pages 4, cases 3, method/book/about 1, the rest 0', () => {
-  const pontos = (p) => w.intencao.paginaOrigem[classePagina(p)];
-  for (const p of ['/servicos/conselho-de-ia', '/servicos/estrategia-e-plataforma-digital-com-ia', '/servicos/workshop-quando-e-melhor-com-ia', '/en/services/ai-advisory', '/en/services/when-its-better-with-ai-workshop/']) assert.equal(pontos(p), 4, p);
-  for (const p of ['/casos/elite-90-pro', '/en/cases/elite-90-pro']) assert.equal(pontos(p), 3, p);
+test('origin page (spec 01, lead): normalized, then looked up in pesosQualificacao.paginasOrigem', () => {
+  const pontos = (p) => pontosDaPagina(normalizaPagina(p), w.paginasOrigem);
+  for (const p of ['/servicos/conselho-de-ia', '/servicos/estrategia-e-plataforma-digital-com-ia', '/servicos/workshop-quando-e-melhor-com-ia', '/en/services/ai-advisory', '/en/services/ai-strategy-and-digital-platform', '/en/services/when-its-better-with-ai-workshop']) assert.equal(pontos(p), 4, p);
+  // (b) trailing slash; also no leading slash, upper case, query and fragment
+  assert.equal(pontos('/servicos/conselho-de-ia/'), 4);
+  assert.equal(pontos('servicos/conselho-de-ia'), 4);
+  assert.equal(pontos('/EN/Services/AI-Advisory?x=1#y'), 4);
+  assert.equal(normalizaPagina('/servicos/conselho-de-ia/'), normalizaPagina('servicos/conselho-de-ia'));
+  for (const p of ['/casos/elite-90-pro', '/en/cases/elite-90-pro', '/casos/a/b']) assert.equal(pontos(p), 3, p);
   for (const p of ['/metodo', '/metodo/livro', '/sobre', '/en/method', '/en/method/book', '/en/about']) assert.equal(pontos(p), 1, p);
-  for (const p of ['/servicos', '/en/services', '/', '/contato', '/publicacoes', '/privacidade', null, '/x/y/z']) assert.equal(pontos(p), 0, String(p));
+  for (const p of ['/casos', '/en/cases', '/servicos', '/en/services', '/', '/en', '/contato', '/en/contact', '/publicacoes', '/en/publications', '/privacidade', '/en/privacy', null, '', '/x/y/z']) assert.equal(pontos(p), 0, String(p));
+  assert.equal(normalizaPagina('/?utm=1'), null);
 });
 
 test('Clareza: single door with two signals 10, combination 7, one signal 4, undetermined 0; hypothesis and direction only in analysis', () => {
@@ -160,21 +167,98 @@ test('analysis: deductions with ceiling; scope barred caps at D, with reservatio
   assert.equal(gradua(base({ escopo: 'barrado' })).modificadores.escopo, null);
 });
 
-test('confidence (spec 04, 2.5, v0.11): level and reason', () => {
+test('confidence (spec 04, 2.5; spec 01, recording rules): level and every applicable reason', () => {
   const b = (registro, digital, pessoas = null, momento = 'triagem') => ({ momento, confiancaBlocos: { registro, digital, pessoas } });
   const ok = { cnpjConfirmado: true, porteLegal: 'demais', funcionarios: 100 };
-  assert.deepEqual(confianca(base({ cnpjConfirmado: false })), { nivel: 'baixa', motivo: 'CNPJ não confirmado' });
+  assert.deepEqual(confianca(base({ cnpjConfirmado: false, ...b('alta', 'alta') })), { nivel: 'baixa', motivo: 'CNPJ não confirmado' });
   assert.deepEqual(confianca(base({ cnpjConfirmado: true, porteLegal: 'demais', funcionarios: null, ...b('alta', 'alta') })), { nivel: 'baixa', motivo: 'porte sem estimativa de funcionários' });
   assert.equal(confianca(base({ cnpjConfirmado: true, porteLegal: 'EPP', funcionarios: null, ...b('alta', 'alta') })).nivel, 'alta'); // only "Demais" needs the head count
-  assert.equal(confianca(base({ ...ok, ...b('media', 'alta') })).nivel, 'alta');
-  assert.deepEqual(confianca(base({ ...ok, ...b('baixa', 'alta') })), { nivel: 'media', motivo: 'um bloco com confiança baixa' });
-  assert.deepEqual(confianca(base({ ...ok, ...b('baixa', 'baixa') })), { nivel: 'baixa', motivo: 'dois ou mais blocos com confiança baixa' });
-  assert.equal(confianca(base({ ...ok, ...b('alta', 'alta', 'baixa', 'analise') })).nivel, 'media');
+  assert.deepEqual(confianca(base({ ...ok, ...b('media', 'alta') })), { nivel: 'alta', motivo: 'sem ressalvas' });
+  assert.deepEqual(confianca(base({ ...ok, ...b('alta', 'baixa') })), { nivel: 'media', motivo: 'Presença digital com confiança baixa' });
+  assert.deepEqual(confianca(base({ ...ok, ...b('baixa', 'baixa') })), { nivel: 'baixa', motivo: 'Registro e Presença digital com confiança baixa' });
+  assert.deepEqual(confianca(base({ ...ok, ...b('baixa', 'baixa', 'baixa', 'analise') })), { nivel: 'baixa', motivo: 'Registro, Presença digital e Pessoas com confiança baixa' });
+  assert.deepEqual(confianca(base({ ...ok, ...b('alta', 'alta', 'baixa', 'analise') })), { nivel: 'media', motivo: 'Pessoas com confiança baixa' });
   assert.deepEqual(confianca(base({ ...ok, comPendencias: true, ...b('alta', 'alta', 'alta', 'analise') })), { nivel: 'media', motivo: 'análise com pendências' });
+  // Several reasons: the one that sets the level first, the others after " · ".
+  assert.deepEqual(confianca(base({ cnpjConfirmado: false, ...b('alta', 'baixa') })), { nivel: 'baixa', motivo: 'CNPJ não confirmado · Presença digital com confiança baixa' });
+  assert.deepEqual(
+    confianca(base({ cnpjConfirmado: true, porteLegal: 'demais', funcionarios: null, comPendencias: true, ...b('baixa', 'baixa', 'alta', 'analise') })),
+    { nivel: 'baixa', motivo: 'porte sem estimativa de funcionários · Registro e Presença digital com confiança baixa · análise com pendências' },
+  );
   const l = gradua(base({ ...ok, ...b('alta', 'alta') }));
-  assert.deepEqual([l.modificadores.confianca, typeof l.modificadores.confiancaMotivo], ['alta', 'string']);
+  assert.deepEqual([l.modificadores.confianca, l.modificadores.confiancaMotivo], ['alta', 'sem ressalvas']);
   assert.deepEqual(l.eixos.aderencia.porte, { categoria: 'demais_ate_500', pontos: 18, fonteFuncionarios: 'apollo' });
   assert.equal(gradua(base({})).eixos.aderencia.porte.fonteFuncionarios, null); // no head count, no source
+});
+
+// Stored documents for the head-count cases (spec 02 v0.10: {faixa, minimo, maximo}).
+const dig = (faixa) => ({ status: 'concluida', paginasLidas: ['https://x.com.br/'], conteudo: { apollo: faixa === undefined ? null : { funcionariosEstimados: normalizaFuncionarios(faixa) } } });
+const pes = (faixa) => ({ status: 'concluida', conteudo: { empresa: { funcionariosEstimados: { ...normalizaFuncionarios(faixa), fonte: 'site da empresa' } } } });
+const analise = (o) => base({ momento: 'analise', confiancaBlocos: { registro: 'alta', digital: 'alta', pessoas: 'alta' }, ...o });
+const comEstimativa = (d, p, momento, o) => {
+  const e = { ...(momento === 'analise' ? analise(o) : base({ confiancaBlocos: { registro: 'alta', digital: 'alta', pessoas: null }, ...o })), ...estimativaFuncionarios(d, p, momento) };
+  return gradua(e);
+};
+const demais = { cnpjConfirmado: true, porteLegal: 'demais', siteLido: true };
+
+test('changes document, section 3: the seven cases', () => {
+  // 1. "Demais", no Apollo estimate, triagem → 9; low confidence for the size; no source.
+  let l = comEstimativa(dig(undefined), undefined, 'triagem', demais);
+  assert.deepEqual(l.eixos.aderencia.porte, { categoria: 'indeterminado', pontos: 9, fonteFuncionarios: null });
+  assert.deepEqual([l.modificadores.confianca, l.modificadores.confiancaMotivo], ['baixa', 'porte sem estimativa de funcionários']);
+  // 2. "Demais", Apollo without estimate, Pessoas "300", analysis → 18 from Pessoas; the size no longer lowers the confidence.
+  l = comEstimativa(dig(null), pes('300'), 'analise', demais);
+  assert.deepEqual(l.eixos.aderencia.porte, { categoria: 'demais_ate_500', pontos: 18, fonteFuncionarios: 'pessoas' });
+  assert.deepEqual([l.modificadores.confianca, l.modificadores.confiancaMotivo], ['alta', 'sem ressalvas']);
+  // 3. Pessoas "501-800" → 6 (upper bound 800).
+  assert.equal(comEstimativa(dig(null), pes('501-800'), 'analise', demais).eixos.aderencia.porte.pontos, 6);
+  // 4. Pessoas "2000" → 0.
+  assert.equal(comEstimativa(dig(null), pes('2000'), 'analise', demais).eixos.aderencia.porte.pontos, 0);
+  // 5. "Demais", no estimate from either source, analysis → 9, low confidence.
+  l = comEstimativa(dig(null), pes(null), 'analise', demais);
+  assert.deepEqual([l.eixos.aderencia.porte.pontos, l.eixos.aderencia.porte.fonteFuncionarios, l.modificadores.confianca], [9, null, 'baixa']);
+  // 6. CNPJ not confirmed, no Apollo, site read, Pessoas "1500", analysis → 0 (precedence), not 9.
+  assert.equal(comEstimativa(dig(undefined), pes('1500'), 'analise', { siteLido: true }).eixos.aderencia.porte.pontos, 0);
+  // 7. "Demais", Apollo "200", Pessoas "1500", analysis → 18: Apollo prevails when it exists.
+  l = comEstimativa(dig(200), pes('1500'), 'analise', demais);
+  assert.deepEqual(l.eixos.aderencia.porte, { categoria: 'demais_ate_500', pontos: 18, fonteFuncionarios: 'apollo' });
+});
+
+test('cases (a) and (h) and the triagem ignoring Pessoas', () => {
+  // (a) EPP or micro company with more than 1,000 employees → 0.
+  assert.equal(comEstimativa(dig(1500), undefined, 'triagem', { cnpjConfirmado: true, porteLegal: 'EPP', sinalCrescimento: true }).eixos.aderencia.porte.pontos, 0);
+  assert.equal(comEstimativa(dig('1001-5000'), undefined, 'triagem', { cnpjConfirmado: true, porteLegal: 'ME' }).eixos.aderencia.porte.pontos, 0);
+  // (h) analysis, CNPJ not confirmed, no Apollo, Pessoas "800" → 6 (confirmed by spec 04 v0.14).
+  const h = comEstimativa(dig(undefined), pes('800'), 'analise', { siteLido: true });
+  assert.deepEqual(h.eixos.aderencia.porte, { categoria: 'de_501_a_1000', pontos: 6, fonteFuncionarios: 'pessoas' });
+  // Triagem uses only Apollo, even when a Pessoas document exists.
+  assert.deepEqual(estimativaFuncionarios(dig(null), pes('300'), 'triagem'), { funcionarios: null, fonteFuncionarios: null });
+  // A failed Pessoas stage is not used.
+  assert.deepEqual(estimativaFuncionarios(dig(null), { ...pes('300'), status: 'falhou' }, 'analise'), { funcionarios: null, fonteFuncionarios: null });
+  // Documents from before the normalization: the raw Apollo number in insumosCodigo.
+  assert.deepEqual(estimativaFuncionarios({ conteudo: { apollo: { funcionariosEstimados: '51-200' } }, insumosCodigo: { apolloFuncionarios: 120 } }, undefined, 'triagem'), { funcionarios: 120, fonteFuncionarios: 'apollo' });
+});
+
+test('head-count normalization (spec 02 v0.10): faixa, minimo, maximo', () => {
+  assert.deepEqual(normalizaFuncionarios('300'), { faixa: '300', minimo: 300, maximo: 300 });
+  assert.deepEqual(normalizaFuncionarios('51-200'), { faixa: '51-200', minimo: 51, maximo: 200 }); // (f)
+  assert.deepEqual(normalizaFuncionarios('51 a 200'), { faixa: '51 a 200', minimo: 51, maximo: 200 });
+  assert.deepEqual(normalizaFuncionarios('1.001–5.000'), { faixa: '1.001–5.000', minimo: 1001, maximo: 5000 });
+  assert.deepEqual(normalizaFuncionarios('7.500'), { faixa: '7.500', minimo: 7500, maximo: 7500 });
+  assert.deepEqual(normalizaFuncionarios(7500), { faixa: '7500', minimo: 7500, maximo: 7500 });
+  // (g) unrecognized format: both null, the original faixa kept.
+  for (const f of ['mais de 8 mil', '1,5 mil', '10001+', 'cerca de 200', '200-51']) assert.deepEqual(normalizaFuncionarios(f), { faixa: f, minimo: null, maximo: null }, f);
+  assert.deepEqual(normalizaFuncionarios(null), { faixa: null, minimo: null, maximo: null });
+  assert.deepEqual(normalizaFuncionarios(''), { faixa: null, minimo: null, maximo: null });
+});
+
+test('(e) site down: empty paginasLidas means no site read', () => {
+  assert.equal(siteLido({ paginasLidas: [] }), false);
+  assert.equal(siteLido({ paginasLidas: ['https://x.com.br/'] }), true);
+  assert.equal(siteLido({ paginasLidas: [], insumosCodigo: { siteLido: true } }), false); // the field wins
+  assert.equal(siteLido({ insumosCodigo: { siteLido: true } }), true); // documents from before the field
+  // No site read, no Apollo, no confirmed CNPJ → no company identified.
+  assert.equal(comEstimativa({ status: 'concluida', paginasLidas: [], conteudo: { apollo: null } }, undefined, 'triagem', { siteLido: false }).eixos.aderencia.porte.categoria, 'nenhuma_empresa');
 });
 
 test('next state and retention: spam discarded, Declinar brief reply, others to collection or kept qualified', () => {
@@ -211,11 +295,7 @@ test('business days: Easter, movable holidays (Carnival, Good Friday, Corpus Chr
   assert.equal(prazoDaTriagem(declinar, new Date('2026-11-19T19:00:00Z')).toISOString(), '2026-11-28T02:59:59.000Z'); // grade D: 5 business days, Friday 27/11
 });
 
-test('helpers: head count upper bound and legal size from BrasilAPI text', () => {
-  assert.equal(limiteSuperior(7500), 7500);
-  assert.equal(limiteSuperior('51-200'), 200);
-  assert.equal(limiteSuperior('cerca de 7.500 funcionários'), 7500);
-  assert.equal(limiteSuperior(null), null);
+test('legal size from BrasilAPI text', () => {
   assert.equal(porteLegalDe('MICRO EMPRESA'), 'ME');
   assert.equal(porteLegalDe('EMPRESA DE PEQUENO PORTE'), 'EPP');
   assert.equal(porteLegalDe('DEMAIS'), 'demais');
@@ -231,11 +311,13 @@ test('triagem input from the stored documents: code facts, chosen CNPJ size, blo
       classificacaoMensagem: { tipoContato: 'empresa', falaDeProblemaOuFerramenta: 'problema', gatilho: 'prazo de fim de ano' },
     },
   };
-  const digital = { status: 'concluida', confianca: { grau: 'media' }, conteudo: { vagasNoSite: { ha: 'true' } }, insumosCodigo: { siteLido: true, apolloEncontrado: true, apolloFuncionarios: 350 } };
+  const digital = { status: 'concluida', confianca: { grau: 'media' }, paginasLidas: ['https://x.com.br/'], conteudo: { vagasNoSite: { ha: 'true' }, apollo: { funcionariosEstimados: { faixa: '350', minimo: 350, maximo: 350 } } }, insumosCodigo: { apolloEncontrado: true, apolloFuncionarios: 350 } };
   const registro = { status: 'concluida', confianca: { grau: 'baixa' }, conteudo: { confirmado: true, escolhido: { cnpj: '11.222.333/0001-81', porteLegal: 'demais' } }, insumosCodigo: { registros: [{ cnpj: '11222333000181', porte: 'EMPRESA DE PEQUENO PORTE' }] } };
   const e = entradaTriagem(ficha, digital, registro);
   assert.equal(e.porteLegal, 'EPP'); // the stored BrasilAPI record wins over the model field
   assert.equal(e.funcionarios, 350);
+  assert.equal(e.fonteFuncionarios, 'apollo');
+  assert.equal(e.siteLido, true);
   assert.equal(e.sinalCrescimento, true);
   assert.equal(e.gatilho, true);
   assert.deepEqual(e.porta, { porta: 'projeto', sinais: 2 });
@@ -248,4 +330,18 @@ test('triagem input from the stored documents: code facts, chosen CNPJ size, blo
   const falhou = entradaTriagem(ficha, { status: 'falhou' }, undefined);
   assert.equal(falhou.cnpjConfirmado, false);
   assert.deepEqual(falhou.confiancaBlocos, { registro: null, digital: 'baixa', pessoas: null });
+});
+
+test('(c) spam has no deadline; (d) a deadline across Carnival 2027; analysis deadline from the moment it is ready', () => {
+  const spam = gradua(base({ spam: true, siteLido: false }));
+  assert.equal(prazoDaTriagem(spam, new Date('2027-02-05T19:00:00Z')), null);
+  assert.equal(prazoDaAnalise(spam, new Date('2027-02-05T19:00:00Z')), null);
+  // Easter 2027 is 28/3: Carnival on Monday 8/2 and Tuesday 9/2.
+  assert.ok(feriados(2027).has('2027-02-08') && feriados(2027).has('2027-02-09'));
+  // Friday 5/2/2027 at 16:00 (São Paulo), 2 business days: the start day does not count, the weekend and
+  // Carnival are skipped, so Wednesday 10/2 is day 1 and Thursday 11/2 is day 2 (ends 23:59:59 local).
+  assert.equal(prazoEmDiasUteis(new Date('2027-02-05T19:00:00Z'), 2).toISOString(), '2027-02-12T02:59:59.000Z');
+  const a = gradua(base({ momento: 'analise', cnpjConfirmado: true, porteLegal: 'demais', funcionarios: 100, nivelCargo: 'decisor', dominioCorporativo: true, cargoConfirmado: 'true', temMensagem: true, problemaOuFerramenta: 'problema', gatilho: true, paginaOrigem: '/servicos/conselho-de-ia', noticia: true, porta: { porta: 'conselho', sinais: 2 }, hipotese: true, direcao: true }));
+  assert.equal(a.grau, 'A');
+  assert.equal(prazoDaAnalise(a, new Date('2027-02-05T19:00:00Z')).toISOString(), '2027-02-12T02:59:59.000Z');
 });
