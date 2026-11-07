@@ -3,9 +3,8 @@
 // coleta mínima stages and portas-materiais.md section 1 of the published method. Writes qualificacao
 // (decision descartar or prosseguir), the cost and the state "qualificada"; the final state and the
 // retention are graduar's (spec 04). The write is a transaction that requires the "coleta_minima" state.
-import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { FieldValue, getFirestore, Timestamp, type DocumentReference } from 'firebase-admin/firestore';
-import { REGIAO, type Pipeline } from './config.js';
+import type { Pipeline } from './config.js';
 import { chamaClaude, noEmulador, simulaClassificacao } from './claude.js';
 import { custoDe, type Custo } from './custo.js';
 import { leMetodo } from './metodo.js';
@@ -74,8 +73,3 @@ export async function qualifica(ref: DocumentReference, p: Pipeline, chaveClaude
   });
   return decisao;
 }
-
-// Retired trigger: the qualification now runs inside the coleta mínima. Kept as a no-op only between
-// the first publication of the new pipeline and the deletion of this function, so the two never both
-// process the same new ficha (plan of the method change, 6/11/2026). Removed in the next commit.
-export const qualificar = onDocumentCreated({ document: 'fichas/{id}', region: REGIAO, memory: '128MiB', retry: false }, async () => undefined);

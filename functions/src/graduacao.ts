@@ -3,7 +3,7 @@
 // short-retention rule. Pure functions: no Firebase imports, so they can be unit tested. The same
 // calculation serves both moments; in "triagem" the items that depend on stages not yet run are 0
 // and carry their mark. Decisions of Gon of 6/11/2026 for the cases the spec 04 table does not cover
-// are marked "decision 6/11".
+// are marked "decision 6/11"; spec 04 v0.12 records them.
 
 export type Momento = 'triagem' | 'analise';
 export type Quadrante = 'priorizar' | 'qualificar' | 'nutrir' | 'declinar';
@@ -71,6 +71,8 @@ export interface EntradaGraduacao {
   porteLegal: PorteLegal | null;
   cnpjConfirmado: boolean;
   funcionarios: number | null;
+  // Source of the head count (spec 04 v0.10): Apollo; in the analysis, the Pessoas stage when Apollo has none.
+  fonteFuncionarios: 'apollo' | 'pessoas' | null;
   siteLido: boolean;
   apolloEncontrado: boolean;
   sinalCrescimento: boolean;
@@ -98,13 +100,13 @@ export interface Lead {
   grau: Grau;
   pontos: number;
   eixos: {
-    aderencia: { pontos: number; maximo: number; porte: { categoria: string; pontos: number }; tecnologia: { categoria: string; pontos: number; evidencia: string | null } };
+    aderencia: { pontos: number; maximo: number; porte: { categoria: string; pontos: number; fonteFuncionarios: 'apollo' | 'pessoas' | null }; tecnologia: { categoria: string; pontos: number; evidencia: string | null } };
     decisao: { pontos: number; maximo: number; parcelas: Parcela[] };
     intencao: { pontos: number; maximo: number; parcelas: Parcela[] };
     clareza: { pontos: number; maximo: number; parcelas: Parcela[] };
   };
   deducoes: { risco: string; pontos: number }[];
-  modificadores: { spam: boolean; escopo: 'aprovado' | 'ressalva' | 'barrado' | null; confianca: GrauConfianca };
+  modificadores: { spam: boolean; escopo: 'aprovado' | 'ressalva' | 'barrado' | null; confianca: GrauConfianca; confiancaMotivo: string };
   destino: Destino;
   destinoAlterado: boolean;
   acao: { prazoDiasUteis: number };
@@ -141,12 +143,18 @@ export function classePagina(pagina: string | null): 'porta' | 'casos' | 'instit
   return 'outra';
 }
 
-export function confianca(e: EntradaGraduacao): GrauConfianca {
+// Confidence and its reason (spec 04, section 2.5, v0.11): low without a confirmed CNPJ, with legal size
+// "Demais" and no head count from any source, or with two or more low blocks; medium with pending issues
+// or exactly one low block. A missing or failed block counts as low.
+export function confianca(e: EntradaGraduacao): { nivel: GrauConfianca; motivo: string } {
   const blocos = e.momento === 'triagem' ? [e.confiancaBlocos.registro, e.confiancaBlocos.digital] : [e.confiancaBlocos.registro, e.confiancaBlocos.digital, e.confiancaBlocos.pessoas];
   const baixas = blocos.filter((b) => b === 'baixa' || b === null).length;
-  if (!e.cnpjConfirmado || baixas >= 2) return 'baixa';
-  if (e.comPendencias || baixas === 1) return 'media';
-  return 'alta';
+  if (!e.cnpjConfirmado) return { nivel: 'baixa', motivo: 'CNPJ não confirmado' };
+  if (e.porteLegal === 'demais' && e.funcionarios === null) return { nivel: 'baixa', motivo: 'porte sem estimativa de funcionários' };
+  if (baixas >= 2) return { nivel: 'baixa', motivo: 'dois ou mais blocos com confiança baixa' };
+  if (e.comPendencias) return { nivel: 'media', motivo: 'análise com pendências' };
+  if (baixas === 1) return { nivel: 'media', motivo: 'um bloco com confiança baixa' };
+  return { nivel: 'alta', motivo: 'CNPJ confirmado e blocos sem confiança baixa' };
 }
 
 const DESTINOS: Record<Quadrante, Destino> = { priorizar: 'convidar', qualificar: 'verificar_aderencia', nutrir: 'nutrir', declinar: 'encerrar' };
@@ -162,7 +170,12 @@ export function gradua(e: EntradaGraduacao, w: Pesos = PESOS_PADRAO): Lead {
   const tec = semEmpresa
     ? { categoria: 'sem_empresa', pontos: 0, evidencia: null }
     : { categoria: cat, pontos: w.aderencia.tecnologia[cat], evidencia: e.tecnologia?.evidencia ?? null };
-  const aderencia = { pontos: pt.pontos + tec.pontos, maximo: max(w.aderencia.porte) + max(w.aderencia.tecnologia), porte: pt, tecnologia: tec };
+  const aderencia = {
+    pontos: pt.pontos + tec.pontos,
+    maximo: max(w.aderencia.porte) + max(w.aderencia.tecnologia),
+    porte: { ...pt, fonteFuncionarios: e.funcionarios === null ? null : e.fonteFuncionarios },
+    tecnologia: tec,
+  };
 
   // Axis 2 – Decisão.
   const d = w.decisao;
@@ -234,6 +247,7 @@ export function gradua(e: EntradaGraduacao, w: Pesos = PESOS_PADRAO): Lead {
   if (escopo === 'barrado') grau = 'D';
   else if (escopo === 'ressalva' && grau === 'A') grau = 'B';
 
+  const conf = confianca(e);
   return {
     momento: e.momento,
     quadrante,
@@ -241,7 +255,7 @@ export function gradua(e: EntradaGraduacao, w: Pesos = PESOS_PADRAO): Lead {
     pontos,
     eixos,
     deducoes,
-    modificadores: { spam: e.spam, escopo, confianca: confianca(e) },
+    modificadores: { spam: e.spam, escopo, confianca: conf.nivel, confiancaMotivo: conf.motivo },
     destino: DESTINOS[quadrante],
     destinoAlterado: false,
     acao: { prazoDiasUteis: w.graus[grau].prazoDiasUteis },
@@ -350,10 +364,13 @@ export function entradaTriagem(ficha: Record<string, any>, digital: Doc, registr
     tipoContato: cm.tipoContato ?? null,
     porteLegal: cnpjConfirmado ? porteDoRegistro(registro) : null,
     cnpjConfirmado,
+    // Triagem: only the Apollo head count (spec 04, 2.1).
     funcionarios: limiteSuperior(cd.apolloFuncionarios ?? digital?.conteudo?.apollo?.funcionariosEstimados ?? null),
+    fonteFuncionarios: 'apollo',
     siteLido: cd.siteLido === true,
     apolloEncontrado: cd.apolloEncontrado === true,
-    sinalCrescimento: digital?.conteudo?.vagasNoSite?.abertas === 'sim',
+    // vagasNoSite.ha = true (spec 02 v0.9, 2.2; spec 04, 2.1); the model may write it as text.
+    sinalCrescimento: digital?.conteudo?.vagasNoSite?.ha === true || digital?.conteudo?.vagasNoSite?.ha === 'true',
     tecnologia: q.estruturaTecnologia ?? null,
     nivelCargo: q.nivelCargo ?? 'outro',
     cargoConfirmado: null,

@@ -1,6 +1,6 @@
 # Funções do Firebase – análise preliminar de fichas
 
-Item 1 da spec 01: `receberFicha` (HTTPS, recebe o formulário) e `expurgar` (agendada, diária às 03:00 de São Paulo). Item 5: `publicarMetodo` (HTTPS privada; publica a pasta `metodo/` no bucket privado e grava `config/metodo`). Mudança de método de 6/11/2026 (spec 04): `coletarMinima` (gatilho na criação da ficha; `empresa_digital` sem Apify e `empresa_registro`, depois `qualificar` – chamada ao modelo de `config/pipeline.modeloColeta`, sempre – e `graduar`, a triagem em código, que grava `lead` e define o próximo estado) e `coletar` (gatilho quando a ficha passa a `coletando`; na primeira passagem, as quatro etapas restantes e o Instagram pelo Apify; numa reexecução, as etapas marcadas como pendentes). A antiga função `qualificar` (gatilho na criação) fica vazia até ser apagada.
+Item 1 da spec 01: `receberFicha` (HTTPS, recebe o formulário) e `expurgar` (agendada, diária às 03:00 de São Paulo). Item 5: `publicarMetodo` (HTTPS privada; publica a pasta `metodo/` no bucket privado e grava `config/metodo`). Mudança de método de 6/11/2026 (spec 04): `coletarMinima` (gatilho na criação da ficha; `empresa_digital` sem Apify e `empresa_registro`, depois `qualificar` – chamada ao modelo de `config/pipeline.modeloColeta`, sempre – e `graduar`, a triagem em código, que grava `lead` e define o próximo estado) e `coletar` (gatilho quando a ficha passa a `coletando`; na primeira passagem, as quatro etapas restantes e o Instagram pelo Apify; numa reexecução, as etapas marcadas como pendentes).
 
 **Ramos:** trabalho só em `quality-env`. `main` (produção) só avança por pedido explícito de Gon.
 
@@ -104,7 +104,7 @@ npm run seed -- gmdb-qualidade        # re-runnable; only adds missing fields, n
 npm run configurar -- gmdb-qualidade modeloColeta=claude-haiku-5-5 autoAnalisar=false   # only with Gon's authorization
 cd ..
 firebase deploy --project qualidade --only functions:receberFicha,functions:expurgar,firestore:rules,firestore:indexes
-firebase deploy --project gmdb-qualidade --only functions:qualificar,functions:coletarMinima,functions:coletar
+firebase deploy --project gmdb-qualidade --only functions:coletarMinima,functions:coletar
 ```
 
 Rode os comandos `firebase` a partir da raiz do repositório: o apelido `qualidade` vem do `.firebaserc`; fora dela, use o ID `gmdb-qualidade`.

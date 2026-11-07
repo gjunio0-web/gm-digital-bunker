@@ -41,11 +41,11 @@ export const CHAVES: Record<Etapa, readonly string[]> = {
   mercado: ['tam', 'sam', 'som', 'dinamica', 'ligacaoComProblemaDeclarado', 'direcaoDoPotencial', 'justificativa'],
 };
 
-// Fields added after the spec text that textosSpec.ts copies (decision of Gon of 6/11/2026: vagasNoSite,
-// the growth signal of the triagem, spec 04 section 2.1; spec 02 to be updated in the specs chat).
+// Fields added after the spec text that textosSpec.ts copies: vagasNoSite, the growth signal of the
+// triagem (spec 02 v0.9, section 2.2; spec 04, section 2.1).
 const ESQUEMA_ACRESCIMOS: Partial<Record<Etapa, string>> = {
   empresa_digital:
-    'Acrescente a "conteudo" o campo "vagasNoSite": { "abertas": "sim | nao | indeterminado", "evidencia": "string|null – página e vaga(s) do próprio site, como sinal de crescimento" }.',
+    'Acrescente a "conteudo" o campo "vagasNoSite": { "ha": "true | false | indeterminado", "evidencia": "string|null – página de carreiras ou trecho do site, com fonte" }.',
 };
 
 // Additional rules from spec 02 and spec 03 that are not in the instruction paragraph.

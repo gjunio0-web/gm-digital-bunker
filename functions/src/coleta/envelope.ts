@@ -39,7 +39,12 @@ export function formatoInvalido(v: unknown, chaves: readonly string[]): string |
   if (!Array.isArray(e.afirmacoes) || e.afirmacoes.some((a: any) => !a || typeof a.texto !== 'string' || !TIPOS_AFIRMACAO.includes(a.tipo) || !Array.isArray(a.fonteIdx))) {
     return 'afirmacoes must be a list of {texto, tipo (fato|inferencia|nao_encontrado), fonteIdx[]}';
   }
-  if (!e.confianca || !GRAUS.includes(e.confianca.grau)) return 'confianca.grau must be alta, media or baixa';
+  // The received value goes into the message (no personal data: a grade word or its type), so the cause
+  // of a rejection can be read in the stage document (phase A test, 6/11/2026).
+  if (!e.confianca || !GRAUS.includes(e.confianca.grau)) {
+    const recebido = e.confianca === undefined ? 'ausente' : typeof e.confianca !== 'object' || e.confianca === null ? `${typeof e.confianca} ${JSON.stringify(e.confianca)}` : `grau ${JSON.stringify(e.confianca.grau)}`;
+    return `confianca.grau must be alta, media or baixa (received: ${recebido.slice(0, 60)})`;
+  }
   return null;
 }
 

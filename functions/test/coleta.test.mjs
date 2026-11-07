@@ -129,7 +129,7 @@ test('stage message: coleta mínima gets only the signals block, never the quali
   const m = mensagemDaEtapa('empresa_digital', ficha, { rotulo: 'sinais', valor: { dominioCorporativo: true, siteResolvido: 'https://acme.com.br' } }, [], {});
   assert.match(m, /<sinais>[\s\S]*siteResolvido[\s\S]*<\/sinais>/);
   assert.doesNotMatch(m, /<qualificacao>/);
-  assert.match(m, /"vagasNoSite"/);
+  assert.match(m, /"vagasNoSite": \{ "ha"/);
   assert.ok(CHAVES.empresa_digital.includes('vagasNoSite'));
 });
 
@@ -138,4 +138,12 @@ test('search budget is per run, limited by the stages that run', () => {
   assert.equal(orcamentoBuscas(20, ['empresa_registro', 'empresa_pessoas']), 8);
   assert.equal(orcamentoBuscas(5, ['empresa_registro', 'empresa_pessoas']), 5);
   assert.equal(orcamentoBuscas(20, []), 0);
+});
+
+test('rejected confidence names the received value (diagnosis of the phase A failures)', () => {
+  const env = (confianca) => ({ conteudo: { itens: null, leitura: null }, fontes: [], afirmacoes: [], confianca });
+  assert.match(formatoInvalido(env({ grau: 'média', motivo: 'x' }), ['itens', 'leitura']), /received: grau "média"/);
+  assert.match(formatoInvalido(env('baixa'), ['itens', 'leitura']), /received: string "baixa"/);
+  assert.match(formatoInvalido(env(undefined), ['itens', 'leitura']), /received: ausente/);
+  assert.equal(formatoInvalido(env({ grau: 'baixa', motivo: 'x' }), ['itens', 'leitura']), null);
 });

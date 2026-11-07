@@ -10,7 +10,7 @@ import {
 // A triagem input with everything neutral; each test changes what it checks.
 const base = (o = {}) => ({
   momento: 'triagem', spam: false, tipoContato: 'empresa',
-  porteLegal: null, cnpjConfirmado: false, funcionarios: null, siteLido: true, apolloEncontrado: false, sinalCrescimento: false,
+  porteLegal: null, cnpjConfirmado: false, funcionarios: null, fonteFuncionarios: 'apollo', siteLido: true, apolloEncontrado: false, sinalCrescimento: false,
   tecnologia: { categoria: 'sem_sinal', evidencia: 'x' },
   nivelCargo: 'outro', cargoConfirmado: null, dominioCorporativo: false,
   temMensagem: false, problemaOuFerramenta: 'nenhum', gatilho: false, paginaOrigem: null, noticia: null,
@@ -160,14 +160,21 @@ test('analysis: deductions with ceiling; scope barred caps at D, with reservatio
   assert.equal(gradua(base({ escopo: 'barrado' })).modificadores.escopo, null);
 });
 
-test('confidence (spec 04, 2.5): low without CNPJ or with two low blocks; medium with pending issues or one low block', () => {
+test('confidence (spec 04, 2.5, v0.11): level and reason', () => {
   const b = (registro, digital, pessoas = null, momento = 'triagem') => ({ momento, confiancaBlocos: { registro, digital, pessoas } });
-  assert.equal(confianca(base({ cnpjConfirmado: false })), 'baixa');
-  assert.equal(confianca(base({ cnpjConfirmado: true, ...b('media', 'alta') })), 'alta');
-  assert.equal(confianca(base({ cnpjConfirmado: true, ...b('baixa', 'alta') })), 'media');
-  assert.equal(confianca(base({ cnpjConfirmado: true, ...b('baixa', 'baixa') })), 'baixa');
-  assert.equal(confianca(base({ cnpjConfirmado: true, ...b('alta', 'alta', 'baixa', 'analise') })), 'media');
-  assert.equal(confianca(base({ cnpjConfirmado: true, comPendencias: true, ...b('alta', 'alta', 'alta', 'analise') })), 'media');
+  const ok = { cnpjConfirmado: true, porteLegal: 'demais', funcionarios: 100 };
+  assert.deepEqual(confianca(base({ cnpjConfirmado: false })), { nivel: 'baixa', motivo: 'CNPJ não confirmado' });
+  assert.deepEqual(confianca(base({ cnpjConfirmado: true, porteLegal: 'demais', funcionarios: null, ...b('alta', 'alta') })), { nivel: 'baixa', motivo: 'porte sem estimativa de funcionários' });
+  assert.equal(confianca(base({ cnpjConfirmado: true, porteLegal: 'EPP', funcionarios: null, ...b('alta', 'alta') })).nivel, 'alta'); // only "Demais" needs the head count
+  assert.equal(confianca(base({ ...ok, ...b('media', 'alta') })).nivel, 'alta');
+  assert.deepEqual(confianca(base({ ...ok, ...b('baixa', 'alta') })), { nivel: 'media', motivo: 'um bloco com confiança baixa' });
+  assert.deepEqual(confianca(base({ ...ok, ...b('baixa', 'baixa') })), { nivel: 'baixa', motivo: 'dois ou mais blocos com confiança baixa' });
+  assert.equal(confianca(base({ ...ok, ...b('alta', 'alta', 'baixa', 'analise') })).nivel, 'media');
+  assert.deepEqual(confianca(base({ ...ok, comPendencias: true, ...b('alta', 'alta', 'alta', 'analise') })), { nivel: 'media', motivo: 'análise com pendências' });
+  const l = gradua(base({ ...ok, ...b('alta', 'alta') }));
+  assert.deepEqual([l.modificadores.confianca, typeof l.modificadores.confiancaMotivo], ['alta', 'string']);
+  assert.deepEqual(l.eixos.aderencia.porte, { categoria: 'demais_ate_500', pontos: 18, fonteFuncionarios: 'apollo' });
+  assert.equal(gradua(base({})).eixos.aderencia.porte.fonteFuncionarios, null); // no head count, no source
 });
 
 test('next state and retention: spam discarded, Declinar brief reply, others to collection or kept qualified', () => {
@@ -224,7 +231,7 @@ test('triagem input from the stored documents: code facts, chosen CNPJ size, blo
       classificacaoMensagem: { tipoContato: 'empresa', falaDeProblemaOuFerramenta: 'problema', gatilho: 'prazo de fim de ano' },
     },
   };
-  const digital = { status: 'concluida', confianca: { grau: 'media' }, conteudo: { vagasNoSite: { abertas: 'sim' } }, insumosCodigo: { siteLido: true, apolloEncontrado: true, apolloFuncionarios: 350 } };
+  const digital = { status: 'concluida', confianca: { grau: 'media' }, conteudo: { vagasNoSite: { ha: 'true' } }, insumosCodigo: { siteLido: true, apolloEncontrado: true, apolloFuncionarios: 350 } };
   const registro = { status: 'concluida', confianca: { grau: 'baixa' }, conteudo: { confirmado: true, escolhido: { cnpj: '11.222.333/0001-81', porteLegal: 'demais' } }, insumosCodigo: { registros: [{ cnpj: '11222333000181', porte: 'EMPRESA DE PEQUENO PORTE' }] } };
   const e = entradaTriagem(ficha, digital, registro);
   assert.equal(e.porteLegal, 'EPP'); // the stored BrasilAPI record wins over the model field
@@ -236,6 +243,8 @@ test('triagem input from the stored documents: code facts, chosen CNPJ size, blo
   const l = gradua(e);
   assert.equal(l.eixos.aderencia.porte.categoria, 'epp_com_crescimento');
   assert.equal(l.modificadores.confianca, 'media');
+  assert.equal(entradaTriagem(ficha, { ...digital, conteudo: { vagasNoSite: { ha: true } } }, registro).sinalCrescimento, true);
+  assert.equal(entradaTriagem(ficha, { ...digital, conteudo: { vagasNoSite: { ha: 'indeterminado' } } }, registro).sinalCrescimento, false);
   const falhou = entradaTriagem(ficha, { status: 'falhou' }, undefined);
   assert.equal(falhou.cnpjConfirmado, false);
   assert.deepEqual(falhou.confiancaBlocos, { registro: null, digital: 'baixa', pessoas: null });
