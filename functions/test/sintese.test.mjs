@@ -64,6 +64,10 @@ test('numerosSemFonte (e): norms, mixed words, book references, numbered hypothe
     'Teria disponibilidade em [data e horário 1] ou [data e horário 2]?',
   ];
   assert.deepEqual(numerosSemFonte(ok.join('\n')), []);
+  assert.deepEqual(numerosSemFonte('A página de origem, /casos/elite-90-pro, sugere interesse.\nVer https://gmdigitalbunker.com.br/casos/elite-90-pro para o caso.'), []);
+  assert.deepEqual(siglasSemExtenso('- Mercado total endereçável (Total Addressable Market, TAM): não estimado.'), []);
+  assert.deepEqual(siglasSemExtenso('O TAM (Total Addressable Market) é amplo. Já o SAM é menor.'), ['SAM']);
+  assert.deepEqual(telefonesFora('Código 2936086455 do cadastro.', ''), []);
   assert.deepEqual(numerosSemFonte('O mercado reúne cerca de 1.500 operadores.'), ['O mercado reúne cerca de 1.500 operadores.']);
   assert.deepEqual(numerosSemFonte('Um blog cita reduções de até 15% no custo, sem fonte primária.'), ['Um blog cita reduções de até 15% no custo, sem fonte primária.']);
 });

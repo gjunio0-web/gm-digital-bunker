@@ -58,6 +58,9 @@ const NUM = String.raw`\d+(?:[.,]\d+)*`;
 const SEM_NUMERO: RegExp[] = [
   /\[F:[a-z_]+:\d+\](\([^)]*\))?/g,
   /\]\([^)]*\)/g,
+  // (f), authorized by Gon on 7/11/2026: page addresses and paths.
+  /https?:\/\/[^\s)>\]]+/g,
+  /(?<![\p{L}\p{N}])\/[\p{L}\p{N}_-]+(?:\/[\p{L}\p{N}_-]+)*\/?/gu,
   /^\s*(?:[-*]\s+)?\**\d+[.)]\**(?=\s|$)/gm,
   /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g,
   // Numbered norms and number/year pairs before the bare years, which would split them ((e), Gon, 7/11/2026).
@@ -99,8 +102,16 @@ const pronome = (t: string) => PRONOMES.exec(t);
 // sit next to a parenthesis – "Cadastro Nacional da Pessoa Jurídica (CNPJ)" or "CNPJ (Cadastro …)".
 export const SIGLAS = ['CNPJ', 'CNAE', 'TAM', 'SAM', 'SOM', 'LGPD', 'RFP', 'RFI', 'API'] as const;
 const primeiraSigla = (texto: string, s: string) => new RegExp(`(?<![\\p{L}\\p{N}])${s}s?(?![\\p{L}\\p{N}])`, 'u').exec(texto);
+// The acronym is explained when it sits inside a parenthesis ("(Total Addressable Market, TAM)") or is
+// followed by one ("CNPJ (Cadastro …)") – (f), authorized by Gon on 7/11/2026.
+function dentroDeParentese(texto: string, i: number): boolean {
+  const linha = texto.slice(texto.lastIndexOf('\n', i) + 1, i);
+  let abertos = 0;
+  for (const c of linha) abertos += c === '(' ? 1 : c === ')' && abertos > 0 ? -1 : 0;
+  return abertos > 0;
+}
 const semExtenso = (texto: string, m: RegExpExecArray) =>
-  !(texto.slice(0, m.index).trimEnd().endsWith('(') || texto.slice(m.index + m[0].length).trimStart().startsWith('('));
+  !(dentroDeParentese(texto, m.index) || texto.slice(m.index + m[0].length).trimStart().startsWith('('));
 export function siglasSemExtenso(textoAnalise: string): string[] {
   return SIGLAS.filter((s) => {
     const m = primeiraSigla(textoAnalise, s);
@@ -125,8 +136,9 @@ export const cpfs = (t: string) => (t.match(CPF) ?? []).filter(cpfValido);
 
 // Brazilian phone numbers: optional +55, two-digit area code, 8 or 9 digits.
 const TELEFONE = /(?<![\d/])(?:\+?55[\s.-]?)?\(?\d{2}\)?[\s.-]?9?\d{4}[\s.-]?\d{4}(?![\d/])/g;
+// Only formatted numbers count as phones: parentheses, space, dot, hyphen or +55 – (f), Gon, 7/11/2026.
 export function telefonesFora(t: string, digitosEmpresa: string): string[] {
-  return (t.match(TELEFONE) ?? []).filter((tel) => {
+  return (t.match(TELEFONE) ?? []).filter((tel) => /[()\s.+-]/.test(tel)).filter((tel) => {
     const d = tel.replace(/\D/g, '');
     return !digitosEmpresa.includes(d.slice(-8));
   });
