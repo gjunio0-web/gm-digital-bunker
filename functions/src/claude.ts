@@ -33,6 +33,14 @@ export interface Resposta {
   uso: Uso;
 }
 
+// A failed answer that was still billed (e.g. stop_reason max_tokens): carries the usage, so the caller
+// can count its cost.
+export class ErroComUso extends Error {
+  constructor(mensagem: string, readonly uso: Uso) {
+    super(mensagem);
+  }
+}
+
 const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function chamaClaude(c: Chamada): Promise<Resposta> {
@@ -70,7 +78,7 @@ export async function chamaClaude(c: Chamada): Promise<Resposta> {
       | { content?: { type: string; text?: string }[]; usage?: Uso; stop_reason?: string; error?: { type?: string; message?: string } }
       | null;
     if (!res.ok || !r) throw new Error(`Claude API HTTP ${res.status}: ${r?.error?.type ?? 'no body'}`);
-    if (r.stop_reason !== 'end_turn') throw new Error(`Claude API stop_reason ${r.stop_reason}`);
+    if (r.stop_reason !== 'end_turn') throw new ErroComUso(`Claude API stop_reason ${r.stop_reason}`, r.usage ?? { input_tokens: 0, output_tokens: 0 });
     const texto = r.content?.find((b) => b.type === 'text')?.text;
     if (!texto) throw new Error('Claude API answer without text');
     return { json: JSON.parse(texto), uso: r.usage ?? { input_tokens: 0, output_tokens: 0 } };

@@ -6,11 +6,16 @@
 // not stored, so there is nothing to tell a company address from a personal one.
 import { SECOES_MODELO, type Coleta, type SecaoModelo } from './sintese.js';
 
+// Issue of the verification (spec 01 v0.10, verificacao; spec 02 v0.11, 4.1): from the reviewer, trecho is the
+// literal excerpt and correcaoSugerida the proposed fix; from the code checks (tipo "mecanica"), trecho is the
+// excerpt that failed (an exact substring of the body, so the hub can find it) or, when there is none, the
+// description of the failure, correcaoSugerida is null and regra names the rule (decision of Gon, 7/11/2026).
 export interface Pendencia {
   tipo: string;
   secao: string;
-  texto: string;
-  correcaoSugerida?: string;
+  trecho: string;
+  correcaoSugerida: string | null;
+  regra?: string;
 }
 
 export interface AnaliseVerificada {
@@ -26,20 +31,41 @@ export function palavras(t: string): number {
   return (limpo.match(/[\p{L}\p{N}]+(?:[-'’][\p{L}\p{N}]+)*/gu) ?? []).length;
 }
 
-// Sentences of a Markdown body: split at line breaks and at ". ", "! ", "? ".
-const frases = (t: string) => t.split(/\n+|(?<=[.!?])\s+(?=[\p{Lu}\d*[(])/u).map((s) => s.trim()).filter(Boolean);
+// Sentences of a Markdown body: split at line breaks and at ". ", "! ", "? ", but not after initials and
+// common abbreviations ("Cia Industrial H. Carlos", "Ltda."); fragments under three words join the next one.
+const ABREVIACAO = /(?<![\p{L}])(?:\p{Lu}|Ltda|Cia|Inc|Av|Dr|Dra|Sr|Sra|nº|n|p|pág|art|ex|etc|S\.A|aprox)\.$/u;
+const frases = (t: string) => {
+  const partes = t.split(/\n+|(?<=[.!?])\s+(?=[\p{Lu}\d*[(])/u).map((x) => x.trim()).filter(Boolean);
+  const r: string[] = [];
+  let pendente = '';
+  for (const x of partes) {
+    const atual = pendente ? `${pendente} ${x}` : x;
+    if (ABREVIACAO.test(atual) || palavras(atual) < 3) pendente = atual;
+    else {
+      r.push(atual);
+      pendente = '';
+    }
+  }
+  if (pendente) r.push(pendente);
+  return r;
+};
 
 const MESES = 'janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro';
-// What may carry digits without a source mark: the marks themselves, list numbering, dates, years, section
-// and grade identifiers, the name of the Elite 90 Pro case (spec 02, 4.1: "datas, identificadores de seção").
+// What may carry digits without a source mark: the marks themselves, list numbering (bold included), dates,
+// years, time windows, section, grade, limit, door and version identifiers, the name of the Elite 90 Pro case
+// (spec 02, 4.1: "datas, identificadores de seção").
+const NUM = String.raw`\d+(?:[.,]\d+)*`;
 const SEM_NUMERO: RegExp[] = [
   /\[F:[a-z_]+:\d+\](\([^)]*\))?/g,
   /\]\([^)]*\)/g,
-  /^\s*(?:[-*]\s+)?\d+[.)](?=\s|$)/gm,
+  /^\s*(?:[-*]\s+)?\**\d+[.)]\**(?=\s|$)/gm,
   /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g,
   /\b\d{4}-\d{2}(?:-\d{2})?\b/g,
   new RegExp(`\\b\\d{1,2}\\s+de\\s+(?:${MESES})\\b`, 'gi'),
   /\b(?:19|20)\d{2}\b/g,
+  /(?<![\p{L}])(?:últim[oa]s|próxim[oa]s)\s+\d+\s+(?:dias|semanas|meses|anos)(?![\p{L}])/giu,
+  new RegExp(`(?<![\\p{L}])(?:limites?|seç(?:ão|ões)|portas?|vers(?:ão|ões)|capítulos?|itens|item|etapas?|partes?)\\s+${NUM}(?:\\s*(?:,|e|a)\\s*${NUM})*`, 'giu'),
+  /\bv\d+(?:\.\d+)*\b/g,
   /\bs[0-8]\b/g,
   /\bA[0-4]\b/g,
   /Elite\s+90\s+Pro/gi,
@@ -57,17 +83,18 @@ export function numerosSemFonte(corpo: string): string[] {
 // Second person pronouns as whole words (spec 02, 4.1); "TI" (information technology) is not "ti".
 const PRONOMES = /(?<![\p{L}\p{N}])(?:tu|te|ti|contigo|Tu|Te|Contigo)(?![\p{L}\p{N}])/u;
 export const temPronome = (t: string) => PRONOMES.test(t);
+const pronome = (t: string) => PRONOMES.exec(t);
 
 // Acronyms that need the long form at their first occurrence in the analysis: the first occurrence must
 // sit next to a parenthesis – "Cadastro Nacional da Pessoa Jurídica (CNPJ)" or "CNPJ (Cadastro …)".
 export const SIGLAS = ['CNPJ', 'CNAE', 'TAM', 'SAM', 'SOM', 'LGPD', 'RFP', 'RFI', 'API'] as const;
+const primeiraSigla = (texto: string, s: string) => new RegExp(`(?<![\\p{L}\\p{N}])${s}s?(?![\\p{L}\\p{N}])`, 'u').exec(texto);
+const semExtenso = (texto: string, m: RegExpExecArray) =>
+  !(texto.slice(0, m.index).trimEnd().endsWith('(') || texto.slice(m.index + m[0].length).trimStart().startsWith('('));
 export function siglasSemExtenso(textoAnalise: string): string[] {
   return SIGLAS.filter((s) => {
-    const m = new RegExp(`(?<![\\p{L}\\p{N}])${s}s?(?![\\p{L}\\p{N}])`, 'u').exec(textoAnalise);
-    if (!m) return false;
-    const antes = textoAnalise.slice(0, m.index).trimEnd();
-    const depois = textoAnalise.slice(m.index + m[0].length).trimStart();
-    return !(antes.endsWith('(') || depois.startsWith('('));
+    const m = primeiraSigla(textoAnalise, s);
+    return m !== null && semExtenso(textoAnalise, m);
   });
 }
 
@@ -101,38 +128,61 @@ export const digitosDaEmpresa = (coleta: Pick<Coleta, 'empresa_digital' | 'empre
 
 const PRECO = /R\$|US\$|\bUSD\b|\breais\b|\bdólares\b|\bdollars?\b/i;
 
-// The code checks of spec 02, 4.1, in its order. Each failure is {tipo: "mecanica", secao, texto}.
+// Exact excerpt of a body around a match, so the hub can find it.
+const contexto = (t: string, i: number, n: number) => t.slice(Math.max(0, i - 40), i + n + 40).trim();
+
+// The code checks of spec 02, 4.1, in its order. Each failure is {tipo: "mecanica", secao, trecho,
+// correcaoSugerida: null, regra}.
 export function checagens(a: AnaliseVerificada, coleta: Coleta): Pendencia[] {
   const p: Pendencia[] = [];
-  const add = (secao: string, texto: string) => p.push({ tipo: 'mecanica', secao, texto });
+  const add = (secao: string, regra: string, trecho: string) => p.push({ tipo: 'mecanica', secao, trecho, correcaoSugerida: null, regra });
   const corpos = SECOES_MODELO.map((s) => [s, a.secoes[s]?.corpo ?? ''] as const);
   const digitos = digitosDaEmpresa(coleta);
 
   for (const [s, corpo] of corpos) {
     for (const m of corpo.matchAll(/\[F:([a-z_]+):(\d+)\]/g)) {
       const fontes = (coleta as Record<string, { fontes: unknown[] } | undefined>)[m[1]]?.fontes;
-      if (!fontes || Number(m[2]) >= fontes.length) add(s, `marca de fonte sem destino: ${m[0]}`);
+      if (!fontes || Number(m[2]) >= fontes.length) add(s, 'marca_sem_destino', m[0]);
     }
-    for (const f of numerosSemFonte(corpo)) add(s, `número sem marca de fonte nem rótulo de inferência ou estimativa: "${f.slice(0, 200)}"`);
-    if (a.secoes[s] && !a.secoes[s].vazia && palavras(corpo) < 40) add(s, `seção não vazia com ${palavras(corpo)} palavras (mínimo 40)`);
+    for (const f of numerosSemFonte(corpo)) add(s, 'numero_sem_fonte', f);
+    if (a.secoes[s] && !a.secoes[s].vazia && palavras(corpo) < 40) add(s, 'secao_curta', `seção não vazia com ${palavras(corpo)} palavras (mínimo 40)`);
   }
-  if (!a.cnpjConfirmado && !/a confirmar/i.test(a.secoes.s2?.corpo ?? '')) add('s2', 'CNPJ não confirmado e a seção 2 não diz "a confirmar"');
+  if (!a.cnpjConfirmado && !/a confirmar/i.test(a.secoes.s2?.corpo ?? '')) add('s2', 'cnpj_a_confirmar', 'CNPJ não confirmado e a seção 2 não diz "a confirmar"');
   for (const [s, corpo] of corpos) {
-    if (corpo.includes('—')) add(s, 'travessão no texto (use meia-risca)');
-    if (temPronome(corpo)) add(s, 'pronome de segunda pessoa (tu, te, ti, contigo)');
+    const t = corpo.indexOf('—');
+    if (t >= 0) add(s, 'travessao', contexto(corpo, t, 1));
+    const m = pronome(corpo);
+    if (m) add(s, 'pronome', contexto(corpo, m.index, m[0].length));
   }
-  for (const sigla of siglasSemExtenso(corpos.map(([, c]) => c).join('\n\n'))) add('s1-s7', `sigla ${sigla} sem a forma por extenso na primeira ocorrência`);
+  // Acronyms: the first occurrence in the analysis, reported in the section where it appears.
+  const todo = corpos.map(([, c]) => c).join('\n\n');
+  for (const sigla of SIGLAS) {
+    const m = primeiraSigla(todo, sigla);
+    if (!m || !semExtenso(todo, m)) continue;
+    let inicio = 0;
+    for (const [s, corpo] of corpos) {
+      if (m.index < inicio + corpo.length) {
+        add(s, 'sigla', contexto(corpo, m.index - inicio, m[0].length));
+        break;
+      }
+      inicio += corpo.length + 2;
+    }
+  }
   for (const [s, corpo] of corpos) {
-    for (const c of cpfs(corpo)) add(s, `padrão de CPF no texto (${c.slice(0, 3)}…)`);
-    for (const t of telefonesFora(corpo, digitos)) add(s, `telefone que não consta dos dados da empresa coletados (…${t.replace(/\D/g, '').slice(-4)})`);
+    for (const c of cpfs(corpo)) add(s, 'cpf', c);
+    for (const tel of telefonesFora(corpo, digitos)) add(s, 'telefone', tel);
   }
   const r = a.rascunhoResposta;
+  const todoRascunho = `${r.assunto}\n${r.corpo}`;
   const n = palavras(r.corpo);
-  if (n > 120) add('rascunhoResposta', `rascunho com ${n} palavras (máximo 120)`);
-  if (PRECO.test(`${r.assunto}\n${r.corpo}`)) add('rascunhoResposta', 'menção a preço ou valor no rascunho');
-  if (a.lang !== 'en' && temPronome(`${r.assunto}\n${r.corpo}`)) add('rascunhoResposta', 'pronome de segunda pessoa no rascunho');
-  if (`${r.assunto}\n${r.corpo}`.includes('—')) add('rascunhoResposta', 'travessão no rascunho (use meia-risca)');
-  for (const c of cpfs(r.corpo)) add('rascunhoResposta', `padrão de CPF no rascunho (${c.slice(0, 3)}…)`);
+  if (n > 120) add('rascunhoResposta', 'rascunho_longo', `rascunho com ${n} palavras (máximo 120)`);
+  const preco = PRECO.exec(todoRascunho);
+  if (preco) add('rascunhoResposta', 'rascunho_preco', contexto(todoRascunho, preco.index, preco[0].length));
+  const pr = a.lang !== 'en' ? pronome(todoRascunho) : null;
+  if (pr) add('rascunhoResposta', 'rascunho_pronome', contexto(todoRascunho, pr.index, pr[0].length));
+  const tr = todoRascunho.indexOf('—');
+  if (tr >= 0) add('rascunhoResposta', 'rascunho_travessao', contexto(todoRascunho, tr, 1));
+  for (const c of cpfs(r.corpo)) add('rascunhoResposta', 'rascunho_cpf', c);
   return p;
 }
 
@@ -182,6 +232,6 @@ export function validaRevisor(v: unknown): Pendencia[] {
     if (!x || !(TIPOS_REVISOR as readonly unknown[]).includes(x.tipo) || !(SECOES_MODELO as readonly unknown[]).includes(x.secao) || typeof x.trecho !== 'string' || typeof x.correcaoSugerida !== 'string') {
       throw new Error('revisor: output does not match the schema');
     }
-    return { tipo: x.tipo, secao: x.secao as SecaoModelo, texto: x.trecho.slice(0, 1000), correcaoSugerida: x.correcaoSugerida.slice(0, 1000) };
+    return { tipo: x.tipo, secao: x.secao as SecaoModelo, trecho: x.trecho.slice(0, 1000), correcaoSugerida: x.correcaoSugerida.slice(0, 1000) };
   });
 }

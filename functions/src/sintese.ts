@@ -46,8 +46,10 @@ export interface FichaSintese {
   site: string | null; mensagem: string | null; pagina: string | null; lang: string;
 }
 
-// First user block, shared by the three calls and cached (it ends with cache_control): the ficha (only
-// the e-mail domain), the qualification and the six collection blocks with numbered sources.
+// First user block, shared by the three calls: the ficha (only the e-mail domain), the qualification and
+// the six collection blocks with numbered sources. Not cached: in the tests of 7/11/2026 each call was
+// billed as a fresh cache write, which suggests (hypothesis) that the output schema, different in each
+// call, sits ahead of the prompt and breaks the shared prefix; caching it only made it 25% dearer.
 export function blocoDados(f: FichaSintese, qualificacao: unknown, coleta: Coleta): string {
   const blocos = ETAPAS_COLETA.map((e) => {
     const b = coleta[e];
@@ -88,20 +90,20 @@ const DESTINO_ROTULO: Record<string, string> = {
 };
 export const rotuloDestino = (d: string) => DESTINO_ROTULO[d] ?? d;
 
-export const mensagemEnquadrar = (dados: string) => [{ texto: dados, cache: true }, { texto: `${INSTRUCAO_ENQUADRAR}\nResponda no esquema.` }];
+export const mensagemEnquadrar = (dados: string) => [{ texto: dados }, { texto: `${INSTRUCAO_ENQUADRAR}\nResponda no esquema.` }];
 
 // <lead> carries only lead.destino and lead.modificadores (spec 02, 3; spec 04, 3.1).
 export function mensagemConversa(dados: string, enquadramento: unknown, lead: Pick<Lead, 'destino' | 'modificadores'>) {
   const l = { destino: lead.destino, destinoRotulo: rotuloDestino(lead.destino), modificadores: lead.modificadores };
   return [
-    { texto: dados, cache: true },
+    { texto: dados },
     { texto: [`<enquadramento>\n${json(enquadramento)}\n</enquadramento>`, `<lead>\n${json(l)}\n</lead>`, INSTRUCAO_CONVERSA, 'Responda no esquema.'].join('\n') },
   ];
 }
 
 export function mensagemMontar(dados: string, enquadramento: unknown, conversa: unknown) {
   return [
-    { texto: dados, cache: true },
+    { texto: dados },
     { texto: [`<enquadramento>\n${json(enquadramento)}\n</enquadramento>`, `<conversa>\n${json(conversa)}\n</conversa>`, INSTRUCAO_MONTAR, 'Responda no esquema.'].join('\n') },
   ];
 }

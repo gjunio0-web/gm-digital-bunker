@@ -46,6 +46,13 @@ test('numerosSemFonte: digits need a mark, [inferência] or an estimate label in
   assert.deepEqual(numerosSemFonte('Em 12 de março de 2026, ver s3 e A2.\n1. Primeiro item\nO caso Elite 90 Pro mostra isso.'), []);
 });
 
+test('numerosSemFonte: initials and abbreviations do not cut the sentence; identifiers and time windows pass', () => {
+  assert.deepEqual(numerosSemFonte('O CNPJ 84709955000102 consta como Cia Industrial H. Carlos Schneider [F:empresa_registro:0].'), []);
+  assert.deepEqual(numerosSemFonte('Não foram encontradas notícias nos últimos 12 meses.'), []);
+  assert.deepEqual(numerosSemFonte('**1. Automação de cotações** (seções 4 e 5).\nFica fora pelo limite 4, na versão 0.7 do Mapa, porta 2.'), []);
+  assert.deepEqual(numerosSemFonte('A receita vai de R$ 4,8 milhões a R$ 300 milhões.'), ['A receita vai de R$ 4,8 milhões a R$ 300 milhões.']);
+});
+
 test('temPronome: tu, te, ti, contigo as whole words; TI and words containing them are fine', () => {
   assert.equal(temPronome('Vamos te mostrar'), true);
   assert.equal(temPronome('A equipe de TI é enxuta, até parte do time'), false);
@@ -99,22 +106,22 @@ test('checagens: each rule of spec 02, 4.1 raises a "mecanica" issue', () => {
     cnpjConfirmado: false,
   });
   const p = checagens(a, coleta);
-  assert.ok(p.every((x) => x.tipo === 'mecanica'));
-  const textos = p.map((x) => `${x.secao}: ${x.texto}`);
-  for (const esperado of [
-    /^s1: marca de fonte sem destino: \[F:setor:9\]/,
-    /^s2: número sem marca/,
-    /^s3: seção não vazia com 2 palavras/,
-    /^s2: CNPJ não confirmado/,
-    /^s4: travessão/,
-    /^s5: pronome/,
-    /^s1-s7: sigla LGPD/,
-    /^s7: padrão de CPF/,
-    /^s7: telefone que não consta/,
-    /^rascunhoResposta: rascunho com \d+ palavras/,
-    /^rascunhoResposta: menção a preço/,
-    /^rascunhoResposta: pronome/,
-  ]) assert.ok(textos.some((t) => esperado.test(t)), `${esperado} in ${JSON.stringify(textos, null, 1)}`);
+  assert.ok(p.every((x) => x.tipo === 'mecanica' && x.correcaoSugerida === null));
+  const por = (regra) => p.filter((x) => x.regra === regra).map((x) => [x.secao, x.trecho]);
+  assert.deepEqual(por('marca_sem_destino'), [['s1', '[F:setor:9]']]);
+  assert.ok(por('numero_sem_fonte').some(([s, t]) => s === 's2' && t.endsWith('Tem 12 filiais.')));
+  assert.deepEqual(por('secao_curta'), [['s3', 'seção não vazia com 2 palavras (mínimo 40)']]);
+  assert.deepEqual(por('cnpj_a_confirmar').map(([s]) => s), ['s2']);
+  // Excerpts are exact substrings of the body, so the hub can find them.
+  for (const [regra, secao] of [['travessao', 's4'], ['pronome', 's5'], ['sigla', 's6'], ['cpf', 's7'], ['telefone', 's7']]) {
+    const [[s, t]] = por(regra);
+    assert.equal(s, secao, regra);
+    assert.ok(a.secoes[s].corpo.includes(t), `${regra}: ${t}`);
+  }
+  assert.deepEqual(por('cpf')[0][1], '529.982.247-25');
+  assert.equal(por('rascunho_longo').length, 1);
+  assert.ok(por('rascunho_preco')[0][1].includes('R$'));
+  assert.ok(por('rascunho_pronome')[0][1].includes('tu'));
 });
 
 test('checagens: an English draft is not checked for Portuguese pronouns', () => {
@@ -139,7 +146,7 @@ test('output checks: schema mismatches throw; titles are fixed; at most three hy
   assert.equal(quatro.hipotesesDeAlavanca.length, 3);
   const m = simulaMontar(false);
   assert.equal(validaMontar({ ...m, s1: { ...m.s1, titulo: 'outro' } }).s1.titulo, 'Qualificação imediata');
-  assert.deepEqual(validaRevisor({ pendencias: [{ tipo: 'escopo', secao: 's6', trecho: 'x', correcaoSugerida: 'y' }] }), [{ tipo: 'escopo', secao: 's6', texto: 'x', correcaoSugerida: 'y' }]);
+  assert.deepEqual(validaRevisor({ pendencias: [{ tipo: 'escopo', secao: 's6', trecho: 'x', correcaoSugerida: 'y' }] }), [{ tipo: 'escopo', secao: 's6', trecho: 'x', correcaoSugerida: 'y' }]);
 });
 
 test('preparar_conversa gets only destino and modificadores in <lead>', () => {

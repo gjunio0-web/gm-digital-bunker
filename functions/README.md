@@ -28,8 +28,8 @@ Região de todas as funções: `REGIAO` em `src/config.ts` (`southamerica-east1`
 | `src/graduar.ts` | Triagem: grava `lead`, o evento `triada`, o próximo estado, a guarda de 30 dias e as métricas por quadrante e grau; análise: `lead` no momento análise, evento `graduada`, guarda de 30 dias no grau D; ao fim de `verificar`, só a confiança e o prazo |
 | `src/sintese.ts` | Síntese (spec 02, seção 3): instruções, esquemas e conferência das saídas de `enquadrar`, `preparar_conversa` e `montar_analise`, bloco de dados em cache, seções `s0` e `s8`, marcas de fonte em link, simulações do emulador (funções puras) |
 | `src/sintetizar.ts` | Gatilho da síntese: trava por transação, três chamadas, `graduar` entre a primeira e a segunda, gravação de `analise/vN`, custo |
-| `src/verificacao.ts` | Checagens em código da spec 02, 4.1 (CPF com dígitos; telefone só fora dos dados de empresa coletados) e prompt, esquema e conferência do revisor (funções puras) |
-| `src/verificar.ts` | Gatilho da verificação na criação de `analise/vN`: checagens, revisor só em versão da IA, confiança, estado final, prazo, segundo e-mail |
+| `src/verificacao.ts` | Checagens em código da spec 02, 4.1 (CPF com dígitos; telefone só fora dos dados de empresa coletados), com pendências `{tipo, secao, trecho, correcaoSugerida, regra}`, e prompt, esquema e conferência do revisor (funções puras) |
+| `src/verificar.ts` | Gatilho da verificação na criação de `analise/vN`: checagens; em versão da IA, revisor, confiança, estado final, prazo e segundo e-mail; em edição humana, só as checagens |
 | `src/coletarMinima.ts` | Coleta mínima para toda ficha, seguida de `qualificar` e `graduar` |
 | `src/claude.ts` | Messages API da Claude por HTTP, com cache no último bloco do método (a API aceita até 4 pontos de cache por chamada) e no bloco de dados da síntese, e saída por esquema JSON (no emulador, classificação simulada) |
 | `src/custo.ts` | Custo estimado por chamada, pela tabela de preços por modelo |

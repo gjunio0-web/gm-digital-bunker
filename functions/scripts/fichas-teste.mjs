@@ -10,7 +10,7 @@
 // "coletada": the failed ones by default, or the stages given in --etapas=empresa_registro,empresa_pessoas
 // (any of the six); a new synthesis (v+1) follows by itself. --sintese re-runs only the synthesis of test
 // fichas in coletada, sintetizando (stopped by an error), analise_pronta or analise_com_pendencias.
-// --ficha=<id> limits it to one ficha; --uma-por-vez runs one ficha at a time. The cost printed for a
+// --ficha=<id>[,<id>…] limits it to those fichas; --uma-por-vez runs one ficha at a time. The cost printed for a
 // re-run is the cost of that re-run only. Report without personal data.
 import { readFileSync } from 'node:fs';
 import { initializeApp } from 'firebase-admin/app';
@@ -21,7 +21,8 @@ const ETAPAS = ['empresa_digital', 'empresa_registro', 'empresa_pessoas', 'empre
 const opcoes = process.argv.slice(2).filter((a) => a.startsWith('--') && a !== '--reexecutar' && a !== '--sintese');
 const [projeto, arquivo] = process.argv.slice(2).filter((a) => !opcoes.includes(a));
 const umaPorVez = opcoes.includes('--uma-por-vez');
-const soFicha = (opcoes.find((a) => a.startsWith('--ficha=')) ?? '--ficha=').slice(8);
+const soFichas = (opcoes.find((a) => a.startsWith('--ficha=')) ?? '--ficha=').slice(8).split(',').filter(Boolean);
+const fora = (id) => soFichas.length > 0 && !soFichas.includes(id);
 const forcar = (opcoes.find((a) => a.startsWith('--etapas=')) ?? '--etapas=').slice(9).split(',').filter(Boolean);
 const invalidas = forcar.filter((e) => !ETAPAS.includes(e));
 if (!projeto || !arquivo || invalidas.length || opcoes.some((a) => a !== '--uma-por-vez' && !a.startsWith('--etapas=') && !a.startsWith('--ficha='))) {
@@ -48,7 +49,7 @@ const fichas = [];
 if (sintese) {
   const q = await db.collection('fichas').where('teste', '==', true).where('estado', 'in', ['coletada', 'sintetizando', 'analise_pronta', 'analise_com_pendencias']).get();
   for (const d of q.docs) {
-    if (soFicha && d.id !== soFicha) continue;
+    if (fora(d.id)) continue;
     if (d.get('estado') === 'sintetizando' && !d.get('erro')) continue; // running now
     fichas.push({ empresa: d.get('original.empresa'), ref: d.ref, reexecucao: true, soSintese: true });
     console.log(`synthesis re-run ${d.id} – ${d.get('original.empresa')}`);
@@ -56,7 +57,7 @@ if (sintese) {
 } else if (reexecutar) {
   const q = await db.collection('fichas').where('teste', '==', true).where('estado', '==', 'coletada').get();
   for (const d of q.docs) {
-    if (soFicha && d.id !== soFicha) continue;
+    if (fora(d.id)) continue;
     fichas.push({ empresa: d.get('original.empresa'), ref: d.ref, reexecucao: true });
     console.log(`re-run ${d.id} – ${d.get('original.empresa')}`);
   }

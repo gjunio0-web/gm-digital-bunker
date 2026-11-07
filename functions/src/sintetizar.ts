@@ -10,7 +10,7 @@ import { logger } from 'firebase-functions';
 import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { CLAUDE_API_KEY, REGIAO } from './config.js';
 import { lePipeline } from './pipeline.js';
-import { chamaClaude, noEmulador, type Resposta } from './claude.js';
+import { chamaClaude, ErroComUso, noEmulador, type Resposta } from './claude.js';
 import { custoDe, type Uso } from './custo.js';
 import { leMetodo } from './metodo.js';
 import { graduaAnalise } from './graduar.js';
@@ -24,7 +24,10 @@ import {
 } from './sintese.js';
 import type { Normalizado, Original } from './validacao.js';
 
-const TIMEOUT_CHAMADA_MS = 300_000;
+// Output budgets (thinking included; Sonnet 5.5 allows 128K) and wait per call, authorized by Gon on
+// 7/11/2026 after enquadrar hit 16,000 tokens in two test fichas.
+const MAX_TOKENS = { enquadrar: 32_000, preparar_conversa: 32_000, montar_analise: 48_000 } as const;
+const TIMEOUT_CHAMADA_MS = 480_000;
 
 export const sintetizar = onDocumentUpdated(
   { document: 'fichas/{id}', region: REGIAO, secrets: [CLAUDE_API_KEY], memory: '1GiB', timeoutSeconds: 540, maxInstances: 3, retry: false },
@@ -65,20 +68,27 @@ export const sintetizar = onDocumentUpdated(
       // The five method files, whole (spec 02, 3).
       const metodo = await leMetodo({ 'glossario.md': 'tudo', 'escopo-limites.md': 'tudo', 'portas-materiais.md': 'tudo', 'mapa-alavancas.md': 'tudo', 'livro-selecao.md': 'tudo' });
       const blocos = metodo.blocos.map((b) => ({ nome: b.nome, texto: b.texto }));
-      const chama = async (nome: string, usuario: { texto: string; cache?: boolean }[], esquema: object, maxTokens: number, simulado: () => unknown): Promise<unknown> => {
+      // A failed call names itself in the error and, when it was billed, still counts in the cost.
+      const chama = async (nome: keyof typeof MAX_TOKENS, usuario: { texto: string; cache?: boolean }[], esquema: object, simulado: () => unknown): Promise<unknown> => {
         if (noEmulador()) return simulado();
-        const r: Resposta = await chamaClaude({ chave: CLAUDE_API_KEY.value(), modelo, metodo: blocos, usuario, esquema, maxTokens, timeoutMs: TIMEOUT_CHAMADA_MS });
+        let r: Resposta;
+        try {
+          r = await chamaClaude({ chave: CLAUDE_API_KEY.value(), modelo, metodo: blocos, usuario, esquema, maxTokens: MAX_TOKENS[nome], timeoutMs: TIMEOUT_CHAMADA_MS });
+        } catch (e) {
+          if (e instanceof ErroComUso) usos[nome] = e.uso;
+          throw new Error(`${nome}: ${String((e as Error)?.message ?? e)}`);
+        }
         usos[nome] = r.uso;
         return r.json;
       };
 
-      const enq = validaEnquadrar(await chama('enquadrar', mensagemEnquadrar(dados), ESQUEMA_ENQUADRAR, 16_000, simulaEnquadrar));
+      const enq = validaEnquadrar(await chama('enquadrar', mensagemEnquadrar(dados), ESQUEMA_ENQUADRAR, simulaEnquadrar));
       const anteriores = await ref.collection('analise').get();
       const versao = `v${anteriores.size + 1}`;
       const lead = await graduaAnalise(ref, p, enq, versao);
-      const conversa = validaConversa(await chama('preparar_conversa', mensagemConversa(dados, enq, lead), ESQUEMA_CONVERSA, 16_000, simulaConversa));
+      const conversa = validaConversa(await chama('preparar_conversa', mensagemConversa(dados, enq, lead), ESQUEMA_CONVERSA, simulaConversa));
       const comFalha = /pend[eê]ncia/i.test(original.mensagem ?? '');
-      const montagem = validaMontar(await chama('montar_analise', mensagemMontar(dados, enq, conversa), ESQUEMA_MONTAR, 32_000, () => simulaMontar(comFalha)));
+      const montagem = validaMontar(await chama('montar_analise', mensagemMontar(dados, enq, conversa), ESQUEMA_MONTAR, () => simulaMontar(comFalha)));
 
       // Cost of the three calls, per call and in total.
       const porChamada = Object.fromEntries(Object.entries(usos).map(([k, u]) => [k, custoDe(modelo, u)]));

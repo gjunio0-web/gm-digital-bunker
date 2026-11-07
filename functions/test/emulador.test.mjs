@@ -177,10 +177,11 @@ test('analysis with a pending issue: analise_com_pendencias, medium-level reason
   const v = mapa((await le(`fichas/${id}/analise/v1`)).fields.verificacao);
   assert.equal(v.status.stringValue, 'com_pendencias');
   const p = v.pendencias.arrayValue.values.map((x) => mapa(x));
-  assert.deepEqual(p.map((x) => [x.tipo.stringValue, x.secao.stringValue]), [['mecanica', 's3']]);
+  assert.deepEqual(p.map((x) => [x.tipo.stringValue, x.secao.stringValue, x.regra.stringValue]), [['mecanica', 's3', 'travessao']]);
+  assert.equal(p[0].correcaoSugerida.nullValue, null);
 });
 
-test('human edit: v2 by a person gets only the code checks; state and deadline kept', { timeout: 60_000 }, async () => {
+test('human edit: v2 by a person gets only the code checks; state, confidence and deadline kept', { timeout: 60_000 }, async () => {
   const app = initializeApp({ projectId: PROJETO }, 'edicao');
   try {
     const db = getFirestore(app);
@@ -197,11 +198,12 @@ test('human edit: v2 by a person gets only the code checks; state and deadline k
     }
     assert.equal(v2.verificacao.status, 'com_pendencias');
     assert.equal(v2.verificacao.modeloRevisor, null);
-    assert.deepEqual(v2.verificacao.pendencias.map((x) => [x.tipo, x.secao]), [['mecanica', 's3']]);
+    assert.deepEqual(v2.verificacao.pendencias.map((x) => [x.tipo, x.secao, x.regra, x.correcaoSugerida]), [['mecanica', 's3', 'travessao', null]]);
+    assert.ok(v2.secoes.s3.corpo.includes(v2.verificacao.pendencias[0].trecho));
     const depois = (await ref.get()).data();
     assert.equal(depois.estado, 'analise_pronta');
     assert.ok(depois.lead.acao.prazoEm.isEqual(antes.lead.acao.prazoEm));
-    assert.match(depois.lead.modificadores.confiancaMotivo, /análise com pendências$/);
+    assert.deepEqual(depois.lead.modificadores, antes.lead.modificadores);
   } finally {
     await deleteApp(app);
   }
