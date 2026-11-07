@@ -8,7 +8,7 @@ import { instagramDe, linksDe, tecnologiasDe, textoDe } from '../lib/coleta/site
 import { filtraHunter } from '../lib/coleta/fornecedores.js';
 import { formatoInvalido, normalizaEnvelope } from '../lib/coleta/envelope.js';
 import { chaveUrl, extraiJson, urlsDosResultados } from '../lib/coleta/claudeColeta.js';
-import { CHAVES, ETAPAS, mensagemDaEtapa, orcamentoBuscas, orcamentoPrimeiraPassagem } from '../lib/coleta/etapas.js';
+import { CHAVES, ETAPAS, LIMITES_DA_ETAPA, mensagemDaEtapa, orcamentoBuscas, orcamentoPrimeiraPassagem } from '../lib/coleta/etapas.js';
 import { ESQUEMAS } from '../lib/coleta/textosSpec.js';
 import { custoDe } from '../lib/custo.js';
 
@@ -146,4 +146,8 @@ test('rejected confidence names the received value (diagnosis of the phase A fai
   assert.match(formatoInvalido(env('baixa'), ['itens', 'leitura']), /received: string "baixa"/);
   assert.match(formatoInvalido(env(undefined), ['itens', 'leitura']), /received: ausente/);
   assert.equal(formatoInvalido(env({ grau: 'baixa', motivo: 'x' }), ['itens', 'leitura']), null);
+});
+
+test('setor has a larger output budget and wait, within the 540 s of the function', () => {
+  assert.deepEqual(LIMITES_DA_ETAPA, { setor: { maxTokens: 64_000, timeoutMs: 360_000 } });
 });

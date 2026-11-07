@@ -11,7 +11,7 @@ import { noEmulador } from '../claude.js';
 import { custoDe } from '../custo.js';
 import { chamaColeta, chaveUrl, ErroColeta, type RespostaColeta } from './claudeColeta.js';
 import { formatoInvalido, normalizaEnvelope, type Envelope, type FonteColeta } from './envelope.js';
-import { CHAVES, INSTRUCAO_CANDIDATOS, MAX_BUSCAS, MAX_LEITURAS, METODO_DA_ETAPA, mensagemDaEtapa, type BlocoContexto, type DadosFicha, type Etapa } from './etapas.js';
+import { CHAVES, INSTRUCAO_CANDIDATOS, LIMITES_DA_ETAPA, MAX_BUSCAS, MAX_LEITURAS, METODO_DA_ETAPA, mensagemDaEtapa, type BlocoContexto, type DadosFicha, type Etapa } from './etapas.js';
 import { leSite, type LeituraSite } from './site.js';
 import { cnpjValido, consultaBrasilApi, type RegistroBrasilApi } from './cnpj.js';
 import { consultaApify, consultaApollo, consultaHunter, type Instagram } from './fornecedores.js';
@@ -66,7 +66,7 @@ async function chama(c: Contexto, t: Rastro, etapa: Etapa, usuario: string, maxB
   try {
     const met = METODO_DA_ETAPA[etapa];
     const metodo = met ? (await leMetodo(met)).blocos.map((b) => ({ nome: b.nome, texto: b.texto })) : [];
-    const r = await chamaColeta({ chave: c.chaves.claude, modelo: c.p.modeloColeta, metodo, usuario, maxBuscas: reserva, maxLeituras: MAX_LEITURAS, valida });
+    const r = await chamaColeta({ chave: c.chaves.claude, modelo: c.p.modeloColeta, metodo, usuario, maxBuscas: reserva, maxLeituras: MAX_LEITURAS, valida, ...LIMITES_DA_ETAPA[etapa] });
     c.buscasRestantes += reserva - Math.min(reserva, r.buscas);
     t.rs.push(r);
     return r;

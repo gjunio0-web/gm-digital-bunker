@@ -12,6 +12,14 @@ export const MAX_BUSCAS: Record<Etapa, number> = {
 };
 export const MAX_LEITURAS = 2;
 
+// Stages that need a larger output budget than the default of claudeColeta.ts (32,000). setor ran past it
+// twice for the same ficha in the phase A test (32,9 thousand output tokens, most of it adaptive thinking);
+// Claude Haiku 5.5 allows up to 128K output tokens (Claude docs, model overview). Option (a) authorized
+// by Gon on 7/11/2026; if 64,000 is also exceeded, the next step is a lower effort for this stage.
+export const LIMITES_DA_ETAPA: Partial<Record<Etapa, { maxTokens: number; timeoutMs: number }>> = {
+  setor: { maxTokens: 64_000, timeoutMs: 360_000 },
+};
+
 // Stages of the coleta mínima (every ficha) and of the rest of the collection (fichas sent to analysis).
 export const ETAPAS_MINIMAS: readonly Etapa[] = ['empresa_digital', 'empresa_registro'];
 export const ETAPAS_RESTANTES: readonly Etapa[] = ['empresa_pessoas', 'empresa_noticias', 'setor', 'mercado'];

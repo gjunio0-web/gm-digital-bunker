@@ -14,6 +14,9 @@ export interface PedidoColeta {
   maxBuscas: number;
   maxLeituras: number;
   valida: (json: unknown) => string | null; // error text, or null when valid
+  // Output budget and per-request wait when a stage needs more than the default (setor; Gon, 7/11/2026).
+  maxTokens?: number;
+  timeoutMs?: number;
 }
 
 export interface RespostaColeta {
@@ -86,13 +89,13 @@ export function urlsDosResultados(blocos: Bloco[]): string[] {
   return urls;
 }
 
-async function envia(chave: string, corpo: object): Promise<{ content: Bloco[]; stop_reason: string; usage: Uso & { server_tool_use?: { web_search_requests?: number; web_fetch_requests?: number } } }> {
+async function envia(chave: string, corpo: object, timeoutMs = 240_000): Promise<{ content: Bloco[]; stop_reason: string; usage: Uso & { server_tool_use?: { web_search_requests?: number; web_fetch_requests?: number } } }> {
   for (let tentativa = 1; ; tentativa++) {
     const res = await fetch(API, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': chave, 'anthropic-version': VERSAO },
       body: JSON.stringify(corpo),
-      signal: AbortSignal.timeout(240_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if ((res.status === 429 || res.status >= 500) && tentativa === 1) {
       await new Promise((r) => setTimeout(r, 3_000));
@@ -132,7 +135,7 @@ export async function chamaColeta(p: PedidoColeta): Promise<RespostaColeta> {
     for (let volta = 0; volta < 4; volta++) {
       let r;
       try {
-        r = await envia(p.chave, { model: p.modelo, max_tokens: MAX_TOKENS_COLETA, system, messages, ...(tools.length ? { tools } : {}) });
+        r = await envia(p.chave, { model: p.modelo, max_tokens: p.maxTokens ?? MAX_TOKENS_COLETA, system, messages, ...(tools.length ? { tools } : {}) }, p.timeoutMs);
       } catch (e) {
         throw new ErroColeta(String((e as Error).message), total);
       }
