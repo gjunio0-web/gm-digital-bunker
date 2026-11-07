@@ -8,7 +8,7 @@ import { FieldValue, Timestamp, type DocumentReference } from 'firebase-admin/fi
 import type { Fornecedor, Pipeline } from '../config.js';
 import { leMetodo } from '../metodo.js';
 import { noEmulador } from '../claude.js';
-import { custoDe } from '../custo.js';
+import { custoDe, type Uso } from '../custo.js';
 import { chamaColeta, chaveUrl, ErroColeta, type RespostaColeta } from './claudeColeta.js';
 import { formatoInvalido, normalizaEnvelope, type Envelope, type FonteColeta } from './envelope.js';
 import { CHAVES, INSTRUCAO_CANDIDATOS, LIMITES_DA_ETAPA, MAX_BUSCAS, MAX_LEITURAS, METODO_DA_ETAPA, mensagemDaEtapa, type BlocoContexto, type DadosFicha, type Etapa } from './etapas.js';
@@ -113,9 +113,11 @@ async function envelopeDaEtapa(c: Contexto, t: Rastro, etapa: Etapa, fontes: Fon
 }
 
 const usoDe = (c: Contexto, rs: RespostaColeta[]) => {
-  const soma = { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 };
+  const soma = { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, partes: [] as Uso[] };
   let buscas = 0;
   for (const r of rs) {
+    // Each response priced on its own (Haiku tier above 100,000 prompt tokens).
+    soma.partes.push(...(r.uso.partes?.length ? r.uso.partes : [r.uso]));
     soma.input_tokens += r.uso.input_tokens;
     soma.output_tokens += r.uso.output_tokens;
     soma.cache_creation_input_tokens += r.uso.cache_creation_input_tokens ?? 0;

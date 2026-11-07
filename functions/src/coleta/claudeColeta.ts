@@ -119,8 +119,9 @@ export async function chamaColeta(p: PedidoColeta): Promise<RespostaColeta> {
     ...(p.maxLeituras > 0 ? [{ type: 'web_fetch_20250910', name: 'web_fetch', max_uses: p.maxLeituras, max_content_tokens: 8000 }] : []),
   ];
   const messages: { role: string; content: unknown }[] = [{ role: 'user', content: p.usuario }];
-  const total: RespostaColeta = { json: null, uso: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 }, buscas: 0, leituras: 0, urlsConsultadas: new Set() };
+  const total: RespostaColeta = { json: null, uso: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, partes: [] }, buscas: 0, leituras: 0, urlsConsultadas: new Set() };
   const soma = (u: Awaited<ReturnType<typeof envia>>['usage']) => {
+    total.uso.partes!.push({ input_tokens: u.input_tokens ?? 0, output_tokens: u.output_tokens ?? 0, cache_creation_input_tokens: u.cache_creation_input_tokens ?? 0, cache_read_input_tokens: u.cache_read_input_tokens ?? 0 });
     total.uso.input_tokens += u.input_tokens ?? 0;
     total.uso.output_tokens += u.output_tokens ?? 0;
     total.uso.cache_creation_input_tokens! += u.cache_creation_input_tokens ?? 0;

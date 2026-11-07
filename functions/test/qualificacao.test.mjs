@@ -70,4 +70,11 @@ test('cost: Haiku 5.5 prices; unknown model gives null', () => {
   const c = custoDe('claude-haiku-5-5', { input_tokens: 1000, output_tokens: 200, cache_read_input_tokens: 500 });
   assert.deepEqual(c, { tokensEntrada: 1500, tokensSaida: 200, buscas: 0, usdEstimado: 0.000205 });
   assert.equal(custoDe('outro', { input_tokens: 1, output_tokens: 1 }).usdEstimado, null);
+  // Haiku tier above 100,000 prompt tokens (input + cache writes + cache reads), the whole request at the
+  // higher rate; summed responses priced one by one; Sonnet single tier.
+  assert.equal(custoDe('claude-haiku-5-5', { input_tokens: 100_000, output_tokens: 1000 }).usdEstimado, 0.0105);
+  assert.equal(custoDe('claude-haiku-5-5', { input_tokens: 90_000, cache_read_input_tokens: 20_000, output_tokens: 1000 }).usdEstimado, 0.0485);
+  const partes = [{ input_tokens: 100_000, output_tokens: 1000 }, { input_tokens: 110_000, output_tokens: 1000 }];
+  assert.equal(custoDe('claude-haiku-5-5', { input_tokens: 210_000, output_tokens: 2000, partes }).usdEstimado, 0.0105 + 0.0575);
+  assert.equal(custoDe('claude-sonnet-5-5', { input_tokens: 150_000, output_tokens: 1000 }).usdEstimado, 0.31);
 });
