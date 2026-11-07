@@ -437,3 +437,63 @@ export function entradaTriagem(ficha: Record<string, any>, digital: Doc, registr
     comPendencias: false,
   };
 }
+
+// --- Inputs of the analysis (spec 04, sections 1 and 2; spec 02, 3.1) ------------------------------------
+
+// News of the last 12 months about expansion, fundraising or product (axis 3), counted only with a
+// date (AAAA-MM) within 12 months of the analysis; undated items are not counted.
+export function noticiaRecente(noticias: Doc, momento: Date): boolean | null {
+  if (noticias?.status !== 'concluida') return null;
+  const itens = (noticias.conteudo?.itens ?? []) as { data?: string | null; tema?: string }[];
+  const limite = new Date(Date.UTC(momento.getUTCFullYear() - 1, momento.getUTCMonth(), 1));
+  return itens.some((i) => {
+    if (!['expansao', 'captacao', 'produto'].includes(String(i?.tema))) return false;
+    const m = /^(\d{4})-(\d{2})/.exec(String(i?.data ?? ''));
+    return m !== null && new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, 1)) >= limite;
+  });
+}
+
+const vagasAbertas = (digital: Doc, pessoas: Doc) =>
+  digital?.conteudo?.vagasNoSite?.ha === true || digital?.conteudo?.vagasNoSite?.ha === 'true' ||
+  (pessoas?.status === 'concluida' && Array.isArray(pessoas.conteudo?.empresa?.vagasAbertas) && pessoas.conteudo.empresa.vagasAbertas.length > 0);
+
+export interface EnquadramentoGraduacao {
+  estruturaTecnologia: { categoria: CategoriaTecnologia; evidencia: string };
+  escopo: { resultado: 'aprovado' | 'ressalva' | 'barrado' };
+  porta: { provavel: string; sinais: string[] };
+  hipotesesDeAlavanca: { sinal?: string }[];
+  riscosDoLead: { risco: string }[];
+  leituraDoPotencial: { direcao: string };
+}
+
+// Analysis moment: everything of the triagem plus the remaining stages and enquadrar. The growth signal
+// is news of expansion, fundraising or launch in the last 12 months, or open jobs (site or Pessoas stage).
+export function entradaAnalise(
+  ficha: Record<string, any>,
+  docs: { empresa_digital?: Doc; empresa_registro?: Doc; empresa_pessoas?: Doc; empresa_noticias?: Doc },
+  enq: EnquadramentoGraduacao,
+  momento: Date,
+  comPendencias = false,
+): EntradaGraduacao {
+  const { empresa_digital: digital, empresa_registro: registro, empresa_pessoas: pessoas, empresa_noticias: noticias } = docs;
+  const base = entradaTriagem(ficha, digital, registro);
+  const coincide = pessoas?.status === 'concluida' ? pessoas.conteudo?.signatario?.coincideComFicha : undefined;
+  const cargoConfirmado = coincide === true || coincide === 'true' ? 'true' : coincide === false || coincide === 'false' ? 'false' : coincide === 'indeterminado' ? 'indeterminado' : null;
+  const noticia = noticiaRecente(noticias, momento);
+  return {
+    ...base,
+    momento: 'analise',
+    ...estimativaFuncionarios(digital, pessoas, 'analise'),
+    sinalCrescimento: noticia === true || vagasAbertas(digital, pessoas),
+    tecnologia: { categoria: enq.estruturaTecnologia.categoria, evidencia: enq.estruturaTecnologia.evidencia },
+    cargoConfirmado,
+    noticia,
+    porta: { porta: enq.porta.provavel, sinais: enq.porta.sinais.length },
+    hipotese: enq.hipotesesDeAlavanca.some((h) => typeof h.sinal === 'string' && h.sinal.trim() !== ''),
+    direcao: enq.leituraDoPotencial.direcao !== 'indeterminado',
+    riscos: enq.riscosDoLead.map((r) => r.risco),
+    escopo: enq.escopo.resultado,
+    confiancaBlocos: { registro: grauDoBloco(registro), digital: grauDoBloco(digital), pessoas: grauDoBloco(pessoas) },
+    comPendencias,
+  };
+}

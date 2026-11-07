@@ -2,12 +2,15 @@
 // Method first (the coleta mínima needs a published version): publicarMetodo and leMetodo.
 // Reception: a valid ficha, the honeypot, an invalid ficha, an origin not allowed and the per-e-mail limit.
 // Pipeline from the creation of the ficha (simulated model and providers): coleta mínima → qualificar →
-// graduar (triagem) → the rest of the collection – Priorizar to coletada, Declinar to resposta_breve,
-// spam to descartada, autoAnalisar off kept in qualificada, and a re-run of empresa_registro.
+// graduar (triagem) → the rest of the collection → sintetizar → verificar (simulated synthesis and reviewer) –
+// Priorizar to analise_pronta, an analysis with a pending issue, a human edit (code checks only), a re-run of
+// empresa_registro that yields v2, Declinar to resposta_breve, spam to descartada, autoAnalisar off kept in
+// qualificada.
 import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { deleteApp, initializeApp } from 'firebase-admin/app';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { leMetodo } from '../lib/metodo.js';
 import { ARQUIVOS_METODO } from '../lib/metodoArquivos.js';
 
@@ -109,10 +112,10 @@ test('valid ficha: 201, stored with the recebida event and expurgoEm = recebidaE
 
 let idPriorizar;
 
-test('Priorizar: coleta mínima → qualificar → triagem → rest of the collection → coletada', { timeout: 90_000 }, async () => {
+test('Priorizar: coleta mínima → qualificar → triagem → rest of the collection → synthesis → verification → analise_pronta', { timeout: 90_000 }, async () => {
   const { id } = await (await envia({ ...media, email: 'p1@acme.com.br' })).json();
   idPriorizar = id;
-  const f = await ate(id, estado('coletada'), 320);
+  const f = await ate(id, estado('analise_pronta'), 360);
   assert.equal(f.versaoMetodo.stringValue, 'abc1234');
   const q = mapa(f.qualificacao);
   assert.equal(q.decisao.stringValue, 'prosseguir');
@@ -121,17 +124,25 @@ test('Priorizar: coleta mínima → qualificar → triagem → rest of the colle
   assert.equal(q.siteResolvido.stringValue, 'https://acme.com.br');
   assert.equal(mapa(q.estruturaTecnologia).categoria.stringValue, 'enxuta');
   assert.equal(mapa(q.portaIndicada).porta.stringValue, 'conselho');
+  const todos = await eventos(id);
+  const triada = mapa(todos.find((e) => e.tipo.stringValue === 'triada').detalhe);
+  assert.equal(triada.quadrante.stringValue, 'priorizar');
+  assert.equal(triada.destino.stringValue, 'convidar');
+  // The analysis replaces the triagem in lead.
   const l = mapa(f.lead);
-  assert.equal(l.momento.stringValue, 'triagem');
+  assert.equal(l.momento.stringValue, 'analise');
   assert.equal(l.quadrante.stringValue, 'priorizar');
   assert.equal(l.destino.stringValue, 'convidar');
   assert.equal(Number(mapa(mapa(l.eixos).aderencia).pontos.integerValue), 30);
   assert.equal(Number(mapa(mapa(l.eixos).intencao).pontos.integerValue), 20);
-  assert.equal(mapa(l.acao).prazoEm.nullValue, null); // deadline after the analysis
+  assert.equal(Number(mapa(mapa(l.eixos).clareza).pontos.integerValue), 20);
+  assert.ok(mapa(l.acao).prazoEm.timestampValue); // deadline from the moment the analysis is ready
+  assert.equal(mapa(l.modificadores).escopo.stringValue, 'aprovado');
   assert.equal(mapa(l.modificadores).confianca.stringValue, 'baixa'); // simulated blocks have low confidence
-  assert.equal(dias(f), 90);
-  assert.equal(mapa(l.modificadores).confiancaMotivo.stringValue, 'Registro e Presença digital com confiança baixa');
+  assert.equal(mapa(l.modificadores).confiancaMotivo.stringValue, 'Registro, Presença digital e Pessoas com confiança baixa');
   assert.equal(mapa(mapa(mapa(l.eixos).aderencia).porte).fonteFuncionarios.stringValue, 'apollo');
+  assert.equal(dias(f), 90);
+  assert.equal(f.analiseAtual.stringValue, 'v1');
   const etapas = await lista(`fichas/${id}/coleta`);
   assert.equal(etapas.length, 6);
   const digital = etapas.find((e) => e.fields.etapa.stringValue === 'empresa_digital').fields;
@@ -141,21 +152,75 @@ test('Priorizar: coleta mínima → qualificar → triagem → rest of the colle
     assert.equal(e.fields.versaoMetodo.stringValue, 'abc1234');
     assert.equal(Number(e.fields.tentativa.integerValue), 1);
   }
-  const tipos = (await eventos(id)).map((e) => e.tipo.stringValue);
-  for (const t of ['coleta_minima', 'qualificada', 'triada', 'coleta_iniciada']) assert.equal(tipos.filter((x) => x === t).length, 1, t);
+  const tipos = todos.map((e) => e.tipo.stringValue);
+  for (const t of ['coleta_minima', 'qualificada', 'triada', 'coleta_iniciada', 'graduada', 'sintese', 'verificacao']) assert.equal(tipos.filter((x) => x === t).length, 1, t);
   assert.equal(tipos.filter((x) => x === 'coleta_etapa').length, 6);
+  const a = (await le(`fichas/${id}/analise/v1`)).fields;
+  assert.deepEqual(Object.keys(mapa(a.secoes)).sort(), ['s0', 's1', 's2', 's3', 's4', 's5', 's6', 's7', 's8']);
+  assert.match(mapa(mapa(a.secoes).s0).corpo.stringValue, /\*\*Quadrante:\*\* Priorizar · \*\*Grau:\*\* [A-D]/);
+  assert.equal(mapa(a.autor).tipo.stringValue, 'ia');
+  assert.equal(a.baseadaEm.nullValue, null);
+  assert.equal(mapa(a.enquadramento).portaProvavel.stringValue, 'conselho');
+  assert.ok(mapa(a.rascunhoResposta).corpo.stringValue);
+  assert.ok(mapa(a.conversa).perguntas.arrayValue.values.length);
+  const v = mapa(a.verificacao);
+  assert.equal(v.status.stringValue, 'pronta');
+  assert.equal(v.modeloRevisor.stringValue, 'simulado');
+  assert.equal(v.pendencias.arrayValue.values, undefined); // empty list
 });
 
-test('re-run of empresa_registro: only that stage runs again, with its own budget', { timeout: 60_000 }, async () => {
+test('analysis with a pending issue: analise_com_pendencias, medium-level reason added to the confidence', { timeout: 90_000 }, async () => {
+  const { id } = await (await envia({ ...media, email: 'p3@acme.com.br', mensagem: 'Queremos sair das planilhas com um conselho; teste de pendência.' })).json();
+  const f = await ate(id, estado('analise_com_pendencias'), 360);
+  const m = mapa(mapa(f.lead).modificadores);
+  assert.equal(m.confiancaMotivo.stringValue, 'Registro, Presença digital e Pessoas com confiança baixa · análise com pendências');
+  const v = mapa((await le(`fichas/${id}/analise/v1`)).fields.verificacao);
+  assert.equal(v.status.stringValue, 'com_pendencias');
+  const p = v.pendencias.arrayValue.values.map((x) => mapa(x));
+  assert.deepEqual(p.map((x) => [x.tipo.stringValue, x.secao.stringValue]), [['mecanica', 's3']]);
+});
+
+test('human edit: v2 by a person gets only the code checks; state and deadline kept', { timeout: 60_000 }, async () => {
+  const app = initializeApp({ projectId: PROJETO }, 'edicao');
+  try {
+    const db = getFirestore(app);
+    const ref = db.collection('fichas').doc(idPriorizar);
+    const antes = (await ref.get()).data();
+    const v1 = (await ref.collection('analise').doc('v1').get()).data();
+    await ref.update({ analiseAtual: 'v2' });
+    const s3 = { ...v1.secoes.s3, corpo: `${v1.secoes.s3.corpo} Trecho editado \u2014 com travessão.` };
+    await ref.collection('analise').doc('v2').create({ ...v1, verificacao: null, autor: { tipo: 'humano', id: 'teste' }, baseadaEm: 'v1', secoes: { ...v1.secoes, s3 }, criadaEm: Timestamp.now() });
+    let v2;
+    for (let i = 0; i < 120 && !v2?.verificacao; i++) {
+      await espera(250);
+      v2 = (await ref.collection('analise').doc('v2').get()).data();
+    }
+    assert.equal(v2.verificacao.status, 'com_pendencias');
+    assert.equal(v2.verificacao.modeloRevisor, null);
+    assert.deepEqual(v2.verificacao.pendencias.map((x) => [x.tipo, x.secao]), [['mecanica', 's3']]);
+    const depois = (await ref.get()).data();
+    assert.equal(depois.estado, 'analise_pronta');
+    assert.ok(depois.lead.acao.prazoEm.isEqual(antes.lead.acao.prazoEm));
+    assert.match(depois.lead.modificadores.confiancaMotivo, /análise com pendências$/);
+  } finally {
+    await deleteApp(app);
+  }
+});
+
+test('re-run of empresa_registro: only that stage runs again, with its own budget, and a new synthesis (v3)', { timeout: 90_000 }, async () => {
   assert.equal((await grava(`fichas/${idPriorizar}/coleta/empresa_registro`, { status: { stringValue: 'pendente' } })).status, 200);
   assert.equal((await grava(`fichas/${idPriorizar}`, { estado: { stringValue: 'coletando' }, estadoEm: { timestampValue: new Date().toISOString() } })).status, 200);
   await espera(500);
-  await ate(idPriorizar, estado('coletada'), 240);
+  const f = await ate(idPriorizar, (x) => estado('analise_pronta')(x) && x.analiseAtual?.stringValue === 'v3', 360);
+  assert.equal(mapa(mapa(f.lead).modificadores).confiancaMotivo.stringValue, 'Registro, Presença digital e Pessoas com confiança baixa');
   const etapas = Object.fromEntries((await lista(`fichas/${idPriorizar}/coleta`)).map((e) => [e.fields.etapa.stringValue, e.fields]));
   assert.equal(Number(etapas.empresa_registro.tentativa.integerValue), 2);
   for (const e of ['empresa_digital', 'empresa_pessoas', 'empresa_noticias', 'setor', 'mercado']) assert.equal(Number(etapas[e].tentativa.integerValue), 1, e);
   const iniciadas = (await eventos(idPriorizar)).filter((e) => e.tipo.stringValue === 'coleta_iniciada').map((e) => mapa(e.detalhe));
   assert.deepEqual(iniciadas.map((d) => d.passagem.stringValue).sort(), ['primeira', 'reexecucao']);
+  const v3 = (await le(`fichas/${idPriorizar}/analise/v3`)).fields;
+  assert.equal(v3.baseadaEm.stringValue, 'v2');
+  assert.equal(mapa(v3.verificacao).status.stringValue, 'pronta');
 });
 
 test('Declinar: free e-mail, no site, no message → resposta_breve, 30-day retention, deadline from recebidaEm', { timeout: 60_000 }, async () => {

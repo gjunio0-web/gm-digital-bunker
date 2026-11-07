@@ -66,3 +66,44 @@ export function aviso(chave: string, id: string, o: Original, pagina: string | n
   ].join('\n');
   return envia(chave, { para: EMAIL_CONTATO, assunto: `Nova ficha – ${o.nome} (${o.empresa})`, corpo, responderPara: o.email });
 }
+
+export interface AvisoAnalise {
+  fichaId: string;
+  empresa: string;
+  versao: string;
+  pronta: boolean;
+  pendencias: number;
+  quadrante: string;
+  destino: string;
+  grau: string;
+  pontos: number;
+  confianca: string;
+  confiancaMotivo: string;
+  prazoEm: Date | null;
+  portaProvavel: string;
+  resumoExecutivo: string;
+  link: string;
+}
+
+// Second notice to the administrator, when the analysis is ready (spec 01, decision 3; spec 04, 7):
+// executive summary, likely door, quadrant, destination, grade, confidence, deadline and the ficha link.
+export function avisoAnalise(chave: string, a: AvisoAnalise): Promise<void> {
+  const prazo = a.prazoEm ? a.prazoEm.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '–';
+  const corpo = [
+    `Empresa: ${a.empresa}`,
+    `Análise: ${a.versao} – ${a.pronta ? 'pronta' : `com pendências (${a.pendencias})`}`,
+    '',
+    `Quadrante: ${a.quadrante}`,
+    `Destino: ${a.destino}`,
+    `Grau: ${a.grau} (${a.pontos} pontos)`,
+    `Confiança: ${a.confianca} – ${a.confiancaMotivo}`,
+    `Prazo de resposta: ${prazo}`,
+    `Porta provável: ${a.portaProvavel}`,
+    '',
+    'Resumo executivo:',
+    a.resumoExecutivo,
+    '',
+    `Ficha: ${a.link}`,
+  ].join('\n');
+  return envia(chave, { para: EMAIL_CONTATO, assunto: `Análise ${a.pronta ? 'pronta' : 'com pendências'} – ${a.empresa} (${a.quadrante}, grau ${a.grau})`, corpo });
+}

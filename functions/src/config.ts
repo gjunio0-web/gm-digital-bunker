@@ -11,12 +11,19 @@ export const ORIGENS_POR_PROJETO: Record<string, readonly string[]> = {
   'gmdb-producao': ['https://gmdigitalbunker.com.br'],
 };
 
+// Base URL of the admin hub per Firebase project (spec 05, section 2): the ficha link in the second
+// e-mail to the administrator is {base}/admin/leads/{fichaId}.
+export const URL_BASE_POR_PROJETO: Record<string, string> = {
+  'gmdb-qualidade': 'https://quality-env--gm-digital-bunker.netlify.app',
+  'gmdb-producao': 'https://gmdigitalbunker.com.br',
+};
+
 export const EMAIL_CONTATO = 'contato@gmdigitalbunker.com.br';
 export const REMETENTE = `GM Digital Bunker™ <${EMAIL_CONTATO}>`;
 export const SITE = 'gmdigitalbunker.com.br';
 
-// Secrets (Secret Manager). CLAUDE_API_KEY is bound to the pipeline functions (qualificar onwards),
-// never to receberFicha.
+// Secrets (Secret Manager). CLAUDE_API_KEY is bound to the pipeline functions (coleta mínima onwards),
+// never to receberFicha; SMTP2GO_API_KEY to receberFicha and verificar.
 export const SMTP2GO_API_KEY = defineSecret('SMTP2GO_API_KEY');
 export const IP_HASH_SALT = defineSecret('IP_HASH_SALT');
 export const CLAUDE_API_KEY = defineSecret('CLAUDE_API_KEY');

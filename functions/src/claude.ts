@@ -15,12 +15,17 @@ export const noEmulador = () => process.env.FUNCTIONS_EMULATOR === 'true';
 export interface Chamada {
   chave: string;
   modelo: string;
-  usuario: string;
+  // A plain text, or text blocks; a block with cache = true ends a cached prefix (e.g. the collection
+  // blocks the three synthesis calls share).
+  usuario: string | { texto: string; cache?: boolean }[];
   esquema: object;
-  // Method files as extra system blocks, each with cache_control (spec 02, section 0).
+  // Method files as extra system blocks (spec 02, section 0). The API accepts at most 4 cache breakpoints
+  // per request, so only the last method block carries cache_control: the cached prefix covers SISTEMA_BASE
+  // and every method block before it.
   metodo?: { nome: string; texto: string }[];
   // Adaptive thinking counts toward max_tokens, so the default leaves room for it.
   maxTokens?: number;
+  timeoutMs?: number;
 }
 
 export interface Resposta {
@@ -35,10 +40,19 @@ export async function chamaClaude(c: Chamada): Promise<Resposta> {
     model: c.modelo,
     max_tokens: c.maxTokens ?? 16_000,
     system: [
-      { type: 'text', text: SISTEMA_BASE, cache_control: { type: 'ephemeral' } },
-      ...(c.metodo ?? []).map((m) => ({ type: 'text', text: `<metodo arquivo="${m.nome}">\n${m.texto}\n</metodo>`, cache_control: { type: 'ephemeral' } })),
+      { type: 'text', text: SISTEMA_BASE, ...(c.metodo?.length ? {} : { cache_control: { type: 'ephemeral' } }) },
+      ...(c.metodo ?? []).map((m, i, todos) => ({
+        type: 'text',
+        text: `<metodo arquivo="${m.nome}">\n${m.texto}\n</metodo>`,
+        ...(i === todos.length - 1 ? { cache_control: { type: 'ephemeral' } } : {}),
+      })),
     ],
-    messages: [{ role: 'user', content: c.usuario }],
+    messages: [{
+      role: 'user',
+      content: typeof c.usuario === 'string'
+        ? c.usuario
+        : c.usuario.map((b) => ({ type: 'text', text: b.texto, ...(b.cache ? { cache_control: { type: 'ephemeral' } } : {}) })),
+    }],
     output_config: { format: { type: 'json_schema', schema: c.esquema } },
   });
   for (let tentativa = 1; ; tentativa++) {
@@ -46,7 +60,7 @@ export async function chamaClaude(c: Chamada): Promise<Resposta> {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': c.chave, 'anthropic-version': VERSAO },
       body: corpo,
-      signal: AbortSignal.timeout(180_000),
+      signal: AbortSignal.timeout(c.timeoutMs ?? 180_000),
     });
     if ((res.status === 429 || res.status >= 500) && tentativa === 1) {
       await espera(2_000);

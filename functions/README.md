@@ -1,6 +1,6 @@
 # Funções do Firebase – análise preliminar de fichas
 
-Item 1 da spec 01: `receberFicha` (HTTPS, recebe o formulário) e `expurgar` (agendada, diária às 03:00 de São Paulo). Item 5: `publicarMetodo` (HTTPS privada; publica a pasta `metodo/` no bucket privado e grava `config/metodo`). Mudança de método de 6/11/2026 (spec 04): `coletarMinima` (gatilho na criação da ficha; `empresa_digital` sem Apify e `empresa_registro`, depois `qualificar` – chamada ao modelo de `config/pipeline.modeloColeta`, sempre – e `graduar`, a triagem em código, que grava `lead` e define o próximo estado) e `coletar` (gatilho quando a ficha passa a `coletando`; na primeira passagem, as quatro etapas restantes e o Instagram pelo Apify; numa reexecução, as etapas marcadas como pendentes).
+Item 1 da spec 01: `receberFicha` (HTTPS, recebe o formulário) e `expurgar` (agendada, diária às 03:00 de São Paulo). Item 5: `publicarMetodo` (HTTPS privada; publica a pasta `metodo/` no bucket privado e grava `config/metodo`). Mudança de método de 6/11/2026 (spec 04): `coletarMinima` (gatilho na criação da ficha; `empresa_digital` sem Apify e `empresa_registro`, depois `qualificar` – chamada ao modelo de `config/pipeline.modeloColeta`, sempre – e `graduar`, a triagem em código, que grava `lead` e define o próximo estado) e `coletar` (gatilho quando a ficha passa a `coletando`; na primeira passagem, as quatro etapas restantes e o Instagram pelo Apify; numa reexecução, as etapas marcadas como pendentes). Fase B: `sintetizar` (gatilho quando a ficha passa a `coletada`; `enquadrar` → `graduar` no momento análise → `preparar_conversa` → `montar_analise`, com `config/pipeline.modeloSintese`, e grava `analise/vN`) e `verificar` (gatilho na criação de `analise/vN`; checagens em código sempre e revisor com `config/pipeline.modeloRevisor` só em versão da IA; estado final, confiança, prazo e segundo e-mail ao administrador, com o link `{URL base}/admin/leads/{fichaId}` da spec 05).
 
 **Ramos:** trabalho só em `quality-env`. `main` (produção) só avança por pedido explícito de Gon.
 
@@ -25,9 +25,13 @@ Região de todas as funções: `REGIAO` em `src/config.ts` (`southamerica-east1`
 | `src/qualificacao.ts` | Sinais, nível do cargo, regra de descarte, esquema e prompt da qualificação (spec 02, seção 1) |
 | `src/qualificar.ts` | Qualificação chamada ao fim da coleta mínima: chamada ao modelo com a seção 1 de `portas-materiais.md`, gravação em transação, evento e métricas |
 | `src/graduacao.ts` | Eixos, parcelas e marcas, quadrante, grau, destino, confiança, guarda, prazo em dias úteis com feriados nacionais (spec 04; funções puras) |
-| `src/graduar.ts` | Triagem: grava `lead`, o evento `triada`, o próximo estado, a guarda de 30 dias e as métricas por quadrante e grau |
+| `src/graduar.ts` | Triagem: grava `lead`, o evento `triada`, o próximo estado, a guarda de 30 dias e as métricas por quadrante e grau; análise: `lead` no momento análise, evento `graduada`, guarda de 30 dias no grau D; ao fim de `verificar`, só a confiança e o prazo |
+| `src/sintese.ts` | Síntese (spec 02, seção 3): instruções, esquemas e conferência das saídas de `enquadrar`, `preparar_conversa` e `montar_analise`, bloco de dados em cache, seções `s0` e `s8`, marcas de fonte em link, simulações do emulador (funções puras) |
+| `src/sintetizar.ts` | Gatilho da síntese: trava por transação, três chamadas, `graduar` entre a primeira e a segunda, gravação de `analise/vN`, custo |
+| `src/verificacao.ts` | Checagens em código da spec 02, 4.1 (CPF com dígitos; telefone só fora dos dados de empresa coletados) e prompt, esquema e conferência do revisor (funções puras) |
+| `src/verificar.ts` | Gatilho da verificação na criação de `analise/vN`: checagens, revisor só em versão da IA, confiança, estado final, prazo, segundo e-mail |
 | `src/coletarMinima.ts` | Coleta mínima para toda ficha, seguida de `qualificar` e `graduar` |
-| `src/claude.ts` | Messages API da Claude por HTTP, com `SISTEMA_BASE` em cache e saída por esquema JSON (no emulador, classificação simulada) |
+| `src/claude.ts` | Messages API da Claude por HTTP, com cache no último bloco do método (a API aceita até 4 pontos de cache por chamada) e no bloco de dados da síntese, e saída por esquema JSON (no emulador, classificação simulada) |
 | `src/custo.ts` | Custo estimado por chamada, pela tabela de preços por modelo |
 | `src/configurar.ts` | Grava campos de `config/pipeline` (só com autorização de Gon) |
 | `src/metodoArquivos.ts` | Ordem fixa dos cinco arquivos do método, resumo (bytes, SHA-256), filtro por seção |
@@ -45,7 +49,7 @@ Região de todas as funções: `REGIAO` em `src/config.ts` (`southamerica-east1`
 | `src/coleta/claudeColeta.ts` | Chamadas da coleta: busca e leitura de páginas como ferramentas do servidor, JSON validado no código, uma correção |
 | `src/coleta/envelope.ts` | Envelope da spec 02 §2: fontes verificadas, índices, regra de preenchimento |
 | `src/coleta/etapas.ts`, `textosSpec.ts` | Tetos de busca, arquivos do método, instruções e esquemas de cada etapa (textos da spec 02) |
-| `scripts/fichas-teste.mjs` | Fichas de teste gravadas direto no Firestore (sem e-mails), que seguem o pipeline sozinhas; reexecução de etapas (`--reexecutar`, `--etapas=`, `--ficha=`, `--uma-por-vez`); relatório com a triagem e as etapas |
+| `scripts/fichas-teste.mjs` | Fichas de teste gravadas direto no Firestore (sem e-mails), que seguem o pipeline sozinhas; reexecução de etapas (`--reexecutar`, `--etapas=`, `--ficha=`, `--uma-por-vez`) ou só da síntese (`--sintese`); relatório com a triagem, a análise, as etapas, as pendências e o custo |
 | `src/seed.ts` | Grava `config/pipeline` e `config/metodo`; rodado de novo, só acrescenta campos ausentes, sem sobrescrever |
 | `scripts/textos.mjs` | Copia os textos dos e-mails de `src/i18n/ui.ts` do site para `src/textos.generated.ts` (roda no build) |
 | `../firestore.rules`, `../firestore.indexes.json` | Regras (spec 01, seção 5) e índices |
@@ -55,7 +59,7 @@ Região de todas as funções: `REGIAO` em `src/config.ts` (`southamerica-east1`
 ```
 cd functions
 npm ci
-npm test            # build + testes de validação, textos, pipeline, qualificação, método, coleta e graduação
+npm test            # build + testes de validação, textos, pipeline, qualificação, método, coleta, graduação e síntese
 npm run emulador    # build + emuladores (functions, firestore, storage) + teste de ponta a ponta
 ```
 
@@ -70,7 +74,7 @@ APIFY_TOKEN=emulator-not-used
 HUNTER_API_KEY=emulator-not-used
 ```
 
-No emulador nenhum e-mail é enviado e nenhuma API externa é chamada: a qualificação e a coleta usam respostas simuladas, e o site e os fornecedores não são consultados. Uma empresa com "Média" no nome recebe da coleta mínima simulada um porte médio confirmado, para o teste alcançar todos os quadrantes.
+No emulador nenhum e-mail é enviado e nenhuma API externa é chamada: a qualificação, a coleta, a síntese e o revisor usam respostas simuladas ("pendência" na mensagem leva a análise simulada a uma pendência mecânica), e o site e os fornecedores não são consultados. Uma empresa com "Média" no nome recebe da coleta mínima simulada um porte médio confirmado, para o teste alcançar todos os quadrantes.
 
 ## Segredos (Secret Manager)
 
@@ -81,7 +85,7 @@ Criar um por vez, no terminal; o valor nunca aparece no chat nem na tela.
 openssl rand -hex 32 | firebase functions:secrets:set IP_HASH_SALT --data-file=- --project qualidade
 # Typed at the masked prompt (API key created in SMTP2GO: Sending → API Keys, permission to send)
 firebase functions:secrets:set SMTP2GO_API_KEY --project qualidade
-# Typed at the masked prompt (bound to qualificar and the later pipeline functions)
+# Typed at the masked prompt (bound to coletarMinima, coletar, sintetizar and verificar; SMTP2GO_API_KEY also to verificar)
 firebase functions:secrets:set CLAUDE_API_KEY --project qualidade
 # Enrichment keys (bound to coletar only; the function cannot be deployed before they exist)
 firebase functions:secrets:set APOLLO_API_KEY --project gmdb-qualidade
@@ -106,6 +110,8 @@ npm run configurar -- gmdb-qualidade modeloColeta=claude-haiku-5-5 autoAnalisar=
 cd ..
 firebase deploy --project qualidade --only functions:receberFicha,functions:expurgar,firestore:rules,firestore:indexes
 firebase deploy --project gmdb-qualidade --only functions:coletarMinima,functions:coletar
+npm --prefix functions run configurar -- gmdb-qualidade modeloSintese=claude-sonnet-5-5 modeloRevisor=claude-sonnet-5-5   # authorized by Gon, 7/11/2026
+firebase deploy --project gmdb-qualidade --only functions:sintetizar,functions:verificar
 ```
 
 Rode os comandos `firebase` a partir da raiz do repositório: o apelido `qualidade` vem do `.firebaserc`; fora dela, use o ID `gmdb-qualidade`.
