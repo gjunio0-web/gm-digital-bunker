@@ -48,6 +48,9 @@ export const PIPELINE_PADRAO = {
   modeloColeta: '',
   modeloSintese: '',
   modeloRevisor: '',
+  // Effort of the synthesis calls (output_config.effort); empty: the model default. For the cost
+  // measurement authorized by Gon on 7/11/2026.
+  esforcoSintese: '',
   autoAnalisar: true,
   prazoGuardaDias: 90,
   prazoGuardaDiasBreve: 30,
@@ -68,6 +71,7 @@ export interface Pipeline {
   modeloColeta: string;
   modeloSintese: string;
   modeloRevisor: string;
+  esforcoSintese: string;
   autoAnalisar: boolean;
   prazoGuardaDias: number;
   prazoGuardaDiasBreve: number;

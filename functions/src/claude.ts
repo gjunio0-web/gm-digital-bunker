@@ -26,6 +26,8 @@ export interface Chamada {
   // Adaptive thinking counts toward max_tokens, so the default leaves room for it.
   maxTokens?: number;
   timeoutMs?: number;
+  // output_config.effort; omitted (the model default) when empty.
+  esforco?: string;
 }
 
 export interface Resposta {
@@ -61,7 +63,7 @@ export async function chamaClaude(c: Chamada): Promise<Resposta> {
         ? c.usuario
         : c.usuario.map((b) => ({ type: 'text', text: b.texto, ...(b.cache ? { cache_control: { type: 'ephemeral' } } : {}) })),
     }],
-    output_config: { format: { type: 'json_schema', schema: c.esquema } },
+    output_config: { format: { type: 'json_schema', schema: c.esquema }, ...(c.esforco ? { effort: c.esforco } : {}) },
   });
   for (let tentativa = 1; ; tentativa++) {
     const res = await fetch(API, {

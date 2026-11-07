@@ -33,7 +33,7 @@ export function palavras(t: string): number {
 
 // Sentences of a Markdown body: split at line breaks and at ". ", "! ", "? ", but not after initials and
 // common abbreviations ("Cia Industrial H. Carlos", "Ltda."); fragments under three words join the next one.
-const ABREVIACAO = /(?<![\p{L}])(?:\p{Lu}|Ltda|Cia|Inc|Av|Dr|Dra|Sr|Sra|nº|n|p|pág|art|ex|etc|S\.A|aprox)\.$/u;
+const ABREVIACAO = /(?<![\p{L}])(?:\p{Lu}|Ltda|Cia|Inc|Av|Dr|Dra|Sr|Sra|nº|n|p|pág|art|ex|etc|S\.A|aprox|cap|vol|fig|seç)\.$/u;
 const frases = (t: string) => {
   const partes = t.split(/\n+|(?<=[.!?])\s+(?=[\p{Lu}\d*[(])/u).map((x) => x.trim()).filter(Boolean);
   const r: string[] = [];
@@ -60,12 +60,22 @@ const SEM_NUMERO: RegExp[] = [
   /\]\([^)]*\)/g,
   /^\s*(?:[-*]\s+)?\**\d+[.)]\**(?=\s|$)/gm,
   /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g,
+  // Numbered norms and number/year pairs before the bare years, which would split them ((e), Gon, 7/11/2026).
+  /(?<![\p{L}])(?:Lei|PLP?|PEC|RDC|Resolução|Decreto|Portaria|Instrução Normativa|IN|MP|Medida Provisória|ISO|NBR|IEC)\s*(?:n[º°o.]\s*)?\d[\d.]*(?:\/\d{2,4})?(?::\d{4})?/gu,
+  /\b\d+\/\d{4}\b/g,
   /\b\d{4}-\d{2}(?:-\d{2})?\b/g,
   new RegExp(`\\b\\d{1,2}\\s+de\\s+(?:${MESES})\\b`, 'gi'),
   /\b(?:19|20)\d{2}\b/g,
   /(?<![\p{L}])(?:últim[oa]s|próxim[oa]s)\s+\d+\s+(?:dias|semanas|meses|anos)(?![\p{L}])/giu,
   new RegExp(`(?<![\\p{L}])(?:limites?|seç(?:ão|ões)|portas?|vers(?:ão|ões)|capítulos?|itens|item|etapas?|partes?)\\s+${NUM}(?:\\s*(?:,|e|a)\\s*${NUM})*`, 'giu'),
   /\bv\d+(?:\.\d+)*\b/g,
+  // (e), authorized by Gon on 7/11/2026: numbered norms, words mixing letters and digits, book references
+  // in parentheses, numbered hypotheses, questions, criteria and options, "em N meses", draft placeholders.
+  /(?<![\p{L}\p{N}])(?=[\p{L}\p{N}]*\p{L})(?=[\p{L}\p{N}]*\p{N})[\p{L}\p{N}]+(?![\p{L}\p{N}])/gu,
+  /\([^()]*(?<![\p{L}])(?:livro|cap\.?|capítulos?|seç(?:ão|ões))(?![\p{L}])[^()]*\)/giu,
+  new RegExp(`(?<![\\p{L}])(?:hipóteses?|perguntas?|critérios?|opç(?:ão|ões))(?:\\s+de\\s+\\p{L}+)?\\s+${NUM}(?:\\s*(?:,|e|a)\\s*${NUM})*`, 'giu'),
+  /(?<![\p{L}])(?:em|nos|nas)\s+\d+\s+(?:dias|semanas|meses|anos)(?![\p{L}])/giu,
+  /\[[^\]\n]*\]/g,
   /\bs[0-8]\b/g,
   /\bA[0-4]\b/g,
   /Elite\s+90\s+Pro/gi,

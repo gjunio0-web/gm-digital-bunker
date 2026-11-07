@@ -138,8 +138,8 @@ async function relata(c) {
     const porTipo = ps.reduce((t, x) => ({ ...t, [x.tipo]: (t[x.tipo] ?? 0) + 1 }), {});
     const ch = a?.uso?.chamadas ?? {};
     console.log(`  análise ${d.analiseAtual}: ${a?.verificacao?.status ?? 'sem verificação'} – pendências ${ps.length}${ps.length ? ` (${Object.entries(porTipo).map(([k, v]) => `${k} ${v}`).join(', ')})` : ''} – porta ${a?.enquadramento?.portaProvavel} – escopo ${a?.enquadramento?.escopo}`);
-    console.log(`  síntese: ${Object.entries(ch).map(([k, v]) => `${k} ${v.tokensEntrada}/${v.tokensSaida} US$ ${(v.usdEstimado ?? 0).toFixed(4)}`).join(' – ')} – revisor US$ ${(a?.uso?.revisor?.usdEstimado ?? 0).toFixed(4)} – total da versão US$ ${(a?.uso?.usdEstimado ?? 0).toFixed(4)}`);
-    for (const x of ps.slice(0, 12)) console.log(`      [${x.tipo}] ${x.secao}: ${String(x.texto).slice(0, 150)}`);
+    console.log(`  síntese (esforço ${a?.uso?.esforco ?? '-'}): ${Object.entries(ch).map(([k, v]) => `${k} ${v.tokensEntrada}/${v.tokensSaida} ${Math.round((v.duracaoMs ?? 0) / 1000)}s US$ ${(v.usdEstimado ?? 0).toFixed(4)}`).join(' – ')} – revisor US$ ${(a?.uso?.revisor?.usdEstimado ?? 0).toFixed(4)} – total da versão US$ ${(a?.uso?.usdEstimado ?? 0).toFixed(4)}`);
+    for (const x of ps.slice(0, 12)) console.log(`      [${x.tipo}] ${x.secao}: ${x.regra ? `(${x.regra}) ` : ''}${String(x.trecho ?? x.texto).slice(0, 150)}`);
   }
   const usd = (d?.custo?.usdEstimado ?? 0) - (c.usdAntes ?? 0);
   console.log(`  custo ${c.reexecucao ? 'desta reexecução' : 'da ficha'}: US$ ${usd.toFixed(4)} – buscas da ficha ${d?.custo?.buscas ?? 0}`);

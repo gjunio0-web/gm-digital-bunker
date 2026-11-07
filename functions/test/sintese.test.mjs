@@ -53,6 +53,21 @@ test('numerosSemFonte: initials and abbreviations do not cut the sentence; ident
   assert.deepEqual(numerosSemFonte('A receita vai de R$ 4,8 milhões a R$ 300 milhões.'), ['A receita vai de R$ 4,8 milhões a R$ 300 milhões.']);
 });
 
+test('numerosSemFonte (e): norms, mixed words, book references, numbered hypotheses, "em N meses", placeholders', () => {
+  const ok = [
+    '- Projeto de Lei (PL) 2338/2023 – marco legal da IA: sem vigência.',
+    '- Resolução da Diretoria Colegiada (RDC) 430/2020 da ANVISA, aplicável às operações.',
+    'Não foi encontrada fonte sobre empresas digitais no 3PL brasileiro.',
+    'Ganhos prometidos seguem o princípio Zero Alucinação (livro, cap. 5, seção 5.6), com limites claros.',
+    'O conteúdo é desconhecido (hipótese de alavanca 3 – comparação das propostas).',
+    'Em 12 meses, o que a empresa quer ver mudar?',
+    'Teria disponibilidade em [data e horário 1] ou [data e horário 2]?',
+  ];
+  assert.deepEqual(numerosSemFonte(ok.join('\n')), []);
+  assert.deepEqual(numerosSemFonte('O mercado reúne cerca de 1.500 operadores.'), ['O mercado reúne cerca de 1.500 operadores.']);
+  assert.deepEqual(numerosSemFonte('Um blog cita reduções de até 15% no custo, sem fonte primária.'), ['Um blog cita reduções de até 15% no custo, sem fonte primária.']);
+});
+
 test('temPronome: tu, te, ti, contigo as whole words; TI and words containing them are fine', () => {
   assert.equal(temPronome('Vamos te mostrar'), true);
   assert.equal(temPronome('A equipe de TI é enxuta, até parte do time'), false);

@@ -111,6 +111,7 @@ cd ..
 firebase deploy --project qualidade --only functions:receberFicha,functions:expurgar,firestore:rules,firestore:indexes
 firebase deploy --project gmdb-qualidade --only functions:coletarMinima,functions:coletar
 npm --prefix functions run configurar -- gmdb-qualidade modeloSintese=claude-sonnet-5-5 modeloRevisor=claude-sonnet-5-5   # authorized by Gon, 7/11/2026
+# esforcoSintese (output_config.effort of the synthesis calls) stays empty – the model default – except in authorized measurements
 firebase deploy --project gmdb-qualidade --only functions:sintetizar,functions:verificar
 ```
 

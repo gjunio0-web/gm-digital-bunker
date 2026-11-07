@@ -69,14 +69,18 @@ export const sintetizar = onDocumentUpdated(
       const metodo = await leMetodo({ 'glossario.md': 'tudo', 'escopo-limites.md': 'tudo', 'portas-materiais.md': 'tudo', 'mapa-alavancas.md': 'tudo', 'livro-selecao.md': 'tudo' });
       const blocos = metodo.blocos.map((b) => ({ nome: b.nome, texto: b.texto }));
       // A failed call names itself in the error and, when it was billed, still counts in the cost.
+      const duracoes: Record<string, number> = {};
       const chama = async (nome: keyof typeof MAX_TOKENS, usuario: { texto: string; cache?: boolean }[], esquema: object, simulado: () => unknown): Promise<unknown> => {
         if (noEmulador()) return simulado();
         let r: Resposta;
+        const inicio = Date.now();
         try {
-          r = await chamaClaude({ chave: CLAUDE_API_KEY.value(), modelo, metodo: blocos, usuario, esquema, maxTokens: MAX_TOKENS[nome], timeoutMs: TIMEOUT_CHAMADA_MS });
+          r = await chamaClaude({ chave: CLAUDE_API_KEY.value(), modelo, metodo: blocos, usuario, esquema, maxTokens: MAX_TOKENS[nome], timeoutMs: TIMEOUT_CHAMADA_MS, esforco: p.esforcoSintese });
         } catch (e) {
           if (e instanceof ErroComUso) usos[nome] = e.uso;
           throw new Error(`${nome}: ${String((e as Error)?.message ?? e)}`);
+        } finally {
+          duracoes[nome] = Date.now() - inicio;
         }
         usos[nome] = r.uso;
         return r.json;
@@ -91,7 +95,7 @@ export const sintetizar = onDocumentUpdated(
       const montagem = validaMontar(await chama('montar_analise', mensagemMontar(dados, enq, conversa), ESQUEMA_MONTAR, () => simulaMontar(comFalha)));
 
       // Cost of the three calls, per call and in total.
-      const porChamada = Object.fromEntries(Object.entries(usos).map(([k, u]) => [k, custoDe(modelo, u)]));
+      const porChamada = Object.fromEntries(Object.entries(usos).map(([k, u]) => [k, { ...custoDe(modelo, u), duracaoMs: duracoes[k] ?? null }]));
       const total = Object.values(porChamada).reduce(
         (t, k) => ({ tokensEntrada: t.tokensEntrada + k.tokensEntrada, tokensSaida: t.tokensSaida + k.tokensSaida, usd: t.usd + (k.usdEstimado ?? 0) }),
         { tokensEntrada: 0, tokensSaida: 0, usd: 0 },
@@ -118,7 +122,7 @@ export const sintetizar = onDocumentUpdated(
           resumoExecutivo: montagem.resumoExecutivo,
           conversa: { perguntas: conversa.perguntas, materiais: conversa.materiais, pontosDeAtencao: conversa.pontosDeAtencaoParaOConsultor },
           rascunhoResposta: conversa.rascunhoResposta,
-          uso: { tokensEntrada: total.tokensEntrada, tokensSaida: total.tokensSaida, usdEstimado: usd, chamadas: porChamada },
+          uso: { tokensEntrada: total.tokensEntrada, tokensSaida: total.tokensSaida, usdEstimado: usd, chamadas: porChamada, esforco: p.esforcoSintese || 'padrão do modelo' },
           criadaEm,
         });
         tx.update(ref, {
