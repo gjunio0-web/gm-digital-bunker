@@ -9,7 +9,7 @@ export const revisadoAte = '2026-10-31';
 export const datas = {
   'pt-BR': {
     inicio: { publicado: '2026-10-14', atualizado: '2026-10-26', arquivos: ['src/pages/index.astro', 'src/templates/Home.astro', 'src/content/home.ts'] },
-    servicos: { publicado: '2026-10-14', atualizado: '2026-10-26', arquivos: ['src/pages/servicos/index.astro'] },
+    servicos: { publicado: '2026-10-14', atualizado: '2026-11-08', arquivos: ['src/pages/servicos/index.astro'] },
     estrategia: { publicado: '2026-10-14', atualizado: '2026-10-23', arquivos: ['src/pages/servicos/estrategia-e-plataforma-digital-com-ia.astro'] },
     conselho: { publicado: '2026-10-14', atualizado: '2026-10-23', arquivos: ['src/pages/servicos/conselho-de-ia.astro'] },
     workshop: { publicado: '2026-10-23', atualizado: '2026-10-23', arquivos: ['src/pages/servicos/workshop-quando-e-melhor-com-ia.astro'] },
@@ -23,7 +23,7 @@ export const datas = {
   },
   en: {
     inicio: { publicado: '2026-10-15', atualizado: '2026-10-26', arquivos: ['src/pages/en/index.astro', 'src/templates/Home.astro', 'src/content/home.ts'] },
-    servicos: { publicado: '2026-10-15', atualizado: '2026-10-26', arquivos: ['src/pages/en/services/index.astro'] },
+    servicos: { publicado: '2026-10-15', atualizado: '2026-11-08', arquivos: ['src/pages/en/services/index.astro'] },
     estrategia: { publicado: '2026-10-15', atualizado: '2026-10-23', arquivos: ['src/pages/en/services/ai-strategy-and-digital-platform.astro'] },
     conselho: { publicado: '2026-10-15', atualizado: '2026-10-23', arquivos: ['src/pages/en/services/ai-advisory.astro'] },
     workshop: { publicado: '2026-10-23', atualizado: '2026-10-23', arquivos: ['src/pages/en/services/when-its-better-with-ai-workshop.astro'] },
