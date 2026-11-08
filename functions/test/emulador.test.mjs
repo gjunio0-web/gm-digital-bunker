@@ -354,6 +354,11 @@ test('claim of a version: two concurrent runs, exactly one wins; a version alrea
     assert.deepEqual(r.sort(), [false, true]);
     assert.ok((await doc.get()).get('verificacaoIniciadaEm'));
     assert.equal(await reivindicaVerificacao(db, doc), false);
+    // A marker copied from an older version does not block the new one.
+    const copia = db.collection('teste-reivindicacao').doc(`c${Date.now()}`);
+    await copia.set({ verificacaoIniciadaEm: Timestamp.fromMillis(Date.now() - 60_000), criadaEm: Timestamp.now() });
+    assert.equal(await reivindicaVerificacao(db, copia), true);
+    assert.equal(await reivindicaVerificacao(db, copia), false);
     const feita = db.collection('teste-reivindicacao').doc(`f${Date.now()}`);
     await feita.set({ verificacao: { status: 'pronta' } });
     assert.equal(await reivindicaVerificacao(db, feita), false);

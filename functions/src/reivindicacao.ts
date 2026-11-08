@@ -7,7 +7,12 @@ import { Timestamp, type DocumentReference, type Firestore } from 'firebase-admi
 export async function reivindicaVerificacao(db: Firestore, docVersao: DocumentReference): Promise<boolean> {
   return db.runTransaction(async (tx) => {
     const v = (await tx.get(docVersao)).data();
-    if (!v || v.verificacao || v.verificacaoIniciadaEm) return false;
+    if (!v || v.verificacao) return false;
+    // A marker older than the version itself was copied from another version (an edit that spreads the
+    // previous one) and does not count as a claim of this one.
+    const marca = v.verificacaoIniciadaEm as Timestamp | undefined;
+    const criada = v.criadaEm as Timestamp | undefined;
+    if (marca && (!criada || marca.toMillis() >= criada.toMillis())) return false;
     tx.update(docVersao, { verificacaoIniciadaEm: Timestamp.now() });
     return true;
   });
