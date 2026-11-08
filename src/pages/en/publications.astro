@@ -3,21 +3,11 @@ import Base from '../../layouts/Base.astro';
 import Opening from '../../components/Opening.astro';
 import Invite from '../../components/Invite.astro';
 import { path } from '../../i18n/routes';
-import { HUB } from '../../config';
+import { artigosDoHub } from '../../lib/artigos';
 const L = 'en';
-// Titles and summaries come from the AI Strategy Hub's own English strings (i18n/en.json); most recent first
-const artigos = [
-  {
-    titulo: 'A hundred books, three surveys, one question.',
-    resumo: 'I asked three AIs to survey, each on its own, everything published about AI. They disagreed – and it was in the disagreement that the question no book answers showed up.',
-    url: `${HUB}/?lang=en&tab=articles&artigo=cem-livros`,
-  },
-  {
-    titulo: 'The brilliant lawyer who never files the brief.',
-    resumo: 'The thread of the argument in "Quando é Melhor com IA": why power and efficiency are independent axes, not two points on the same ruler.',
-    url: `${HUB}/?lang=en&tab=articles&artigo=fio-do-argumento`,
-  },
-];
+// Cards come from the AI Strategy Hub at build time: titles and summaries from its own English strings
+// (i18n/en.json), most recent first.
+const artigos = await artigosDoHub('en');
 ---
 <Base
   lang={L}

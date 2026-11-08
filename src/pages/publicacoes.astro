@@ -2,19 +2,9 @@
 import Base from '../layouts/Base.astro';
 import Opening from '../components/Opening.astro';
 import Invite from '../components/Invite.astro';
-// Most recent first, per the content doc
-const artigos = [
-  {
-    titulo: 'Cem livros, três levantamentos, uma pergunta',
-    resumo: 'Pedi a três IAs que levantassem, cada uma por conta própria, tudo o que já se publicou sobre IA. Elas divergiram – e foi na divergência que apareceu a pergunta que nenhum livro responde.',
-    url: 'https://ai-strat-hub.netlify.app/?tab=articles&artigo=cem-livros',
-  },
-  {
-    titulo: 'O advogado brilhante que não entrega a petição.',
-    resumo: 'O fio do argumento de "Quando é Melhor com IA": por que potência e eficiência são eixos independentes, e não dois pontos da mesma régua.',
-    url: 'https://ai-strat-hub.netlify.app/?tab=articles&artigo=fio-do-argumento',
-  },
-];
+import { artigosDoHub } from '../lib/artigos';
+// Cards come from the AI Strategy Hub at build time (artigos/index.json), most recent first.
+const artigos = await artigosDoHub();
 ---
 <Base
   title="Publicações"

@@ -18,4 +18,7 @@ export const MARCA = 'GM Digital Bunker™';
 export const AMAZON = 'https://www.amazon.com.br/dp/B0H7QR7DZ7';
 export const AMAZON_EN = 'https://www.amazon.com/dp/B0H7QR7DZ7'; // US store, for the English pages
 export const LINKEDIN = 'https://www.linkedin.com/in/gjunio0';
-export const HUB = 'https://ai-strat-hub.netlify.app';
+// AI Strategy Hub, paired with the build environment like the form backend above: production builds
+// link to and read from the production Hub; every other build uses the Hub's quality_env deploy, so the
+// quality site shows (and opens) the articles of the quality Hub. Spec 06, §5.1.
+export const HUB = EM_PRODUCAO ? 'https://ai-strat-hub.netlify.app' : 'https://quality-env--ai-strat-hub.netlify.app';
