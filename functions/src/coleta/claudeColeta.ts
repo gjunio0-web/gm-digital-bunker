@@ -17,6 +17,8 @@ export interface PedidoColeta {
   // Output budget and per-request wait when a stage needs more than the default (setor; Gon, 7/11/2026).
   maxTokens?: number;
   timeoutMs?: number;
+  // output_config.effort from config/pipeline.esforco.coleta; absent: the model default.
+  esforco?: string;
 }
 
 export interface RespostaColeta {
@@ -136,7 +138,7 @@ export async function chamaColeta(p: PedidoColeta): Promise<RespostaColeta> {
     for (let volta = 0; volta < 4; volta++) {
       let r;
       try {
-        r = await envia(p.chave, { model: p.modelo, max_tokens: p.maxTokens ?? MAX_TOKENS_COLETA, system, messages, ...(tools.length ? { tools } : {}) }, p.timeoutMs);
+        r = await envia(p.chave, { model: p.modelo, max_tokens: p.maxTokens ?? MAX_TOKENS_COLETA, system, messages, ...(tools.length ? { tools } : {}), ...(p.esforco ? { output_config: { effort: p.esforco } } : {}) }, p.timeoutMs);
       } catch (e) {
         throw new ErroColeta(String((e as Error).message), total);
       }

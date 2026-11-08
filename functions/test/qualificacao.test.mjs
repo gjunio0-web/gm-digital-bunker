@@ -6,6 +6,7 @@ import {
   decide, ehProvedorGratuito, sinais, sinaisIniciais, validaClassificacao, ESQUEMA_CLASSIFICACAO, NIVEL_CARGO, promptQualificacao,
 } from '../lib/qualificacao.js';
 import { custoDe } from '../lib/custo.js';
+import { PRECOS_INICIAIS as T } from '../lib/precosIniciais.js';
 
 const ficha = (o = {}, site = null) => {
   const original = { nome: 'Ana', empresa: 'ACME', cargo: 'ceo', email: 'ana@acme.com.br', site, mensagem: null, lang: 'pt-BR', ...o };
@@ -67,14 +68,16 @@ test('prompt: only the e-mail domain, the origin page and the two coleta mínima
 });
 
 test('cost: Haiku 5.5 prices; unknown model gives null', () => {
-  const c = custoDe('claude-haiku-5-5', { input_tokens: 1000, output_tokens: 200, cache_read_input_tokens: 500 });
-  assert.deepEqual(c, { tokensEntrada: 1500, tokensSaida: 200, buscas: 0, usdEstimado: 0.000205 });
-  assert.equal(custoDe('outro', { input_tokens: 1, output_tokens: 1 }).usdEstimado, null);
+  const c = custoDe(T, 'claude-haiku-5-5', { input_tokens: 1000, output_tokens: 200, cache_read_input_tokens: 500 });
+  assert.deepEqual(c, { tokensEntrada: 1000, cacheLidos: 500, cacheEscritos: 0, tokensSaida: 200, buscas: 0, usdEstimado: 0.000205, usdSemCache: 0.00025, versaoPrecos: '1' });
+  // Without config/precos the cost is null, never a constant in code.
+  assert.equal(custoDe(null, 'claude-haiku-5-5', { input_tokens: 1, output_tokens: 1 }).usdEstimado, null);
+  assert.equal(custoDe(T, 'outro', { input_tokens: 1, output_tokens: 1 }).usdEstimado, null);
   // Haiku tier above 100,000 prompt tokens (input + cache writes + cache reads), the whole request at the
   // higher rate; summed responses priced one by one; Sonnet single tier.
-  assert.equal(custoDe('claude-haiku-5-5', { input_tokens: 100_000, output_tokens: 1000 }).usdEstimado, 0.0105);
-  assert.equal(custoDe('claude-haiku-5-5', { input_tokens: 90_000, cache_read_input_tokens: 20_000, output_tokens: 1000 }).usdEstimado, 0.0485);
+  assert.equal(custoDe(T, 'claude-haiku-5-5', { input_tokens: 100_000, output_tokens: 1000 }).usdEstimado, 0.0105);
+  assert.equal(custoDe(T, 'claude-haiku-5-5', { input_tokens: 90_000, cache_read_input_tokens: 20_000, output_tokens: 1000 }).usdEstimado, 0.0485);
   const partes = [{ input_tokens: 100_000, output_tokens: 1000 }, { input_tokens: 110_000, output_tokens: 1000 }];
-  assert.equal(custoDe('claude-haiku-5-5', { input_tokens: 210_000, output_tokens: 2000, partes }).usdEstimado, 0.0105 + 0.0575);
-  assert.equal(custoDe('claude-sonnet-5-5', { input_tokens: 150_000, output_tokens: 1000 }).usdEstimado, 0.31);
+  assert.equal(custoDe(T, 'claude-haiku-5-5', { input_tokens: 210_000, output_tokens: 2000, partes }).usdEstimado, 0.0105 + 0.0575);
+  assert.equal(custoDe(T, 'claude-sonnet-5-5', { input_tokens: 150_000, output_tokens: 1000 }).usdEstimado, 0.31);
 });

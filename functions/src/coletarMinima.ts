@@ -8,6 +8,8 @@ import { logger } from 'firebase-functions';
 import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { APOLLO_API_KEY, CLAUDE_API_KEY, REGIAO } from './config.js';
 import { lePipeline } from './pipeline.js';
+import { lePrecos } from './precos.js';
+import { modeloDe } from './modelos.js';
 import { noEmulador } from './claude.js';
 import { CARGOS_ROTULO } from './textos.generated.js';
 import { dominioDe, sinaisIniciais } from './qualificacao.js';
@@ -30,7 +32,7 @@ export const coletarMinima = onDocumentCreated(
       const p = await lePipeline();
       const versao = (await db.doc('config/metodo').get()).get('versao') as string | undefined;
       if (!versao) throw new Error('config/metodo has no published version');
-      if (!noEmulador() && !p.modeloColeta) throw new Error('config/pipeline.modeloColeta is empty');
+      if (!noEmulador() && !modeloDe(p, 'coleta')) throw new Error('config/pipeline.modelos.coleta is empty');
       const original = f.original as Original;
       const normalizado = f.normalizado as Normalizado;
       const s = sinaisIniciais(normalizado);
@@ -67,6 +69,7 @@ export const coletarMinima = onDocumentCreated(
         conteudos: {},
         codigo: {},
         site: null,
+        precos: await lePrecos(),
         totais: { tokensEntrada: 0, tokensSaida: 0, buscas: 0, usd: 0 },
       };
       await roda(c, 'empresa_digital');

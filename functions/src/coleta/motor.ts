@@ -8,7 +8,8 @@ import { FieldValue, Timestamp, type DocumentReference } from 'firebase-admin/fi
 import type { Fornecedor, Pipeline } from '../config.js';
 import { leMetodo } from '../metodo.js';
 import { noEmulador } from '../claude.js';
-import { custoDe, type Uso } from '../custo.js';
+import { custoDe, promptTotal, type Precos, type Uso } from '../custo.js';
+import { esforcoApi, esforcoDe, modeloDe } from '../modelos.js';
 import { chamaColeta, chaveUrl, ErroColeta, type RespostaColeta } from './claudeColeta.js';
 import { formatoInvalido, normalizaEnvelope, type Envelope, type FonteColeta } from './envelope.js';
 import { CHAVES, INSTRUCAO_CANDIDATOS, LIMITES_DA_ETAPA, MAX_BUSCAS, MAX_LEITURAS, METODO_DA_ETAPA, mensagemDaEtapa, type BlocoContexto, type DadosFicha, type Etapa } from './etapas.js';
@@ -26,6 +27,8 @@ export interface Contexto {
   sinais: SinaisIniciais;
   contexto: BlocoContexto;
   p: Pipeline;
+  // config/precos read at the start of the run (spec 01 v0.11).
+  precos: Precos | null;
   versao: string;
   chaves: { claude: string; apollo: string; apify: string; hunter: string };
   // Apify is out of the coleta mínima (spec 04, section 1).
@@ -69,7 +72,7 @@ async function chama(c: Contexto, t: Rastro, etapa: Etapa, usuario: string, maxB
   try {
     const met = METODO_DA_ETAPA[etapa];
     const metodo = met ? (await leMetodo(met)).blocos.map((b) => ({ nome: b.nome, texto: b.texto })) : [];
-    const r = await chamaColeta({ chave: c.chaves.claude, modelo: c.p.modeloColeta, metodo, usuario, maxBuscas: reserva, maxLeituras: MAX_LEITURAS, valida, ...LIMITES_DA_ETAPA[etapa] });
+    const r = await chamaColeta({ chave: c.chaves.claude, modelo: modeloDe(c.p, 'coleta'), esforco: esforcoApi(esforcoDe(c.p, 'coleta')), metodo, usuario, maxBuscas: reserva, maxLeituras: MAX_LEITURAS, valida, ...LIMITES_DA_ETAPA[etapa] });
     c.buscasRestantes += reserva - Math.min(reserva, r.buscas);
     t.rs.push(r);
     return r;
@@ -124,8 +127,8 @@ const usoDe = (c: Contexto, rs: RespostaColeta[]) => {
     soma.cache_read_input_tokens += r.uso.cache_read_input_tokens ?? 0;
     buscas += r.buscas;
   }
-  const k = custoDe(c.p.modeloColeta, soma, buscas);
-  return { tokensEntrada: k.tokensEntrada, tokensSaida: k.tokensSaida, buscas, usd: k.usdEstimado ?? 0 };
+  const k = custoDe(c.precos, modeloDe(c.p, 'coleta'), soma, buscas);
+  return { tokensEntrada: promptTotal(k), tokensSaida: k.tokensSaida, buscas, usd: k.usdEstimado ?? 0 };
 };
 
 // Emulator stand-in for the code-side facts of the coleta mínima: a company named "… Média …" gets a
@@ -337,7 +340,7 @@ export async function roda(c: Contexto, etapa: Etapa): Promise<void> {
     tokensEntrada: u.tokensEntrada, tokensSaida: u.tokensSaida, buscas: u.buscas, duracaoMs: Date.now() - inicio,
     chamadasBrasilapi: t.chamadas.brasilapi ?? 0, chamadasApollo: t.chamadas.apollo ?? 0, chamadasApify: t.chamadas.apify ?? 0, chamadasHunter: t.chamadas.hunter ?? 0,
   };
-  const modelo = noEmulador() ? 'simulado' : c.p.modeloColeta;
+  const modelo = noEmulador() ? 'simulado' : modeloDe(c.p, 'coleta');
   const insumosCodigo = c.codigo[etapa] ?? null;
   // Pages read: only in empresa_digital, recorded by the code even when the stage fails (empty when none).
   const extra = etapa === 'empresa_digital' ? { paginasLidas: c.paginasLidas ?? [] } : {};

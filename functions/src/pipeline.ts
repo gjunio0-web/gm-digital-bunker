@@ -16,15 +16,22 @@ function funde(padrao: Mapa, dados: unknown): Mapa {
   return r;
 }
 
-// Merges the stored document over the defaults. fontes is merged per provider and per field, and
-// pesosQualificacao per field at every level, so a document that sets only part keeps the defaults.
+// Merges the stored document over the defaults. fontes is merged per provider and per field, modelos and
+// esforco per stage, and pesosQualificacao per field at every level, so a document that sets only part keeps
+// the defaults.
 export function combinaPipeline(dados: Record<string, unknown> = {}): Pipeline {
-  const { fontes, pesosQualificacao, ...resto } = dados as { fontes?: Record<string, Record<string, unknown>>; pesosQualificacao?: unknown };
+  const { fontes, pesosQualificacao, modelos, esforco, ...resto } = dados as {
+    fontes?: Record<string, Record<string, unknown>>; pesosQualificacao?: unknown; modelos?: unknown; esforco?: unknown;
+  };
   const combinadas = Object.fromEntries(
     FORNECEDORES.map((f) => [f, { ...PIPELINE_PADRAO.fontes[f], ...(fontes?.[f] ?? {}) }]),
   );
   const pesos = funde(PIPELINE_PADRAO.pesosQualificacao as unknown as Mapa, pesosQualificacao);
-  return { ...PIPELINE_PADRAO, ...resto, fontes: combinadas, pesosQualificacao: pesos } as unknown as Pipeline;
+  return {
+    ...PIPELINE_PADRAO, ...resto, fontes: combinadas, pesosQualificacao: pesos,
+    modelos: funde(PIPELINE_PADRAO.modelos as unknown as Mapa, modelos),
+    esforco: funde(PIPELINE_PADRAO.esforco as unknown as Mapa, esforco),
+  } as unknown as Pipeline;
 }
 
 export async function lePipeline(): Promise<Pipeline> {

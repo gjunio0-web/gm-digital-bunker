@@ -1,6 +1,6 @@
 # Funções do Firebase – análise preliminar de fichas
 
-Item 1 da spec 01: `receberFicha` (HTTPS, recebe o formulário) e `expurgar` (agendada, diária às 03:00 de São Paulo). Item 5: `publicarMetodo` (HTTPS privada; publica a pasta `metodo/` no bucket privado e grava `config/metodo`). Mudança de método de 6/11/2026 (spec 04): `coletarMinima` (gatilho na criação da ficha; `empresa_digital` sem Apify e `empresa_registro`, depois `qualificar` – chamada ao modelo de `config/pipeline.modeloColeta`, sempre – e `graduar`, a triagem em código, que grava `lead` e define o próximo estado) e `coletar` (gatilho quando a ficha passa a `coletando`; na primeira passagem, as quatro etapas restantes e o Instagram pelo Apify; numa reexecução, as etapas marcadas como pendentes). Fase B: `sintetizar` (gatilho quando a ficha passa a `coletada`; `enquadrar` → `graduar` no momento análise → `preparar_conversa` → `montar_analise`, com `config/pipeline.modeloSintese`, e grava `analise/vN`) e `verificar` (gatilho na criação de `analise/vN`; checagens em código sempre e revisor com `config/pipeline.modeloRevisor` só em versão da IA; estado final, confiança, prazo e segundo e-mail ao administrador, com o link `{URL base}/admin/leads/{fichaId}` da spec 05).
+Item 1 da spec 01: `receberFicha` (HTTPS, recebe o formulário) e `expurgar` (agendada, diária às 03:00 de São Paulo). Item 5: `publicarMetodo` (HTTPS privada; publica a pasta `metodo/` no bucket privado e grava `config/metodo`). Mudança de método de 6/11/2026 (spec 04): `coletarMinima` (gatilho na criação da ficha; `empresa_digital` sem Apify e `empresa_registro`, depois `qualificar` – chamada ao modelo de `config/pipeline.modelos.qualificar`, sempre – e `graduar`, a triagem em código, que grava `lead` e define o próximo estado) e `coletar` (gatilho quando a ficha passa a `coletando`; na primeira passagem, as quatro etapas restantes e o Instagram pelo Apify; numa reexecução, as etapas marcadas como pendentes). Fase B: `sintetizar` (gatilho quando a ficha passa a `coletada`; `enquadrar` → `graduar` no momento análise → `preparar_conversa` → `montar_analise`, com o modelo e o esforço de cada etapa em `config/pipeline.modelos` e `config/pipeline.esforco` (spec 02 v0.12), e grava `analise/vN` com o uso por chamada) e `verificar` (gatilho na criação de `analise/vN`; checagens em código sempre e revisor com `config/pipeline.modelos.revisor` só em versão da IA; estado final, confiança, prazo e segundo e-mail ao administrador, com o link `{URL base}/admin/leads/{fichaId}` da spec 05).
 
 **Ramos:** trabalho só em `quality-env`. `main` (produção) só avança por pedido explícito de Gon.
 
@@ -50,7 +50,9 @@ Região de todas as funções: `REGIAO` em `src/config.ts` (`southamerica-east1`
 | `src/coleta/envelope.ts` | Envelope da spec 02 §2: fontes verificadas, índices, regra de preenchimento |
 | `src/coleta/etapas.ts`, `textosSpec.ts` | Tetos de busca, arquivos do método, instruções e esquemas de cada etapa (textos da spec 02) |
 | `scripts/fichas-teste.mjs` | Fichas de teste gravadas direto no Firestore (sem e-mails), que seguem o pipeline sozinhas; reexecução de etapas (`--reexecutar`, `--etapas=`, `--ficha=`, `--uma-por-vez`) ou só da síntese (`--sintese`); relatório com a triagem, a análise, as etapas, as pendências e o custo |
-| `src/seed.ts` | Grava `config/pipeline` e `config/metodo`; rodado de novo, só acrescenta campos ausentes, sem sobrescrever |
+| `src/seed.ts` | Grava `config/pipeline` e `config/metodo`; rodado de novo, só acrescenta campos ausentes, sem sobrescrever; cria `config/precos` só se ausente |
+| `src/migrarPipeline.ts`, `src/migracao.ts` | Migração única de `config/pipeline` para modelos e esforço por etapa (spec 01 v0.11); sem `--aplicar`, só mostra o plano |
+| `src/modelos.ts`, `src/uso.ts`, `src/precos.ts`, `src/precosIniciais.ts` | Modelo e esforço por etapa; uso por chamada; leitura de `config/precos`; tabela inicial (só semente) |
 | `scripts/textos.mjs` | Copia os textos dos e-mails de `src/i18n/ui.ts` do site para `src/textos.generated.ts` (roda no build) |
 | `../firestore.rules`, `../firestore.indexes.json` | Regras (spec 01, seção 5) e índices |
 
@@ -106,7 +108,8 @@ gcloud secrets versions list IP_HASH_SALT --project gmdb-qualidade
 ```
 cd functions && npm ci
 npm run seed -- gmdb-qualidade        # re-runnable; only adds missing fields, never overwrites
-npm run configurar -- gmdb-qualidade modeloColeta=claude-haiku-5-5 autoAnalisar=false   # only with Gon's authorization
+npm run configurar -- gmdb-qualidade modelos.coleta=claude-haiku-5-5 esforco.revisor=baixo   # only with Gon's authorization
+npm run migrar-pipeline -- gmdb-qualidade [--aplicar]   # one-off, spec 01 v0.11; plan only without --aplicar
 cd ..
 firebase deploy --project qualidade --only functions:receberFicha,functions:expurgar,firestore:rules,firestore:indexes
 firebase deploy --project gmdb-qualidade --only functions:coletarMinima,functions:coletar

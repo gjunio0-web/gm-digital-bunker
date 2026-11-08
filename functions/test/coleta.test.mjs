@@ -11,6 +11,7 @@ import { chaveUrl, extraiJson, urlsDosResultados } from '../lib/coleta/claudeCol
 import { CHAVES, ETAPAS, LIMITES_DA_ETAPA, mensagemDaEtapa, orcamentoBuscas, orcamentoPrimeiraPassagem } from '../lib/coleta/etapas.js';
 import { ESQUEMAS } from '../lib/coleta/textosSpec.js';
 import { custoDe } from '../lib/custo.js';
+import { PRECOS_INICIAIS } from '../lib/precosIniciais.js';
 
 test('CNPJ: check digits, extraction from text with and without punctuation', () => {
   assert.equal(cnpjValido('11.222.333/0001-81'), true);
@@ -114,8 +115,9 @@ test('stage prompts: delimiters, verbatim schema from spec 02, sources with indi
   }
 });
 
-test('cost: searches add US$ 0.01 each', () => {
-  assert.equal(custoDe('claude-haiku-5-5', { input_tokens: 0, output_tokens: 0 }, 3).usdEstimado, 0.03);
+test('cost: searches priced by precos.buscaWeb.porMil (US$ 0.01 each in the initial table)', () => {
+  assert.equal(custoDe(PRECOS_INICIAIS, 'claude-haiku-5-5', { input_tokens: 0, output_tokens: 0 }, 3).usdEstimado, 0.03);
+  assert.equal(custoDe({ ...PRECOS_INICIAIS, buscaWeb: null }, 'claude-haiku-5-5', { input_tokens: 0, output_tokens: 0 }, 3).usdEstimado, null);
 });
 
 test('first pass: coleta mínima and the remaining stages share one ceiling', () => {

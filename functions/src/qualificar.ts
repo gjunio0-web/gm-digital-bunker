@@ -6,7 +6,9 @@
 import { FieldValue, getFirestore, Timestamp, type DocumentReference } from 'firebase-admin/firestore';
 import type { Pipeline } from './config.js';
 import { chamaClaude, noEmulador, simulaClassificacao } from './claude.js';
-import { custoDe, type Custo } from './custo.js';
+import { custoDe, promptTotal, type Custo } from './custo.js';
+import { lePrecos } from './precos.js';
+import { esforcoApi, esforcoDe, modeloDe } from './modelos.js';
 import { leMetodo } from './metodo.js';
 import { CARGOS_ROTULO } from './textos.generated.js';
 import { decide, ESQUEMA_CLASSIFICACAO, promptQualificacao, sinais, validaClassificacao, type Decisao } from './qualificacao.js';
@@ -25,13 +27,15 @@ export async function qualifica(ref: DocumentReference, p: Pipeline, chaveClaude
   const [digital, registro] = await Promise.all(['empresa_digital', 'empresa_registro'].map((e) => ref.collection('coleta').doc(e).get()));
 
   const s = sinais(original, normalizado);
-  if (!noEmulador() && !p.modeloColeta) throw new Error('config/pipeline.modeloColeta is empty');
+  const modelo = modeloDe(p, 'qualificar');
+  if (!noEmulador() && !modelo) throw new Error('config/pipeline.modelos.qualificar is empty');
   const metodo = (await leMetodo({ 'portas-materiais.md': [1] })).blocos.map((b) => ({ nome: b.nome, texto: b.texto }));
   const r = noEmulador()
     ? simulaClassificacao(original.mensagem)
     : await chamaClaude({
         chave: chaveClaude,
-        modelo: p.modeloColeta,
+        modelo,
+        esforco: esforcoApi(esforcoDe(p, 'qualificar')),
         metodo,
         usuario: promptQualificacao(
           original, normalizado, CARGOS_ROTULO[original.cargo] ?? original.cargo, f.origem?.pagina ?? null,
@@ -40,7 +44,7 @@ export async function qualifica(ref: DocumentReference, p: Pipeline, chaveClaude
         esquema: ESQUEMA_CLASSIFICACAO,
       });
   const c = validaClassificacao(r.json);
-  const custo: Custo = custoDe(p.modeloColeta, r.uso);
+  const custo: Custo = custoDe(await lePrecos(), modelo, r.uso);
   const { decisao, motivo } = decide(c);
   const { estruturaTecnologia, portaIndicada, ...classificacaoMensagem } = c;
 
@@ -58,7 +62,7 @@ export async function qualifica(ref: DocumentReference, p: Pipeline, chaveClaude
       'qualificacao.estruturaTecnologia': estruturaTecnologia,
       'qualificacao.portaIndicada': portaIndicada,
       'qualificacao.classificacaoMensagem': classificacaoMensagem,
-      'custo.tokensEntrada': FieldValue.increment(custo.tokensEntrada),
+      'custo.tokensEntrada': FieldValue.increment(promptTotal(custo)),
       'custo.tokensSaida': FieldValue.increment(custo.tokensSaida),
       'custo.usdEstimado': FieldValue.increment(custo.usdEstimado ?? 0),
       estado: 'qualificada',

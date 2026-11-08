@@ -54,14 +54,18 @@ for (const f of fichas) {
     const modelo = a.get('autor.id') ?? '?';
     const diaA = dia(a.get('criadaEm'));
     nAnalises++;
-    for (const [k, v] of Object.entries(u.chamadas ?? {})) {
+    // Two shapes: spec 01 v0.11 (one entry per call with its model, plus total) and the earlier one
+    // (chamadas, revisor and usdEstimado, one model for the synthesis).
+    const novo = Boolean(u.total);
+    const chamadas = novo ? Object.fromEntries(Object.entries(u).filter(([k]) => k !== 'total')) : { ...(u.chamadas ?? {}), ...(u.revisor ? { revisor: u.revisor } : {}) };
+    for (const [k, v] of Object.entries(chamadas)) {
       soma(porChamada, k, v.usdEstimado);
-      soma(porModelo, `${modelo} (síntese)`, v.usdEstimado);
+      const m = v.modelo ?? (k === 'revisor' ? 'claude-sonnet-5-5' : modelo);
+      soma(porModelo, `${m} (${k === 'revisor' ? 'revisor' : 'síntese'})`, v.usdEstimado);
     }
-    soma(porChamada, 'revisor', u.revisor?.usdEstimado);
-    soma(porModelo, 'claude-sonnet-5-5 (revisor)', u.revisor?.usdEstimado);
-    soma(porDiaSintese, diaA, u.usdEstimado);
-    sintese += u.usdEstimado ?? 0;
+    const usdA = novo ? u.total.usdEstimado : u.usdEstimado;
+    soma(porDiaSintese, diaA, usdA);
+    sintese += usdA ?? 0;
   }
   const resto = t - sintese;
   soma(porDiaColeta, dia(d.recebidaEm), resto);

@@ -14,6 +14,7 @@
     "emulador": "npm run build && firebase emulators:exec --project gmdb-qualidade --only functions,firestore,storage \"npm run test:emulador\"",
     "seed": "npm run build && node lib/seed.js",
     "configurar": "npm run build && node lib/configurar.js",
+    "migrar-pipeline": "npm run build && node lib/migrarPipeline.js",
     "publicar-metodo": "npm run build && node scripts/publicar-metodo.mjs",
     "fichas-teste": "npm run build && node scripts/fichas-teste.mjs"
   },

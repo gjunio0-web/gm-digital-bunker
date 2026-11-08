@@ -11,7 +11,10 @@ import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { CLAUDE_API_KEY, REGIAO, SMTP2GO_API_KEY, URL_BASE_POR_PROJETO } from './config.js';
 import { lePipeline } from './pipeline.js';
 import { chamaClaude, ErroComUso, noEmulador } from './claude.js';
-import { custoDe } from './custo.js';
+import { lePrecos } from './precos.js';
+import { chaveDesenho, esforcoApi, esforcoDe, modeloDe } from './modelos.js';
+import { promptTotal } from './custo.js';
+import { usoChamada, type UsoChamada } from './uso.js';
 import { leMetodo } from './metodo.js';
 import { confiancaFinal } from './graduar.js';
 import { avisoAnalise } from './email.js';
@@ -45,35 +48,45 @@ export const verificar = onDocumentCreated(
       );
 
       // 4.2 – reviewer, AI versions only; no access to the collection.
+      // Model and effort from config/pipeline (modelos.revisor, esforco.revisor); usage in the same shape as
+      // the synthesis calls (spec 01 v0.11, uso).
       let modeloRevisor: string | null = null;
-      let custo = { tokensEntrada: 0, tokensSaida: 0, usdEstimado: 0 };
+      let usoRevisor: UsoChamada | null = null;
       if (ia) {
-        modeloRevisor = noEmulador() ? 'simulado' : p.modeloRevisor;
-        if (!noEmulador() && !p.modeloRevisor) throw new Error('config/pipeline.modeloRevisor is empty');
+        const precos = await lePrecos();
+        const esforco = esforcoDe(p, 'revisor');
+        modeloRevisor = noEmulador() ? 'simulado' : modeloDe(p, 'revisor');
+        if (!modeloRevisor) throw new Error('config/pipeline.modelos.revisor is empty');
         let revisor: Pendencia[];
-        if (noEmulador()) revisor = [];
-        else {
+        if (noEmulador()) {
+          revisor = [];
+          usoRevisor = usoChamada(precos, modeloRevisor, esforco, null, 0);
+        } else {
           const metodo = await leMetodo({ 'glossario.md': ['B'], 'escopo-limites.md': [1, 4, 5, 7] });
+          const inicio = Date.now();
           const r = await chamaClaude({
-            chave: CLAUDE_API_KEY.value(), modelo: p.modeloRevisor, metodo: metodo.blocos.map((b) => ({ nome: b.nome, texto: b.texto })),
+            chave: CLAUDE_API_KEY.value(), modelo: modeloRevisor, metodo: metodo.blocos.map((b) => ({ nome: b.nome, texto: b.texto })),
             usuario: mensagemRevisor(a.secoes ?? {}, a.enquadramento?.detalhe ?? a.enquadramento ?? null), esquema: ESQUEMA_REVISOR, maxTokens: 32_000, timeoutMs: 480_000,
+            esforco: esforcoApi(esforco),
           }).catch(async (e) => {
             // A billed failure still counts in the cost of the ficha.
             if (e instanceof ErroComUso) {
-              const k = custoDe(p.modeloRevisor, e.uso);
+              const k = usoChamada(precos, modeloRevisor ?? '', esforco, e.uso, Date.now() - inicio);
               await ref.update({
-                'custo.tokensEntrada': FieldValue.increment(k.tokensEntrada), 'custo.tokensSaida': FieldValue.increment(k.tokensSaida),
+                'custo.tokensEntrada': FieldValue.increment(promptTotal(k)), 'custo.tokensSaida': FieldValue.increment(k.tokensSaida),
                 'custo.usdEstimado': FieldValue.increment(k.usdEstimado ?? 0),
               }).catch(() => undefined);
             }
             throw new Error(`revisor: ${String((e as Error)?.message ?? e)}`);
           });
           revisor = validaRevisor(r.json);
-          const k = custoDe(p.modeloRevisor, r.uso);
-          custo = { tokensEntrada: k.tokensEntrada, tokensSaida: k.tokensSaida, usdEstimado: k.usdEstimado ?? 0 };
+          usoRevisor = usoChamada(precos, modeloRevisor, esforco, r.uso, Date.now() - inicio);
         }
         pendencias.push(...revisor);
       }
+      const usd = usoRevisor?.usdEstimado ?? 0;
+      // Design of the synthesis that produced the version, for metricas.sintesePorDesenho.
+      const desenho = ia && a.uso ? chaveDesenho(a.uso) : null;
 
       const status = pendencias.length ? 'com_pendencias' : 'pronta';
       const agora = Timestamp.now();
@@ -88,17 +101,26 @@ export const verificar = onDocumentCreated(
         if (!atual || !v || v.verificacao) return;
         tx.update(docVersao, {
           verificacao: { status, pendencias, verificadaEm: agora, modeloRevisor },
-          ...(ia ? { 'uso.revisor': custo, 'uso.usdEstimado': FieldValue.increment(custo.usdEstimado) } : {}),
+          ...(usoRevisor ? {
+            'uso.revisor': usoRevisor,
+            'uso.total.tokensEntrada': FieldValue.increment(usoRevisor.tokensEntrada),
+            'uso.total.tokensSaida': FieldValue.increment(usoRevisor.tokensSaida),
+            'uso.total.cacheLidos': FieldValue.increment(usoRevisor.cacheLidos),
+            'uso.total.cacheEscritos': FieldValue.increment(usoRevisor.cacheEscritos),
+            'uso.total.duracaoMs': FieldValue.increment(usoRevisor.duracaoMs ?? 0),
+            'uso.total.usdEstimado': FieldValue.increment(usd),
+            'uso.total.usdSemCache': FieldValue.increment(usoRevisor.usdSemCache ?? 0),
+          } : {}),
         });
         const aindaFecha = fecha && atual.estado === 'sintetizando' && atual.analiseAtual === versao;
         // The confidence follows the current AI version only.
         const naFicha = {
           ...(ia && atual.analiseAtual === versao ? lead : {}),
           ...(aindaFecha ? { estado, estadoEm: agora } : {}),
-          ...(ia ? {
-            'custo.tokensEntrada': FieldValue.increment(custo.tokensEntrada),
-            'custo.tokensSaida': FieldValue.increment(custo.tokensSaida),
-            'custo.usdEstimado': FieldValue.increment(custo.usdEstimado),
+          ...(usoRevisor ? {
+            'custo.tokensEntrada': FieldValue.increment(promptTotal(usoRevisor)),
+            'custo.tokensSaida': FieldValue.increment(usoRevisor.tokensSaida),
+            'custo.usdEstimado': FieldValue.increment(usd),
           } : {}),
         };
         // A human edit changes nothing in the ficha itself.
@@ -107,10 +129,26 @@ export const verificar = onDocumentCreated(
           em: agora, ator: { tipo: ia ? 'ia' : 'sistema', id: 'verificar' }, tipo: 'verificacao',
           detalhe: { versao, status, pendencias: pendencias.length, porTipo: contaPorTipo(pendencias), revisor: ia, confianca: (lead as Record<string, unknown>)['lead.modificadores.confianca'] ?? null },
         });
-        if (ia) {
+        if (usoRevisor) {
+          // Pending items by rule before and after repair and correction: equal until phases 2 and 4.
+          const porRegra = contaPorRegra(pendencias);
           tx.set(
             db.collection('metricas').doc(mesDe((f.recebidaEm as Timestamp).toDate())),
-            { custo: { verificacao: { usdEstimado: FieldValue.increment(custo.usdEstimado), tokensEntrada: FieldValue.increment(custo.tokensEntrada), tokensSaida: FieldValue.increment(custo.tokensSaida) } }, atualizadoEm: agora },
+            {
+              custo: { verificacao: { usdEstimado: FieldValue.increment(usd), tokensEntrada: FieldValue.increment(promptTotal(usoRevisor)), tokensSaida: FieldValue.increment(usoRevisor.tokensSaida) } },
+              ...(desenho ? {
+                sintesePorDesenho: {
+                  [desenho]: {
+                    usdEstimado: FieldValue.increment(usd), usdSemCache: FieldValue.increment(usoRevisor.usdSemCache ?? 0),
+                    pendenciasPorRegra: {
+                      antes: Object.fromEntries(Object.entries(porRegra).map(([k, n]) => [k, FieldValue.increment(n)])),
+                      depois: Object.fromEntries(Object.entries(porRegra).map(([k, n]) => [k, FieldValue.increment(n)])),
+                    },
+                  },
+                },
+              } : {}),
+              atualizadoEm: agora,
+            },
             { merge: true },
           );
         }
@@ -144,4 +182,10 @@ export const verificar = onDocumentCreated(
   },
 );
 
+// Mechanical items by their rule; the reviewer's by type (revisor_<tipo>). Firestore map keys, no dots.
+const contaPorRegra = (ps: Pendencia[]) =>
+  ps.reduce<Record<string, number>>((t, x) => {
+    const k = String(x.regra ?? `revisor_${x.tipo}`).replace(/[.\s/]/g, '_');
+    return { ...t, [k]: (t[k] ?? 0) + 1 };
+  }, {});
 const contaPorTipo = (ps: Pendencia[]) => ps.reduce<Record<string, number>>((t, x) => ({ ...t, [x.tipo]: (t[x.tipo] ?? 0) + 1 }), {});

@@ -41,16 +41,30 @@ export interface Fonte {
   maxChamadasPorFicha: number;
 }
 
+// Stages with their own model and effort in config/pipeline (spec 02 v0.12, section 0).
+export const ETAPAS_MODELO = ['qualificar', 'coleta', 'enquadrar', 'preparar_conversa', 'montar_analise', 'reparar', 'revisor', 'corrigir'] as const;
+export type EtapaModelo = (typeof ETAPAS_MODELO)[number];
+export const ESFORCOS = ['baixo', 'medio', 'alto', 'padrao'] as const;
+export type Esforco = (typeof ESFORCOS)[number];
+
 // Defaults of config/pipeline (spec 01, section 2 and decision 2). seed.ts writes them once and
 // later adds only missing fields; the functions fall back to them when the document or a field is missing.
 export const PIPELINE_PADRAO = {
   tetoBuscasPorFicha: 20,
-  modeloColeta: '',
-  modeloSintese: '',
-  modeloRevisor: '',
-  // Effort of the synthesis calls (output_config.effort); empty: the model default. For the cost
-  // measurement authorized by Gon on 7/11/2026.
-  esforcoSintese: '',
+  // Model and effort per stage (spec 02 v0.12, section 0; spec 01 v0.11, config/pipeline). Model IDs
+  // are set in Firestore only, never here; null in reparar and corrigir means "inherit": reparar takes
+  // the model and effort of the stage that produced the text, corrigir those of montar_analise.
+  modelos: {
+    qualificar: '', coleta: '', enquadrar: '', preparar_conversa: '', montar_analise: '',
+    reparar: null, revisor: '', corrigir: null,
+  },
+  esforco: {
+    qualificar: 'padrao', coleta: 'padrao', enquadrar: 'padrao', preparar_conversa: 'padrao', montar_analise: 'padrao',
+    reparar: null, revisor: 'padrao', corrigir: null,
+  },
+  // Share of change outside the listed excerpts that invalidates a repair (spec 01 v0.11).
+  limiarReparo: 0.02,
+  correcaoAtiva: true,
   autoAnalisar: true,
   prazoGuardaDias: 90,
   prazoGuardaDiasBreve: 30,
@@ -68,10 +82,10 @@ export const PIPELINE_PADRAO = {
 
 export interface Pipeline {
   tetoBuscasPorFicha: number;
-  modeloColeta: string;
-  modeloSintese: string;
-  modeloRevisor: string;
-  esforcoSintese: string;
+  modelos: Record<EtapaModelo, string | null>;
+  esforco: Record<EtapaModelo, Esforco | null>;
+  limiarReparo: number;
+  correcaoAtiva: boolean;
   autoAnalisar: boolean;
   prazoGuardaDias: number;
   prazoGuardaDiasBreve: number;

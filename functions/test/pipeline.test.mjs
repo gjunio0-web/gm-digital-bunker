@@ -39,3 +39,57 @@ test('pesosQualificacao.paginasOrigem: seed adds the list when missing; a stored
   assert.deepEqual(proprio.pesosQualificacao.paginasOrigem, [{ pagina: 'contato', pontos: 2 }]);
   assert.equal(combinaPipeline({}).pesosQualificacao.paginasOrigem.length, 14);
 });
+
+test('modelos and esforco: per stage, merged per entry; reparar and corrigir inherit', async () => {
+  const { modeloDe, esforcoDe, esforcoApi, chaveDesenho } = await import('../lib/modelos.js');
+  const p = combinaPipeline({ modelos: { enquadrar: 'claude-sonnet-5-5', montar_analise: 'claude-haiku-5-5' }, esforco: { montar_analise: 'medio' } });
+  assert.equal(p.modelos.coleta, '');
+  assert.equal(modeloDe(p, 'enquadrar'), 'claude-sonnet-5-5');
+  assert.equal(modeloDe(p, 'reparar', 'enquadrar'), 'claude-sonnet-5-5');
+  assert.equal(modeloDe(p, 'corrigir'), 'claude-haiku-5-5');
+  assert.equal(esforcoDe(p, 'corrigir'), 'medio');
+  assert.equal(esforcoDe(p, 'enquadrar'), 'padrao');
+  assert.equal(esforcoApi('baixo'), 'low');
+  assert.equal(esforcoApi('padrao'), undefined);
+  assert.throws(() => esforcoDe(combinaPipeline({ esforco: { revisor: 'low' } }), 'revisor'), /invalid value/);
+  assert.equal(
+    chaveDesenho({ enquadrar: { modelo: 'claude-haiku-5-5', esforco: 'medio' }, preparar_conversa: { modelo: 'claude-haiku-5-5', esforco: 'medio' }, montar_analise: { modelo: 'claude-sonnet-5-5', esforco: 'alto' } }),
+    'haiku-5-5_medio__haiku-5-5_medio__sonnet-5-5_alto',
+  );
+});
+
+test('migration of config/pipeline: old fields to modelos/esforco, idempotent', async () => {
+  const { planoMigracao } = await import('../lib/migracao.js');
+  const { ETAPAS_MODELO } = await import('../lib/config.js');
+  const antigo = { modeloColeta: 'claude-haiku-5-5', modeloSintese: 'claude-sonnet-5-5', modeloRevisor: 'claude-sonnet-5-5', esforcoSintese: 'medium', prazoGuardaDias: 60 };
+  const { campos, antigos } = planoMigracao(antigo, ETAPAS_MODELO, PIPELINE_PADRAO);
+  assert.deepEqual(antigos, ['modeloColeta', 'modeloSintese', 'modeloRevisor', 'esforcoSintese']);
+  assert.equal(campos['modelos.qualificar'], 'claude-haiku-5-5');
+  assert.equal(campos['modelos.montar_analise'], 'claude-sonnet-5-5');
+  assert.equal(campos['modelos.reparar'], null);
+  assert.equal(campos['esforco.enquadrar'], 'medio');
+  assert.equal(campos['esforco.revisor'], 'baixo');
+  assert.equal(campos['esforco.coleta'], 'padrao');
+  assert.equal(campos.limiarReparo, 0.02);
+  assert.equal(campos.correcaoAtiva, true);
+  // Applied: nothing left to do.
+  const migrado = { prazoGuardaDias: 60, modelos: {}, esforco: {}, limiarReparo: 0.02, correcaoAtiva: true };
+  for (const [k, v] of Object.entries(campos)) {
+    const [g, e] = k.split('.');
+    if (e) migrado[g][e] = v; else migrado[g] = v;
+  }
+  assert.deepEqual(planoMigracao(migrado, ETAPAS_MODELO, PIPELINE_PADRAO), { campos: {}, antigos: [] });
+});
+
+test('uso per call: cache apart, totals summed, prompt for the ficha as before', async () => {
+  const { usoChamada, totalDe, promptDe } = await import('../lib/uso.js');
+  const { PRECOS_INICIAIS } = await import('../lib/precosIniciais.js');
+  const a = usoChamada(PRECOS_INICIAIS, 'claude-sonnet-5-5', 'medio', { input_tokens: 1000, cache_read_input_tokens: 10_000, cache_creation_input_tokens: 0, output_tokens: 2000 }, 1500);
+  assert.deepEqual(a, { modelo: 'claude-sonnet-5-5', esforco: 'medio', tokensEntrada: 1000, tokensSaida: 2000, cacheLidos: 10_000, cacheEscritos: 0, duracaoMs: 1500, usdEstimado: 0.023, usdSemCache: 0.042, versaoPrecos: '1' });
+  const b = usoChamada(PRECOS_INICIAIS, 'claude-sonnet-5-5', 'medio', { input_tokens: 0, cache_creation_input_tokens: 4000, output_tokens: 0 }, 500);
+  const t = totalDe([a, b]);
+  assert.equal(t.cacheEscritos, 4000);
+  assert.equal(t.duracaoMs, 2000);
+  assert.equal(t.usdEstimado, 0.033);
+  assert.equal(promptDe([a, b]), 15_000);
+});

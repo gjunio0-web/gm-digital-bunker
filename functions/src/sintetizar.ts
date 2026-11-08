@@ -11,7 +11,9 @@ import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { CLAUDE_API_KEY, REGIAO } from './config.js';
 import { lePipeline } from './pipeline.js';
 import { chamaClaude, ErroComUso, noEmulador, type Resposta } from './claude.js';
-import { custoDe, type Uso } from './custo.js';
+import { lePrecos } from './precos.js';
+import { chaveDesenho, esforcoApi, esforcoDe, modeloDe } from './modelos.js';
+import { promptDe, totalDe, usoChamada, type UsoChamada } from './uso.js';
 import { leMetodo } from './metodo.js';
 import { graduaAnalise } from './graduar.js';
 import { dominioDe } from './qualificacao.js';
@@ -38,11 +40,15 @@ export const sintetizar = onDocumentUpdated(
     const id = evento.params.id;
     const db = getFirestore();
     const ref = db.collection('fichas').doc(id);
-    const usos: Record<string, Uso> = {};
-    let modelo = '';
+    // Usage of each call made, kept even when a later call fails (a billed call is paid for).
+    const registros: Record<string, UsoChamada> = {};
     try {
       const p = await lePipeline();
-      if (!noEmulador() && !p.modeloSintese) throw new Error('config/pipeline.modeloSintese is empty');
+      const precos = await lePrecos();
+      const ETAPAS_SINTESE = ['enquadrar', 'preparar_conversa', 'montar_analise'] as const;
+      const modelos = Object.fromEntries(ETAPAS_SINTESE.map((e) => [e, noEmulador() ? 'simulado' : modeloDe(p, e)])) as Record<(typeof ETAPAS_SINTESE)[number], string>;
+      const vazio = ETAPAS_SINTESE.find((e) => !modelos[e]);
+      if (vazio) throw new Error(`config/pipeline.modelos.${vazio} is empty`);
 
       // Claim: the transaction gives up if another delivery of the event got here first.
       let ficou = false;
@@ -64,26 +70,29 @@ export const sintetizar = onDocumentUpdated(
         site: normalizado.site, mensagem: original.mensagem, pagina: depois.origem?.pagina ?? null, lang: original.lang,
       };
       const dados = blocoDados(ficha, depois.qualificacao ?? null, coleta);
-      modelo = noEmulador() ? 'simulado' : p.modeloSintese;
+      const modelo = modelos.montar_analise;
       // The five method files, whole (spec 02, 3).
       const metodo = await leMetodo({ 'glossario.md': 'tudo', 'escopo-limites.md': 'tudo', 'portas-materiais.md': 'tudo', 'mapa-alavancas.md': 'tudo', 'livro-selecao.md': 'tudo' });
       const blocos = metodo.blocos.map((b) => ({ nome: b.nome, texto: b.texto }));
-      // A failed call names itself in the error and, when it was billed, still counts in the cost.
-      const duracoes: Record<string, number> = {};
-      const chama = async (nome: keyof typeof MAX_TOKENS, usuario: { texto: string; cache?: boolean }[], esquema: object, simulado: () => unknown): Promise<unknown> => {
-        if (noEmulador()) return simulado();
-        let r: Resposta;
+      // Each call with the model and effort of its stage (config/pipeline). A failed call names itself in
+      // the error and, when it was billed, still counts in the cost.
+      const chama = async (nome: (typeof ETAPAS_SINTESE)[number], usuario: { texto: string; cache?: boolean }[], esquema: object, simulado: () => unknown): Promise<unknown> => {
+        const esforco = esforcoDe(p, nome);
+        if (noEmulador()) {
+          registros[nome] = usoChamada(precos, modelos[nome], esforco, null, 0);
+          return simulado();
+        }
+        let r: Resposta | null = null;
         const inicio = Date.now();
         try {
-          r = await chamaClaude({ chave: CLAUDE_API_KEY.value(), modelo, metodo: blocos, usuario, esquema, maxTokens: MAX_TOKENS[nome], timeoutMs: TIMEOUT_CHAMADA_MS, esforco: p.esforcoSintese });
+          r = await chamaClaude({ chave: CLAUDE_API_KEY.value(), modelo: modelos[nome], metodo: blocos, usuario, esquema, maxTokens: MAX_TOKENS[nome], timeoutMs: TIMEOUT_CHAMADA_MS, esforco: esforcoApi(esforco) });
+          return r.json;
         } catch (e) {
-          if (e instanceof ErroComUso) usos[nome] = e.uso;
+          if (e instanceof ErroComUso) registros[nome] = usoChamada(precos, modelos[nome], esforco, e.uso, Date.now() - inicio);
           throw new Error(`${nome}: ${String((e as Error)?.message ?? e)}`);
         } finally {
-          duracoes[nome] = Date.now() - inicio;
+          if (r) registros[nome] = usoChamada(precos, modelos[nome], esforco, r.uso, Date.now() - inicio);
         }
-        usos[nome] = r.uso;
-        return r.json;
       };
 
       const enq = validaEnquadrar(await chama('enquadrar', mensagemEnquadrar(dados), ESQUEMA_ENQUADRAR, simulaEnquadrar));
@@ -94,13 +103,11 @@ export const sintetizar = onDocumentUpdated(
       const comFalha = /pend[eê]ncia/i.test(original.mensagem ?? '');
       const montagem = validaMontar(await chama('montar_analise', mensagemMontar(dados, enq, conversa), ESQUEMA_MONTAR, () => simulaMontar(comFalha)));
 
-      // Cost of the three calls, per call and in total.
-      const porChamada = Object.fromEntries(Object.entries(usos).map(([k, u]) => [k, { ...custoDe(modelo, u), duracaoMs: duracoes[k] ?? null }]));
-      const total = Object.values(porChamada).reduce(
-        (t, k) => ({ tokensEntrada: t.tokensEntrada + k.tokensEntrada, tokensSaida: t.tokensSaida + k.tokensSaida, usd: t.usd + (k.usdEstimado ?? 0) }),
-        { tokensEntrada: 0, tokensSaida: 0, usd: 0 },
-      );
-      const usd = Math.round(total.usd * 1e6) / 1e6;
+      // Usage per call and in total (spec 01 v0.11, uso); the revisor's entry is added by verificar.
+      const chamadas = Object.values(registros);
+      const total = totalDe(chamadas);
+      const usd = total.usdEstimado;
+      const desenho = chaveDesenho(registros);
 
       const criadaEm = Timestamp.now();
       const secoes: Record<string, unknown> = {
@@ -122,19 +129,24 @@ export const sintetizar = onDocumentUpdated(
           resumoExecutivo: montagem.resumoExecutivo,
           conversa: { perguntas: conversa.perguntas, materiais: conversa.materiais, pontosDeAtencao: conversa.pontosDeAtencaoParaOConsultor },
           rascunhoResposta: conversa.rascunhoResposta,
-          uso: { tokensEntrada: total.tokensEntrada, tokensSaida: total.tokensSaida, usdEstimado: usd, chamadas: porChamada, esforco: p.esforcoSintese || 'padrão do modelo' },
+          uso: { ...registros, total },
           criadaEm,
         });
         tx.update(ref, {
           analiseAtual: versao,
-          'custo.tokensEntrada': FieldValue.increment(total.tokensEntrada),
+          'custo.tokensEntrada': FieldValue.increment(promptDe(chamadas)),
           'custo.tokensSaida': FieldValue.increment(total.tokensSaida),
           'custo.usdEstimado': FieldValue.increment(usd),
         });
-        tx.create(ref.collection('eventos').doc(), { em: criadaEm, ator: { tipo: 'ia', id: 'sintetizar' }, tipo: 'sintese', detalhe: { versao, modelo, usdEstimado: usd } });
+        tx.create(ref.collection('eventos').doc(), { em: criadaEm, ator: { tipo: 'ia', id: 'sintetizar' }, tipo: 'sintese', detalhe: { versao, desenho, usdEstimado: usd } });
+        // metricas: the synthesis cost as before, and the comparison by design (spec 01 v0.11, metricas).
         tx.set(
           db.collection('metricas').doc(mesDe((depois.recebidaEm as Timestamp).toDate())),
-          { custo: { sintese: { versoes: FieldValue.increment(1), usdEstimado: FieldValue.increment(usd), tokensEntrada: FieldValue.increment(total.tokensEntrada), tokensSaida: FieldValue.increment(total.tokensSaida) } }, atualizadoEm: criadaEm },
+          {
+            custo: { sintese: { versoes: FieldValue.increment(1), usdEstimado: FieldValue.increment(usd), tokensEntrada: FieldValue.increment(promptDe(chamadas)), tokensSaida: FieldValue.increment(total.tokensSaida) } },
+            sintesePorDesenho: { [desenho]: { versoes: FieldValue.increment(1), somaPontos: FieldValue.increment(lead.pontos), usdEstimado: FieldValue.increment(usd), usdSemCache: FieldValue.increment(total.usdSemCache) } },
+            atualizadoEm: criadaEm,
+          },
           { merge: true },
         );
       });
@@ -143,12 +155,13 @@ export const sintetizar = onDocumentUpdated(
       const mensagem = String((e as Error)?.message ?? e).slice(0, 500);
       logger.error('sintetizar failed', { id, mensagem });
       // Calls already made are paid for: their cost goes to the ficha even when the synthesis fails.
-      const ks = Object.values(usos).map((u) => custoDe(modelo, u));
+      const ks = Object.values(registros);
+      const t = totalDe(ks);
       const custo = ks.length
         ? {
-            'custo.tokensEntrada': FieldValue.increment(ks.reduce((t, k) => t + k.tokensEntrada, 0)),
-            'custo.tokensSaida': FieldValue.increment(ks.reduce((t, k) => t + k.tokensSaida, 0)),
-            'custo.usdEstimado': FieldValue.increment(Math.round(ks.reduce((t, k) => t + (k.usdEstimado ?? 0), 0) * 1e6) / 1e6),
+            'custo.tokensEntrada': FieldValue.increment(promptDe(ks)),
+            'custo.tokensSaida': FieldValue.increment(t.tokensSaida),
+            'custo.usdEstimado': FieldValue.increment(t.usdEstimado),
           }
         : {};
       await ref.update({ erro: { etapa: 'sintetizar', mensagem, em: Timestamp.now() }, ...custo }).catch(() => undefined);

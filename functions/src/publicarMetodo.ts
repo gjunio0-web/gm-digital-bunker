@@ -8,6 +8,7 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { CLAUDE_API_KEY, REGIAO } from './config.js';
 import { contaTokens, noEmulador } from './claude.js';
+import { modeloDe } from './modelos.js';
 import { lePipeline } from './pipeline.js';
 import { resumeArquivos, versaoValida, type ArquivoPublicado } from './metodoArquivos.js';
 
@@ -34,7 +35,7 @@ export const publicarMetodo = onRequest(
         return;
       }
       const p = await lePipeline();
-      const modelo = p.modeloSintese || p.modeloColeta;
+      const modelo = modeloDe(p, 'montar_analise') || modeloDe(p, 'coleta');
       if (!noEmulador() && !modelo) throw new Error('config/pipeline has no model to count tokens with');
 
       const bucket = getStorage().bucket(bucketMetodo());

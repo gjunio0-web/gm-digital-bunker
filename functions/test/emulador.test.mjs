@@ -167,6 +167,11 @@ test('Priorizar: coleta mínima → qualificar → triagem → rest of the colle
   assert.equal(v.status.stringValue, 'pronta');
   assert.equal(v.modeloRevisor.stringValue, 'simulado');
   assert.equal(v.pendencias.arrayValue.values, undefined); // empty list
+  // uso per call (spec 01 v0.11): the three synthesis calls, the reviewer and the total.
+  const u = mapa(a.uso);
+  assert.deepEqual(Object.keys(u).sort(), ['enquadrar', 'montar_analise', 'preparar_conversa', 'revisor', 'total']);
+  assert.equal(mapa(u.revisor).modelo.stringValue, 'simulado');
+  assert.ok('cacheLidos' in mapa(u.total));
 });
 
 test('analysis with a pending issue: analise_com_pendencias, medium-level reason added to the confidence', { timeout: 90_000 }, async () => {
