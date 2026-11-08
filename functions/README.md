@@ -145,11 +145,11 @@ Na ordem; cada passo só depois do anterior. Comandos a partir da raiz do reposi
 5. **Firestore:** `firebase deploy --project producao --only firestore:rules,firestore:indexes`.
 6. **Política de expiração das imagens das funções** (Artifact Registry): `firebase functions:artifacts:setpolicy --project producao` (o padrão apaga imagens com mais de 3 dias; `--days` muda o prazo). O deploy de funções também a oferece, quando ausente.
 7. **Deploy de todas as funções:** `firebase deploy --project producao --only functions:receberFicha,functions:expurgar,functions:publicarMetodo,functions:coletarMinima,functions:coletar,functions:sintetizar,functions:verificar,functions:vigiar` (sem `sondarCache`, que é só da Fase B2 em qualidade).
-8. **Remoção da antiga `contato`:** `firebase functions:delete contato --project producao`, depois de o formulário novo responder (ação de Gon).
-9. **Dependência do hub (spec 05):** o link do e-mail ao administrador (`{URL base}/admin/leads/{fichaId}`) só funciona com o módulo de administração publicado.
-10. **Limites de gasto** configurados (lista abaixo).
-11. **Promoção de `quality-env` para `main`.**
-12. **`FORMULARIO_EM_PRODUCAO = true`** em `src/config.ts` do site.
+8. **Dependência do hub (spec 05):** o link do e-mail ao administrador (`{URL base}/admin/leads/{fichaId}`) só funciona com o módulo de administração publicado.
+9. **Limites de gasto** configurados (lista abaixo).
+10. **Promoção de `quality-env` para `main` com `FORMULARIO_EM_PRODUCAO = true`** em `src/config.ts` do site, na mesma alteração: em `quality-env` o valor é `false`, e uma promoção sem a troca desliga o formulário em produção até o deploy seguinte.
+11. **Conferência do formulário novo em produção:** um envio pelo site grava a ficha em `gmdb-producao` e os dois e-mails chegam. Até aqui, a antiga `contato` continua publicada, e o site anterior a usa.
+12. **Remoção da antiga `contato`:** `firebase functions:delete contato --project producao`, só depois do passo 11 (ação de Gon). Antes disso, apagá-la derruba o formulário que está no ar.
 13. Teste com uma ficha real gravada por script e, então, `autoAnalisar=true`.
 
 Notas: o build do site depende do AI Strategy Hub; se o build falhar, a Netlify mantém publicada a versão anterior.
