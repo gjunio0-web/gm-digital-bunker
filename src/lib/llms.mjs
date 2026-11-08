@@ -12,7 +12,7 @@ const decode = (s) => s.replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&
 
 // [section title in each language, page ids]
 const GRUPOS = [
-  [{ 'pt-BR': 'Serviços', en: 'Services' }, ['servicos', 'estrategia', 'conselho']],
+  [{ 'pt-BR': 'Serviços', en: 'Services' }, ['servicos', 'estrategia', 'conselho', 'workshop']],
   [{ 'pt-BR': 'Método', en: 'Method' }, ['metodo', 'livro']],
   [{ 'pt-BR': 'Casos', en: 'Cases' }, ['caso']],
   [{ 'pt-BR': 'Sobre', en: 'About' }, ['sobre']],
