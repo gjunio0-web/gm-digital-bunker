@@ -15,13 +15,14 @@ import { lePrecos } from './precos.js';
 import { chaveDesenho, esforcoApi, esforcoDe, modeloDe } from './modelos.js';
 import { promptDe, totalDe, usoChamada, type UsoChamada } from './uso.js';
 import { leMetodo } from './metodo.js';
+import { nomesDosGraus } from './metodoRegras.js';
 import { graduaAnalise } from './graduar.js';
 import { dominioDe } from './qualificacao.js';
 import { mesDe } from './qualificar.js';
 import { CARGOS_ROTULO } from './textos.generated.js';
 import {
   ESQUEMA_CONVERSA, ESQUEMA_ENQUADRAR, ESQUEMA_MONTAR, ETAPAS_COLETA, SECOES_MODELO, blocoDados, coletaDe, enquadramentoGravado,
-  linkaMarcas, mensagemConversa, mensagemEnquadrar, mensagemMontar, secaoS0, secaoS8, simulaConversa, simulaEnquadrar, simulaMontar,
+  enquadramentoDoModelo, linkaMarcas, listaDeGraus, mensagemConversa, normalizaEnquadramento, mensagemEnquadrar, mensagemMontar, secaoS0, secaoS8, simulaConversa, simulaEnquadrar, simulaMontar,
   validaConversa, validaEnquadrar, validaMontar, type FichaSintese,
 } from './sintese.js';
 import type { Normalizado, Original } from './validacao.js';
@@ -74,6 +75,8 @@ export const sintetizar = onDocumentUpdated(
       // The five method files, whole (spec 02, 3).
       const metodo = await leMetodo({ 'glossario.md': 'tudo', 'escopo-limites.md': 'tudo', 'portas-materiais.md': 'tudo', 'mapa-alavancas.md': 'tudo', 'livro-selecao.md': 'tudo' });
       const blocos = metodo.blocos.map((b) => ({ nome: b.nome, texto: b.texto }));
+      // Grade names of escopo-limites.md, section 6, for the instruction of montar_analise (spec 02 v0.12, 3.3).
+      const graus = listaDeGraus(nomesDosGraus(blocos.find((b) => b.nome === 'escopo-limites.md')?.texto ?? ''));
       // Each call with the model and effort of its stage (config/pipeline). A failed call names itself in
       // the error and, when it was billed, still counts in the cost.
       const chama = async (nome: (typeof ETAPAS_SINTESE)[number], usuario: { texto: string; cache?: boolean }[], esquema: object, simulado: () => unknown): Promise<unknown> => {
@@ -95,13 +98,15 @@ export const sintetizar = onDocumentUpdated(
         }
       };
 
-      const enq = validaEnquadrar(await chama('enquadrar', mensagemEnquadrar(dados), ESQUEMA_ENQUADRAR, simulaEnquadrar));
+      // Validation in code of spec 02 v0.12, 3.1: items removed by origin and escopo.resultado recalculated
+      // before graduar.
+      const enq = normalizaEnquadramento(validaEnquadrar(await chama('enquadrar', mensagemEnquadrar(dados), ESQUEMA_ENQUADRAR, simulaEnquadrar)));
       const anteriores = await ref.collection('analise').get();
       const versao = `v${anteriores.size + 1}`;
       const lead = await graduaAnalise(ref, p, enq, versao);
-      const conversa = validaConversa(await chama('preparar_conversa', mensagemConversa(dados, enq, lead), ESQUEMA_CONVERSA, () => simulaConversa(original.nome, /reparo/i.test(original.mensagem ?? ''))));
+      const conversa = validaConversa(await chama('preparar_conversa', mensagemConversa(dados, enquadramentoDoModelo(enq), lead), ESQUEMA_CONVERSA, () => simulaConversa(original.nome, /reparo/i.test(original.mensagem ?? ''))));
       const comFalha = /pend[eê]ncia/i.test(original.mensagem ?? '');
-      const montagem = validaMontar(await chama('montar_analise', mensagemMontar(dados, enq, conversa), ESQUEMA_MONTAR, () => simulaMontar(comFalha)));
+      const montagem = validaMontar(await chama('montar_analise', mensagemMontar(dados, enquadramentoDoModelo(enq), conversa, graus), ESQUEMA_MONTAR, () => simulaMontar(comFalha)));
 
       // Usage per call and in total (spec 01 v0.11, uso); the revisor's entry is added by verificar.
       const chamadas = Object.values(registros);

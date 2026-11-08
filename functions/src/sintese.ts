@@ -87,16 +87,20 @@ export function blocoDados(f: FichaSintese, qualificacao: unknown, coleta: Colet
   ].join('\n');
 }
 
-// --- Instructions (literal text of spec 02, sections 3.1 to 3.3) ---------------------------------------
+// --- Instructions (literal text of spec 02 v0.12, sections 3.1 to 3.3) ---------------------------------
 
 export const INSTRUCAO_ENQUADRAR =
-  'Enquadre esta empresa e este pedido na prática, usando escopo-limites.md (seções 1, 3, 4, 5 e 6), portas-materiais.md (seção 1) e mapa-alavancas.md (seções 4 e 10). Para cada afirmação, cite o bloco de coleta e o índice de fonte, ou marque como inferência. Estrutura de tecnologia: classifique nas quatro categorias (enxuta, sem_sinal, equipe_propria, executivo), com evidência da coleta completa; o porte não é avaliado aqui, é calculado em código. Hipóteses de alavanca: no máximo três, cada uma ligada a um sinal concreto da coleta e classificada pelos critérios do Mapa; nunca com número de retorno. Riscos do lead: só os sustentados por sinal; não especule. Não reformule pedidos fora do escopo para que caibam. Setor: combine CNAE principal, CNAEs secundários e a descrição do site; se o registro e o site divergirem, registre a divergência sem escolher um lado; o setor do Apollo entra só como dado secundário, atribuído ao fornecedor (spec 03, seção 3.4).';
+  'Enquadre esta empresa e este pedido na prática, usando escopo-limites.md (seções 1, 3, 4, 5 e 6), portas-materiais.md (seção 1) e mapa-alavancas.md (seções 4 e 10). Para cada afirmação, cite o bloco de coleta e o índice de fonte, ou marque como inferência. Estrutura de tecnologia: classifique nas quatro categorias (enxuta, sem_sinal, equipe_propria, executivo), com evidência da coleta completa; o porte não é avaliado aqui, é calculado em código. Hipóteses de alavanca: no máximo três, cada uma ligada a um sinal concreto da coleta e classificada pelos critérios do Mapa; nunca com número de retorno. Riscos do lead: só os sustentados por sinal; não especule. Não reformule pedidos fora do escopo para que caibam. Setor: combine CNAE principal, CNAEs secundários e a descrição do site; se o registro e o site divergirem, registre a divergência sem escolher um lado; o setor do Apollo entra só como dado secundário, atribuído ao fornecedor (spec 03, seção 3.4). Cada item avaliado do escopo e cada risco do lead declara a sua origem: `ficha` (consta do pedido ou da dor na mensagem), `hipotese` (vem de uma hipótese de alavanca desta análise) ou `coleta` (vem de um sinal da coleta, com fonte). Só itens de origem `ficha` podem ser classificados como `nao_faz`; só riscos de origem `ficha` ou `coleta` entram na lista principal. Não crie itens para o que ninguém pediu: se a prática não faz algo que a empresa não pediu, isso não é item de escopo nem risco. O risco `outro` exige `sinal` com fonte e não é pontuado. A direção do potencial vem com grau de confiança; sem dado de receita, margem ou volume da própria empresa, a confiança é `baixa` ou a direção é `indeterminado`.';
 
 export const INSTRUCAO_CONVERSA =
-  'Com o enquadramento, prepare a primeira conversa. Perguntas: de três a cinco, cada uma ligada a uma lacuna declarada na coleta (campo `nao_encontrado` ou `indeterminado`) ou a uma hipótese a validar; formule-as como perguntas abertas que o decisor consiga responder sem preparação. Materiais: de portas-materiais.md seção 3, coerentes com a porta provável, na quantidade do destino (Convidar: dois; Verificar a aderência: um; Nutrir: um, de entrada; Encerrar com cortesia: nenhum ou a página Serviços). Rascunho da resposta: escreva conforme o destino informado em `<lead>` – convite direto com duas opções de horário, convite condicionado a uma pergunta sobre porte e estrutura, nutrição sem agenda ou cortesia; com escopo barrado, encaminhamento para o que a prática oferece; com ressalva, só a parte do pedido que cabe no escopo; quadrante, grau e pontos nunca aparecem no texto enviado ao interessado; siga as regras de portas-materiais.md seção 5; até 120 palavras; no idioma da ficha (`lang`); assinatura "GM Digital Bunker™" sem nome de pessoa.';
+  'Com o enquadramento, prepare a primeira conversa. Perguntas: de três a cinco, cada uma ligada a uma lacuna declarada na coleta (campo `nao_encontrado` ou `indeterminado`) ou a uma hipótese a validar; formule-as como perguntas abertas que o decisor consiga responder sem preparação. Materiais: de portas-materiais.md seção 3, coerentes com a porta provável, na quantidade do destino (Convidar: dois; Verificar a aderência: um; Nutrir: um, de entrada; Encerrar com cortesia: nenhum ou a página Serviços). Rascunho da resposta, seguindo as regras de portas-materiais.md seção 5: saudação com o primeiro nome do signatário ("Olá, Nome,"); escreva conforme o destino informado em `<lead>` – convite direto com os marcadores literais `[opção de horário 1]` e `[opção de horário 2]`, nunca com dia ou hora concretos; convite condicionado a uma pergunta sobre porte e estrutura; nutrição sem agenda; ou cortesia. Com escopo barrado, encaminhamento para o que a prática oferece; com ressalva, só a parte do pedido que cabe. Quadrante, grau, pontos, porte numérico e preço nunca aparecem. Até 120 palavras; no idioma da ficha (`lang`); assinatura "GM Digital Bunker™" sem nome de pessoa. Sobre a prática e seus casos, diga apenas o que consta de escopo-limites.md e portas-materiais.md; não atribua ao caso Elite 90 Pro autorização, porte do cliente, redução de tempo ou efeito em receita. Cada ponto de atenção que cite um limite de escopo nomeia o limite (\'limite 4 – execução técnica em software de terceiros\').';
 
-export const INSTRUCAO_MONTAR =
-  'Monte a análise preliminar nas oito seções (s1 a s8; s0 é gerada pelo código). Cada seção tem um `corpo` em Markdown, de leitura diagonal: parágrafos curtos, listas só quando há enumeração real, nada de repetir a ficha. Cada afirmação factual no corpo termina com a marca de fonte `[F:etapa:idx]`, que o código converte em link; inferências terminam com `[inferência]`; o que não foi encontrado é dito em uma linha. Seções sem material recebem `vazia = true` e `motivoVazia`. Não inclua a seção 8: o código a monta a partir dos metadados.';
+// The grade names come from escopo-limites.md (section 6) of the published method, copied by the code into
+// the instruction ("[lista literal dos cinco graus, A0 a A4]").
+export const instrucaoMontar = (graus: string) =>
+  `Monte a análise preliminar nas oito seções (s1 a s8; s0 é gerada pelo código). Cada seção tem um \`corpo\` em Markdown, de leitura diagonal: parágrafos curtos, listas só quando há enumeração real, nada de repetir a ficha. Cada afirmação factual no corpo termina com a marca de fonte \`[F:etapa:idx]\`, que o código converte em link; inferências terminam com \`[inferência]\`; o que não foi encontrado é dito em uma linha. Seções sem material recebem \`vazia = true\` e \`motivoVazia\`. Não inclua a seção 8: o código a monta a partir dos metadados. Os graus da escala de aderência aparecem sempre com o nome, na forma "A3 (alta)"; os nomes são: ${graus}. As lentes (automação, otimização, aumentação) e os eixos críticos (Gravidade de Dados, Continuidade de Formato, Confiabilidade & Verificabilidade) indicam a origem (prática ou livro, com a seção) na primeira ocorrência da análise. Para comparar datas, escreva as duas por extenso na mesma frase. Todo número tirado dos arquivos do método termina com a marca \`[M:arquivo:seção]\` (por exemplo \`[M:escopo-limites:1]\`), no lugar da marca de fonte da coleta.`;
+export const listaDeGraus = (graus: Record<string, string>) =>
+  ['A0', 'A1', 'A2', 'A3', 'A4'].filter((g) => graus[g]).map((g) => `${g} (${graus[g]})`).join(', ');
 
 const DESTINO_ROTULO: Record<string, string> = {
   convidar: 'Convidar', verificar_aderencia: 'Verificar a aderência', nutrir: 'Nutrir', encerrar: 'Encerrar com cortesia',
@@ -114,10 +118,10 @@ export function mensagemConversa(dados: string, enquadramento: unknown, lead: Pi
   ];
 }
 
-export function mensagemMontar(dados: string, enquadramento: unknown, conversa: unknown) {
+export function mensagemMontar(dados: string, enquadramento: unknown, conversa: unknown, graus: string) {
   return [
     { texto: dados },
-    { texto: [`<enquadramento>\n${json(enquadramento)}\n</enquadramento>`, `<conversa>\n${json(conversa)}\n</conversa>`, INSTRUCAO_MONTAR, 'Responda no esquema.'].join('\n') },
+    { texto: [`<enquadramento>\n${json(enquadramento)}\n</enquadramento>`, `<conversa>\n${json(conversa)}\n</conversa>`, instrucaoMontar(graus), 'Responda no esquema.'].join('\n') },
   ];
 }
 
@@ -135,16 +139,21 @@ export const RESULTADOS_ESCOPO = ['aprovado', 'ressalva', 'barrado'] as const;
 export const PORTAS_PROVAVEIS = ['projeto', 'conselho', 'workshop', 'combinacao'] as const;
 export const LENTES = ['automacao', 'otimizacao', 'aumentacao'] as const;
 export const EIXOS_CRITICOS = ['Gravidade de Dados', 'Continuidade de Formato', 'Confiabilidade & Verificabilidade'] as const;
+export const ORIGENS_ITEM = ['ficha', 'hipotese', 'coleta'] as const;
+export const ORIGENS_RISCO = ['ficha', 'coleta'] as const;
+export const CONFIANCAS = ['alta', 'media', 'baixa'] as const;
 export const RISCOS = ['curioso_sem_orcamento', 'expectativa_de_revenda', 'porte_fora_da_faixa', 'pedido_formatado_como_rfp', 'cargo_sem_decisao', 'fora_do_escopo', 'outro'] as const;
 export const DIRECOES = ['crescer', 'defender_margem', 'cumprir_exigencia', 'indeterminado'] as const;
 const GRAUS_A = ['A0', 'A1', 'A2', 'A3', 'A4'] as const;
 
+const evidencia = objeto({ etapa: texto, fonteIdx: { type: 'integer' } });
 export const ESQUEMA_ENQUADRAR = objeto({
-  estruturaTecnologia: objeto({ categoria: escolha(CATEGORIAS_TEC), evidencia: texto, evidencias: lista(objeto({ etapa: texto, fonteIdx: { type: 'integer' } })) }),
+  estruturaTecnologia: objeto({ categoria: escolha(CATEGORIAS_TEC), evidencia: texto, evidencias: lista(evidencia) }),
   escopo: objeto({
     resultado: escolha(RESULTADOS_ESCOPO),
     itensAvaliados: lista(objeto({
-      pedidoOuDor: texto, classificacao: escolha(['faz', 'orienta', 'nao_faz']), itemDoEscopo: texto,
+      pedidoOuDor: texto, origem: escolha(ORIGENS_ITEM), evidencias: lista(evidencia),
+      classificacao: escolha(['faz', 'orienta', 'nao_faz']), itemDoEscopo: texto,
       grauExecucao: escolhaOuNulo(GRAUS_A), grauAssessoria: escolhaOuNulo(GRAUS_A),
     })),
   }),
@@ -153,8 +162,8 @@ export const ESQUEMA_ENQUADRAR = objeto({
     area: texto, rotinaProvavel: texto, lente: escolha(LENTES), sinal: texto, criteriosDoMapa: texto,
     eixoCriticoProvavel: escolha(EIXOS_CRITICOS), rotulo: escolha(['hipótese']),
   })),
-  riscosDoLead: lista(objeto({ risco: escolha(RISCOS), sinal: texto })),
-  leituraDoPotencial: objeto({ direcao: escolha(DIRECOES), comoOrientaAPorta: texto }),
+  riscosDoLead: lista(objeto({ risco: escolha(RISCOS), origem: escolha(ORIGENS_RISCO), sinal: texto, evidencias: lista(evidencia) })),
+  leituraDoPotencial: objeto({ direcao: escolha(DIRECOES), confianca: escolha(CONFIANCAS), comoOrientaAPorta: texto }),
 });
 
 export const ESQUEMA_CONVERSA = objeto({
@@ -176,11 +185,21 @@ const corta = (s: string, n: number) => s.slice(0, n);
 
 export interface Enquadramento {
   estruturaTecnologia: { categoria: (typeof CATEGORIAS_TEC)[number]; evidencia: string; evidencias: { etapa: string; fonteIdx: number }[] };
-  escopo: { resultado: (typeof RESULTADOS_ESCOPO)[number]; itensAvaliados: Record<string, unknown>[] };
+  escopo: {
+    resultado: (typeof RESULTADOS_ESCOPO)[number];
+    itensAvaliados: ItemEscopo[];
+    // Set by normalizaEnquadramento (spec 02 v0.12, 3.1): the model's own result and the items removed.
+    resultadoDeclarado?: (typeof RESULTADOS_ESCOPO)[number];
+    itensRemovidos?: ItemEscopo[];
+  };
   porta: { provavel: (typeof PORTAS_PROVAVEIS)[number]; combinacao: string | null; sinais: string[]; alternativa: string | null };
   hipotesesDeAlavanca: Record<string, string>[];
-  riscosDoLead: { risco: (typeof RISCOS)[number]; sinal: string }[];
-  leituraDoPotencial: { direcao: (typeof DIRECOES)[number]; comoOrientaAPorta: string };
+  riscosDoLead: { risco: (typeof RISCOS)[number]; origem?: (typeof ORIGENS_RISCO)[number]; sinal: string; evidencias?: { etapa: string; fonteIdx: number }[] }[];
+  leituraDoPotencial: { direcao: (typeof DIRECOES)[number]; confianca?: (typeof CONFIANCAS)[number]; comoOrientaAPorta: string };
+}
+export interface ItemEscopo {
+  pedidoOuDor: string; origem?: (typeof ORIGENS_ITEM)[number]; evidencias?: { etapa: string; fonteIdx: number }[];
+  classificacao: 'faz' | 'orienta' | 'nao_faz'; itemDoEscopo: string; grauExecucao: string | null; grauAssessoria: string | null;
 }
 
 export function validaEnquadrar(v: unknown): Enquadramento {
@@ -189,10 +208,11 @@ export function validaEnquadrar(v: unknown): Enquadramento {
   const ok = c && typeof c === 'object' &&
     et && em(CATEGORIAS_TEC, et.categoria) && ehTexto(et.evidencia) && Array.isArray(et.evidencias) &&
     es && em(RESULTADOS_ESCOPO, es.resultado) && Array.isArray(es.itensAvaliados) &&
+    es.itensAvaliados.every((i: any) => i && ehTexto(i.pedidoOuDor) && em(ORIGENS_ITEM, i.origem) && em(['faz', 'orienta', 'nao_faz'], i.classificacao) && Array.isArray(i.evidencias)) &&
     po && em(PORTAS_PROVAVEIS, po.provavel) && ehNuloOuTexto(po.combinacao) && Array.isArray(po.sinais) && po.sinais.every(ehTexto) && ehNuloOuTexto(po.alternativa) &&
     Array.isArray(c.hipotesesDeAlavanca) && c.hipotesesDeAlavanca.every((h: any) => h && ehTexto(h.sinal) && em(LENTES, h.lente)) &&
-    Array.isArray(c.riscosDoLead) && c.riscosDoLead.every((r: any) => r && em(RISCOS, r.risco) && ehTexto(r.sinal)) &&
-    le && em(DIRECOES, le.direcao) && ehTexto(le.comoOrientaAPorta);
+    Array.isArray(c.riscosDoLead) && c.riscosDoLead.every((r: any) => r && em(RISCOS, r.risco) && em(ORIGENS_RISCO, r.origem) && ehTexto(r.sinal) && Array.isArray(r.evidencias)) &&
+    le && em(DIRECOES, le.direcao) && em(CONFIANCAS, le.confianca) && ehTexto(le.comoOrientaAPorta);
   if (!ok) throw new Error('enquadrar: output does not match the schema');
   return { ...c, hipotesesDeAlavanca: c.hipotesesDeAlavanca.slice(0, 3) } as Enquadramento;
 }
@@ -272,6 +292,37 @@ export function secaoS8(coleta: Coleta): Secao {
     : { titulo: TITULOS.s8, corpo: '', vazia: true, motivoVazia: 'nenhuma fonte registrada na coleta' };
 }
 
+// Validation in code of spec 02 v0.12, 3.1 (spec 04 v0.15, section 9, decision 11): a nao_faz item whose
+// origin is not the ficha is removed (kept in itensRemovidos for the warning of verificar); escopo.resultado is
+// recalculated from the ficha items only – barrado when one is nao_faz; ressalva when one is orienta or has
+// grauExecucao A0, A1 or A2; aprovado otherwise –, and the model's value stays in resultadoDeclarado.
+export function resultadoDoEscopo(itens: ItemEscopo[]): (typeof RESULTADOS_ESCOPO)[number] {
+  const daFicha = itens.filter((i) => i.origem === 'ficha');
+  if (daFicha.some((i) => i.classificacao === 'nao_faz')) return 'barrado';
+  if (daFicha.some((i) => i.classificacao === 'orienta' || ['A0', 'A1', 'A2'].includes(i.grauExecucao ?? ''))) return 'ressalva';
+  return 'aprovado';
+}
+export function normalizaEnquadramento(e: Enquadramento, resultadoDeclarado?: Enquadramento['escopo']['resultado']): Enquadramento {
+  const removidos = e.escopo.itensAvaliados.filter((i) => i.classificacao === 'nao_faz' && i.origem !== 'ficha');
+  const itens = e.escopo.itensAvaliados.filter((i) => !removidos.includes(i));
+  return {
+    ...e,
+    escopo: {
+      resultado: resultadoDoEscopo(itens),
+      itensAvaliados: itens,
+      resultadoDeclarado: resultadoDeclarado ?? e.escopo.resultado,
+      itensRemovidos: [...(e.escopo.itensRemovidos ?? []), ...removidos],
+    },
+  };
+}
+
+// The enquadramento as the model's schema has it: without the diagnostic fields set by the code. Used in the
+// prompts of the next calls and in the repair input.
+export function enquadramentoDoModelo(e: Enquadramento): Enquadramento {
+  const { resultadoDeclarado: _d, itensRemovidos: _r, ...escopo } = e.escopo;
+  return { ...e, escopo };
+}
+
 // Copy of enquadrar for the list filters (spec 01, analise/vN.enquadramento) – estruturaTecnologia,
 // escopo (the result), portaProvavel and riscos – plus the full output of 3.1 for the detail.
 export function enquadramentoGravado(e: Enquadramento) {
@@ -279,6 +330,7 @@ export function enquadramentoGravado(e: Enquadramento) {
     estruturaTecnologia: { categoria: e.estruturaTecnologia.categoria, evidencia: e.estruturaTecnologia.evidencia },
     escopo: e.escopo.resultado,
     portaProvavel: e.porta.provavel,
+    // Every risk, "outro" included; the origin of each one stays in detalhe (decision of Gon, 8/11/2026).
     riscos: e.riscosDoLead.map((r) => r.risco),
     detalhe: e,
   };
@@ -291,11 +343,11 @@ const frase = 'Leitura simulada no emulador, sem chamada ao modelo, para exercit
 export function simulaEnquadrar(): Enquadramento {
   return {
     estruturaTecnologia: { categoria: 'enxuta', evidencia: 'simulação', evidencias: [] },
-    escopo: { resultado: 'aprovado', itensAvaliados: [] },
+    escopo: { resultado: 'aprovado', itensAvaliados: [{ pedidoOuDor: 'sair das planilhas', origem: 'ficha', evidencias: [], classificacao: 'faz', itemDoEscopo: 'Diagnóstico e plano diretor', grauExecucao: 'A4', grauAssessoria: 'A4' }] },
     porta: { provavel: 'conselho', combinacao: null, sinais: ['simulação', 'simulação'], alternativa: null },
     hipotesesDeAlavanca: [{ area: 'operação', rotinaProvavel: 'planilhas', lente: 'automacao', sinal: 'mensagem', criteriosDoMapa: 'simulação', eixoCriticoProvavel: 'Gravidade de Dados', rotulo: 'hipótese' }],
     riscosDoLead: [],
-    leituraDoPotencial: { direcao: 'crescer', comoOrientaAPorta: 'simulação' },
+    leituraDoPotencial: { direcao: 'crescer', confianca: 'media', comoOrientaAPorta: 'simulação' },
   };
 }
 

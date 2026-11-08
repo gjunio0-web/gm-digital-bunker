@@ -220,7 +220,7 @@ test('entradaAnalise + gradua: every item of the analysis scores, no marks', () 
 });
 
 test('analysis: deductions with the ceiling, scope modifiers, Pessoas stage failed', () => {
-  const riscos = ['curioso_sem_orcamento', 'expectativa_de_revenda', 'outro', 'porte_fora_da_faixa'].map((risco) => ({ risco, sinal: 's' }));
+  const riscos = ['curioso_sem_orcamento', 'expectativa_de_revenda', 'outro', 'porte_fora_da_faixa'].map((risco) => ({ risco, origem: 'coleta', sinal: 's' }));
   const l = gradua(entradaAnalise(ficha, docs, enq({ riscosDoLead: riscos, escopo: { resultado: 'ressalva', itensAvaliados: [] } }), momento), PESOS_PADRAO);
   assert.deepEqual(l.deducoes, [{ risco: 'curioso_sem_orcamento', pontos: -8 }, { risco: 'expectativa_de_revenda', pontos: -8 }]);
   assert.equal(l.pontos, 84);
@@ -231,6 +231,21 @@ test('analysis: deductions with the ceiling, scope modifiers, Pessoas stage fail
   const semPessoas = gradua(entradaAnalise(ficha, { ...docs, empresa_pessoas: { status: 'falhou' } }, enq(), momento), PESOS_PADRAO);
   assert.equal(semPessoas.eixos.decisao.parcelas[1].marca, 'cargo_nao_verificado');
   assert.equal(semPessoas.modificadores.confiancaMotivo, 'Pessoas com confiança baixa');
+});
+
+test('analysis (spec 04 v0.15): "outro" never deducts; risks need origin ficha or coleta; direction needs medium or high confidence', () => {
+  const base = gradua(entradaAnalise(ficha, docs, enq(), momento), PESOS_PADRAO).pontos;
+  // GAT v2 of Phase B: three "outro" risks took 12 points; now none.
+  const tresOutros = Array.from({ length: 3 }, () => ({ risco: 'outro', origem: 'coleta', sinal: 's' }));
+  assert.equal(gradua(entradaAnalise(ficha, docs, enq({ riscosDoLead: tresOutros }), momento), PESOS_PADRAO).pontos, base);
+  // A stored configuration still weighing "outro" (version 1) changes nothing.
+  const antigos = { ...PESOS_PADRAO, versao: '1', deducoes: { ...PESOS_PADRAO.deducoes, outro: 4 } };
+  assert.deepEqual(gradua(entradaAnalise(ficha, docs, enq({ riscosDoLead: tresOutros }), momento), antigos).deducoes, []);
+  // Without origin (versions before v0.12) a risk does not deduct.
+  assert.deepEqual(gradua(entradaAnalise(ficha, docs, enq({ riscosDoLead: [{ risco: 'curioso_sem_orcamento', sinal: 's' }] }), momento), PESOS_PADRAO).deducoes, []);
+  assert.equal(gradua(entradaAnalise(ficha, docs, enq({ riscosDoLead: [{ risco: 'curioso_sem_orcamento', origem: 'ficha', sinal: 's' }] }), momento), PESOS_PADRAO).pontos, base - 8);
+  const direcao = (confianca) => gradua(entradaAnalise(ficha, docs, enq({ leituraDoPotencial: { direcao: 'crescer', confianca, comoOrientaAPorta: 'x' } }), momento), PESOS_PADRAO).eixos.clareza.parcelas.find((p) => p.criterio === 'direcao').pontos;
+  assert.deepEqual([direcao('alta'), direcao('media'), direcao('baixa'), direcao(undefined)], [5, 5, 0, 0]);
 });
 
 test('analysis: growth signal from news or open jobs turns an EPP into 14', () => {

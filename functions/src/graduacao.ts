@@ -14,9 +14,10 @@ export type Marca = null | 'cargo_nao_verificado' | 'noticias_nao_coletadas' | '
 export type CategoriaTecnologia = 'enxuta' | 'sem_sinal' | 'equipe_propria' | 'executivo';
 export type PorteLegal = 'ME' | 'EPP' | 'demais';
 
-// Weights of config/pipeline.pesosQualificacao (spec 04, sections 2.1 to 2.4), version "1".
+// Weights of config/pipeline.pesosQualificacao (spec 04, sections 2.1 to 2.4), version "2": spec 04 v0.15,
+// "outro" no longer deducts (decision of Gon, 8/11/2026).
 export const PESOS_PADRAO = {
-  versao: '1',
+  versao: '2',
   limiarQuadrante: 15,
   cortesFuncionarios: { medio: 500, grande: 1000 },
   aderencia: {
@@ -67,7 +68,7 @@ export const PESOS_PADRAO = {
     { pagina: 'en/method/book', pontos: 1 },
     { pagina: 'en/about', pontos: 1 },
   ] as { pagina: string; pontos: number }[],
-  deducoes: { curioso_sem_orcamento: 8, expectativa_de_revenda: 8, outro: 4, teto: 16 },
+  deducoes: { curioso_sem_orcamento: 8, expectativa_de_revenda: 8, teto: 16 },
   graus: { A: { minimo: 70, prazoDiasUteis: 2 }, B: { minimo: 50, prazoDiasUteis: 3 }, C: { minimo: 30, prazoDiasUteis: 4 }, D: { minimo: 0, prazoDiasUteis: 5 } },
 };
 export type Pesos = typeof PESOS_PADRAO;
@@ -243,11 +244,13 @@ export function gradua(e: EntradaGraduacao, w: Pesos = PESOS_PADRAO): Lead {
     e.direcao === null ? { criterio: 'direcao', valor: null, pontos: 0, marca: 'so_na_analise' } : { criterio: 'direcao', valor: e.direcao, pontos: e.direcao ? c.direcao : 0, marca: null },
   ];
 
-  // Deductions (analysis only): only the risks no axis already captures, with a ceiling.
+  // Deductions (analysis only, spec 04 v0.15, 2.2): only the risks no axis already captures, with origin ficha
+  // or coleta, with a ceiling; "outro" never deducts, whatever weight a stored configuration still has.
   const deducoes: { risco: string; pontos: number }[] = [];
   if (!triagem) {
     let total = 0;
     for (const r of e.riscos) {
+      if (r === 'outro') continue;
       const v = (w.deducoes as Record<string, number>)[r];
       if (!v || r === 'teto' || total >= w.deducoes.teto) continue;
       const aplicado = Math.min(v, w.deducoes.teto - total);
@@ -462,8 +465,8 @@ export interface EnquadramentoGraduacao {
   escopo: { resultado: 'aprovado' | 'ressalva' | 'barrado' };
   porta: { provavel: string; sinais: string[] };
   hipotesesDeAlavanca: { sinal?: string }[];
-  riscosDoLead: { risco: string }[];
-  leituraDoPotencial: { direcao: string };
+  riscosDoLead: { risco: string; origem?: string }[];
+  leituraDoPotencial: { direcao: string; confianca?: string };
 }
 
 // Analysis moment: everything of the triagem plus the remaining stages and enquadrar. The growth signal
@@ -490,8 +493,10 @@ export function entradaAnalise(
     noticia,
     porta: { porta: enq.porta.provavel, sinais: enq.porta.sinais.length },
     hipotese: enq.hipotesesDeAlavanca.some((h) => typeof h.sinal === 'string' && h.sinal.trim() !== ''),
-    direcao: enq.leituraDoPotencial.direcao !== 'indeterminado',
-    riscos: enq.riscosDoLead.map((r) => r.risco),
+    // Spec 04 v0.15, 2.1, axis 4: the direction scores only with medium or high confidence.
+    direcao: enq.leituraDoPotencial.direcao !== 'indeterminado' && ['media', 'alta'].includes(enq.leituraDoPotencial.confianca ?? ''),
+    // Spec 04 v0.15, 2.2: only risks with origin ficha or coleta deduct.
+    riscos: enq.riscosDoLead.filter((r) => r.origem === 'ficha' || r.origem === 'coleta').map((r) => r.risco),
     escopo: enq.escopo.resultado,
     confiancaBlocos: { registro: grauDoBloco(registro), digital: grauDoBloco(digital), pessoas: grauDoBloco(pessoas) },
     comPendencias,

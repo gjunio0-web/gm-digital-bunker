@@ -22,7 +22,7 @@ import { avisoAnalise } from './email.js';
 import { mesDe } from './qualificar.js';
 import { ETAPAS_COLETA, coletaDe, fontesDisponiveis, rotuloDestino, rotuloQuadrante } from './sintese.js';
 import {
-  ESQUEMA_REVISOR, avisosDaColeta, checagens, mensagemRevisor, validaRevisor, vaiAoReparo, type AnaliseVerificada, type EtapaTexto, type Pendencia,
+  ESQUEMA_REVISOR, avisosDaColeta, avisosDoEnquadramento, checagens, mensagemRevisor, validaRevisor, vaiAoReparo, type AnaliseVerificada, type EtapaTexto, type Pendencia,
 } from './verificacao.js';
 import { regrasDoMetodo } from './metodoRegras.js';
 import {
@@ -68,7 +68,7 @@ export const verificar = onDocumentCreated(
 
       // 4.1 – code checks, first pass.
       const primeira: Pendencia[] = checagens(verifica(textos), coleta, regras);
-      const avisos = avisosDaColeta(coleta);
+      const avisos = [...avisosDaColeta(coleta), ...avisosDoEnquadramento(a.enquadramento?.detalhe)];
 
       // 3.4 – repair, AI versions only: one call per stage with failures of the repair rules, in parallel.
       const reparos: RegistroReparo[] = [];

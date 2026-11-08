@@ -276,7 +276,7 @@ test('next state and retention: spam discarded, Declinar brief reply, others to 
   assert.equal(proximoEstado(p, false), 'qualificada');
   assert.equal(guardaCurta(p), false);
   assert.equal(prazoDaTriagem(p, new Date()), null); // "prazo após a análise"
-  assert.equal(p.versaoPesos, '1');
+  assert.equal(p.versaoPesos, '2');
 });
 
 test('business days: Easter, movable holidays (Carnival, Good Friday, Corpus Christi), fixed ones, weekends', () => {

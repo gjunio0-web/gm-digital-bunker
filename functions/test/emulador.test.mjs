@@ -161,6 +161,11 @@ test('Priorizar: coleta mínima → qualificar → triagem → rest of the colle
   assert.equal(mapa(a.autor).tipo.stringValue, 'ia');
   assert.equal(a.baseadaEm.nullValue, null);
   assert.equal(mapa(a.enquadramento).portaProvavel.stringValue, 'conselho');
+  // Spec 02 v0.12, 3.1: scope recalculated in code, the model's value kept for diagnosis; weights version 2.
+  const esc = mapa(mapa(mapa(a.enquadramento).detalhe).escopo);
+  assert.equal(mapa(a.enquadramento).escopo.stringValue, 'aprovado');
+  assert.equal(esc.resultadoDeclarado.stringValue, 'aprovado');
+  assert.equal(mapa(f.lead).versaoPesos.stringValue, '2');
   assert.ok(mapa(a.rascunhoResposta).corpo.stringValue);
   assert.ok(mapa(a.conversa).perguntas.arrayValue.values.length);
   const v = mapa(a.verificacao);

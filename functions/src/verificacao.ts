@@ -340,6 +340,12 @@ function marcasSemDestino(t: string, coleta: Coleta): string[] {
 export const avisosDaColeta = (coleta: Coleta): string[] =>
   Object.entries(coleta).filter(([, b]) => !b.fontes?.length).map(([e]) => `etapa_sem_fontes: ${e}`);
 
+// Scope items removed by origin before graduar (spec 02 v0.12, 3.1): a nao_faz item that does not come from the
+// ficha, kept in enquadramento.detalhe.escopo.itensRemovidos.
+export const avisosDoEnquadramento = (detalhe: any): string[] =>
+  (Array.isArray(detalhe?.escopo?.itensRemovidos) ? detalhe.escopo.itensRemovidos : [])
+    .map((i: any) => `item_removido_por_origem: ${String(i?.origem ?? 'sem origem')} – ${String(i?.pedidoOuDor ?? '').slice(0, 200)}`);
+
 // The code checks of spec 02 v0.12, 4.1, in its order. Each failure is {tipo: "mecanica", regra, secao,
 // trecho, correcaoSugerida: null, local}.
 export function checagens(a: AnaliseVerificada, coleta: Coleta, metodo?: RegrasMetodo): Pendencia[] {

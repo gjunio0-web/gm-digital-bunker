@@ -5,8 +5,8 @@
 // an accepted repair rewrites the texts of the version itself; the previous text stays in
 // verificacao.reparos[].trechoAntes. Pure functions: no Firebase imports, so they can be unit tested.
 import {
-  ESQUEMA_CONVERSA, ESQUEMA_ENQUADRAR, ESQUEMA_MONTAR, SECOES_MODELO, enquadramentoGravado, linkaMarcas, validaConversa, validaEnquadrar,
-  validaMontar, type Coleta,
+  ESQUEMA_CONVERSA, ESQUEMA_ENQUADRAR, ESQUEMA_MONTAR, SECOES_MODELO, enquadramentoDoModelo, enquadramentoGravado, linkaMarcas, normalizaEnquadramento,
+  validaConversa, validaEnquadrar, validaMontar, type Coleta, type Enquadramento,
 } from './sintese.js';
 import { CAMPOS_TEXTO_ENQUADRAR, etapaDoLocal, type EtapaTexto, type Pendencia } from './verificacao.js';
 import type { RegrasMetodo } from './metodoRegras.js';
@@ -42,7 +42,8 @@ export function jsonDaEtapa(etapa: EtapaTexto, v: VersaoTextos): any {
   if (etapa === 'preparar_conversa') {
     return { perguntas: v.conversa.perguntas, materiais: v.conversa.materiais, rascunhoResposta: v.rascunhoResposta, pontosDeAtencaoParaOConsultor: v.conversa.pontosDeAtencao };
   }
-  return v.enquadramento.detalhe;
+  // Without the diagnostic fields of the code (resultadoDeclarado, itensRemovidos), put back after the repair.
+  return enquadramentoDoModelo(v.enquadramento.detalhe as Enquadramento);
 }
 
 // Path of a version field inside the stage output.
@@ -64,7 +65,10 @@ export function camposDaEtapa(etapa: EtapaTexto, saida: any, v: VersaoTextos, co
   if (etapa === 'preparar_conversa') {
     return { conversa: { perguntas: saida.perguntas, materiais: saida.materiais, pontosDeAtencao: saida.pontosDeAtencaoParaOConsultor }, rascunhoResposta: saida.rascunhoResposta };
   }
-  return { enquadramento: enquadramentoGravado(saida) as VersaoTextos['enquadramento'] };
+  // Choices are unchanged (checked before), so the recalculated result and the removed items carry over.
+  const antes = v.enquadramento.detalhe as Enquadramento;
+  const e = normalizaEnquadramento({ ...saida, escopo: { ...saida.escopo, itensRemovidos: antes?.escopo?.itensRemovidos } }, antes?.escopo?.resultadoDeclarado);
+  return { enquadramento: enquadramentoGravado(e) as VersaoTextos['enquadramento'] };
 }
 
 // Free-text leaves of each stage output; everything else is a choice that the repair must not change.
