@@ -99,7 +99,7 @@ export const sintetizar = onDocumentUpdated(
       const anteriores = await ref.collection('analise').get();
       const versao = `v${anteriores.size + 1}`;
       const lead = await graduaAnalise(ref, p, enq, versao);
-      const conversa = validaConversa(await chama('preparar_conversa', mensagemConversa(dados, enq, lead), ESQUEMA_CONVERSA, simulaConversa));
+      const conversa = validaConversa(await chama('preparar_conversa', mensagemConversa(dados, enq, lead), ESQUEMA_CONVERSA, () => simulaConversa(original.nome, /reparo/i.test(original.mensagem ?? ''))));
       const comFalha = /pend[eê]ncia/i.test(original.mensagem ?? '');
       const montagem = validaMontar(await chama('montar_analise', mensagemMontar(dados, enq, conversa), ESQUEMA_MONTAR, () => simulaMontar(comFalha)));
 

@@ -1,6 +1,7 @@
 // verificar – runs on the creation of fichas/{id}/analise/{versao} (decision of Gon, 7/11/2026, to be
-// recorded in spec 01 v0.10 and spec 02 v0.11): the code checks of spec 02, 4.1 always; the reviewer of 4.2
-// only when the version was written by the AI (autor.tipo = ia). Writes verificacao in the version; not done
+// recorded in spec 01 v0.10 and spec 02 v0.11): the code checks of spec 02, 4.1 always; for an AI version,
+// first the repair of spec 02 v0.12, 3.4 (one call per stage with failures, then the checks again) and the
+// reviewer of 4.2 on the repaired text (autor.tipo = ia). Writes verificacao in the version; not done
 // again when the version already has it. For an AI version: graduar recalculates only the confidence (spec 04,
 // 2.5) and, for the current analysis of a ficha in "sintetizando", the final state analise_pronta or
 // analise_com_pendencias, prazoEm from that moment and the second e-mail to the administrator. A human edit
@@ -19,8 +20,15 @@ import { leMetodo } from './metodo.js';
 import { confiancaFinal } from './graduar.js';
 import { avisoAnalise } from './email.js';
 import { mesDe } from './qualificar.js';
-import { ETAPAS_COLETA, coletaDe, rotuloDestino, rotuloQuadrante } from './sintese.js';
-import { ESQUEMA_REVISOR, checagens, mensagemRevisor, validaRevisor, type Pendencia } from './verificacao.js';
+import { ETAPAS_COLETA, coletaDe, fontesDisponiveis, rotuloDestino, rotuloQuadrante } from './sintese.js';
+import {
+  ESQUEMA_REVISOR, avisosDaColeta, checagens, mensagemRevisor, validaRevisor, vaiAoReparo, type AnaliseVerificada, type EtapaTexto, type Pendencia,
+} from './verificacao.js';
+import { regrasDoMetodo } from './metodoRegras.js';
+import {
+  ESQUEMA_DA_ETAPA, MAX_TOKENS_REPARO, avaliaReparo, camposDaEtapa, itensDeReparo, jsonDaEtapa, mensagemReparar, simulaReparo,
+  type RegistroReparo, type VersaoTextos,
+} from './reparo.js';
 
 const projeto = () => process.env.GCLOUD_PROJECT ?? '';
 
@@ -41,11 +49,66 @@ export const verificar = onDocumentCreated(
       const snaps = await Promise.all(ETAPAS_COLETA.map((e) => ref.collection('coleta').doc(e).get()));
       const coleta = coletaDe(Object.fromEntries(ETAPAS_COLETA.map((e, i) => [e, snaps[i].data()])));
 
-      // 4.1 – code checks.
-      const pendencias: Pendencia[] = checagens(
-        { secoes: a.secoes ?? {}, rascunhoResposta: a.rascunhoResposta ?? { assunto: '', corpo: '' }, lang: f.original?.lang ?? 'pt-BR', cnpjConfirmado: coleta.empresa_registro.status === 'concluida' && (coleta.empresa_registro.conteudo as any)?.confirmado === true },
-        coleta,
-      );
+      // The method gives the vetoed terms, the grade names and the sections cited by [M:...] marks.
+      const metodo = await leMetodo({ 'glossario.md': 'tudo', 'escopo-limites.md': 'tudo', 'portas-materiais.md': 'tudo', 'mapa-alavancas.md': 'tudo', 'livro-selecao.md': 'tudo' });
+      const regras = regrasDoMetodo(Object.fromEntries(metodo.blocos.map((b) => [b.nome, b.texto])));
+      const precos = await lePrecos();
+      const nome = String(f.original?.nome ?? '');
+      // Texts of the version, rewritten by an accepted repair.
+      let textos: VersaoTextos = {
+        secoes: a.secoes ?? {}, resumoExecutivo: a.resumoExecutivo ?? '', rascunhoResposta: a.rascunhoResposta ?? { assunto: '', corpo: '' },
+        conversa: { perguntas: a.conversa?.perguntas ?? [], materiais: a.conversa?.materiais ?? [], pontosDeAtencao: a.conversa?.pontosDeAtencao ?? [] },
+        enquadramento: a.enquadramento ?? {},
+      };
+      const verifica = (t: VersaoTextos): AnaliseVerificada => ({
+        secoes: t.secoes, resumoExecutivo: t.resumoExecutivo, rascunhoResposta: t.rascunhoResposta, enquadramento: t.enquadramento?.detalhe ?? null,
+        conversa: t.conversa, nome, lang: f.original?.lang ?? 'pt-BR',
+        cnpjConfirmado: coleta.empresa_registro.status === 'concluida' && (coleta.empresa_registro.conteudo as any)?.confirmado === true,
+      });
+
+      // 4.1 – code checks, first pass.
+      const primeira: Pendencia[] = checagens(verifica(textos), coleta, regras);
+      const avisos = avisosDaColeta(coleta);
+
+      // 3.4 – repair, AI versions only: one call per stage with failures of the repair rules, in parallel.
+      const reparos: RegistroReparo[] = [];
+      const usosReparo: (UsoChamada & { origem: EtapaTexto })[] = [];
+      const camposReparados: Partial<VersaoTextos> = {};
+      const itens: ReturnType<typeof itensDeReparo> = ia ? itensDeReparo(primeira.filter(vaiAoReparo), regras, nome) : new Map();
+      const resultados = await Promise.all([...itens].map(async ([etapa, lista]) => {
+        const modelo = noEmulador() ? 'simulado' : modeloDe(p, 'reparar', etapa);
+        const esforco = esforcoDe(p, 'reparar', etapa);
+        const antes = jsonDaEtapa(etapa, textos);
+        const inicio = Date.now();
+        try {
+          let saida: unknown;
+          if (noEmulador()) {
+            saida = simulaReparo(etapa, antes, lista, nome);
+            usosReparo.push({ ...usoChamada(precos, modelo, esforco, null, 0), origem: etapa });
+          } else {
+            if (!modelo) throw new Error(`config/pipeline.modelos.${etapa} is empty`);
+            const r = await chamaClaude({
+              chave: CLAUDE_API_KEY.value(), modelo, usuario: mensagemReparar(etapa, antes, fontesDisponiveis(coleta), lista), esquema: ESQUEMA_DA_ETAPA[etapa],
+              maxTokens: MAX_TOKENS_REPARO[etapa], timeoutMs: 300_000, esforco: esforcoApi(esforco),
+            });
+            usosReparo.push({ ...usoChamada(precos, modelo, esforco, r.uso, Date.now() - inicio), origem: etapa });
+            saida = r.json;
+          }
+          const av = avaliaReparo(etapa, antes, saida, lista, p.limiarReparo);
+          return { etapa, ...av };
+        } catch (e) {
+          // A failed repair call keeps the original text; its failures become issues. A billed failure counts.
+          if (e instanceof ErroComUso) usosReparo.push({ ...usoChamada(precos, modelo, esforco, e.uso, Date.now() - inicio), origem: etapa });
+          logger.warn('verificar: repair call failed', { id, versao, etapa, mensagem: String((e as Error)?.message ?? e).slice(0, 300) });
+          return { etapa, ...avaliaReparo(etapa, antes, null, lista, p.limiarReparo), motivo: 'chamada falhou' };
+        }
+      }));
+      for (const r of resultados) {
+        reparos.push(...r.registros);
+        if (r.aceito) Object.assign(camposReparados, camposDaEtapa(r.etapa, r.saida, textos, coleta));
+      }
+      textos = { ...textos, ...camposReparados };
+      const pendencias: Pendencia[] = Object.keys(camposReparados).length ? checagens(verifica(textos), coleta, regras) : [...primeira];
 
       // 4.2 – reviewer, AI versions only; no access to the collection.
       // Model and effort from config/pipeline (modelos.revisor, esforco.revisor); usage in the same shape as
@@ -53,7 +116,6 @@ export const verificar = onDocumentCreated(
       let modeloRevisor: string | null = null;
       let usoRevisor: UsoChamada | null = null;
       if (ia) {
-        const precos = await lePrecos();
         const esforco = esforcoDe(p, 'revisor');
         modeloRevisor = noEmulador() ? 'simulado' : modeloDe(p, 'revisor');
         if (!modeloRevisor) throw new Error('config/pipeline.modelos.revisor is empty');
@@ -66,7 +128,7 @@ export const verificar = onDocumentCreated(
           const inicio = Date.now();
           const r = await chamaClaude({
             chave: CLAUDE_API_KEY.value(), modelo: modeloRevisor, metodo: metodo.blocos.map((b) => ({ nome: b.nome, texto: b.texto })),
-            usuario: mensagemRevisor(a.secoes ?? {}, a.enquadramento?.detalhe ?? a.enquadramento ?? null), esquema: ESQUEMA_REVISOR, maxTokens: 32_000, timeoutMs: 480_000,
+            usuario: mensagemRevisor(textos.secoes, textos.enquadramento?.detalhe ?? textos.enquadramento ?? null), esquema: ESQUEMA_REVISOR, maxTokens: 32_000, timeoutMs: 480_000,
             esforco: esforcoApi(esforco),
           }).catch(async (e) => {
             // A billed failure still counts in the cost of the ficha.
@@ -84,7 +146,12 @@ export const verificar = onDocumentCreated(
         }
         pendencias.push(...revisor);
       }
-      const usd = usoRevisor?.usdEstimado ?? 0;
+      const usdReparo = usosReparo.reduce((t, u) => t + (u.usdEstimado ?? 0), 0);
+      const usd = (usoRevisor?.usdEstimado ?? 0) + usdReparo;
+      // Calls of this verification (repairs and reviewer), for the totals of uso and of the ficha.
+      const chamadas: UsoChamada[] = [...usosReparo, ...(usoRevisor ? [usoRevisor] : [])];
+      const soma = (k: 'tokensEntrada' | 'tokensSaida' | 'cacheLidos' | 'cacheEscritos' | 'duracaoMs' | 'usdSemCache') => chamadas.reduce((t, c) => t + (c[k] ?? 0), 0);
+      const prompt = chamadas.reduce((t, c) => t + promptTotal(c), 0);
       // Design of the synthesis that produced the version, for metricas.sintesePorDesenho.
       const desenho = ia && a.uso ? chaveDesenho(a.uso) : null;
 
@@ -100,16 +167,19 @@ export const verificar = onDocumentCreated(
         const v = (await tx.get(docVersao)).data();
         if (!atual || !v || v.verificacao) return;
         tx.update(docVersao, {
-          verificacao: { status, pendencias, verificadaEm: agora, modeloRevisor },
-          ...(usoRevisor ? {
-            'uso.revisor': usoRevisor,
-            'uso.total.tokensEntrada': FieldValue.increment(usoRevisor.tokensEntrada),
-            'uso.total.tokensSaida': FieldValue.increment(usoRevisor.tokensSaida),
-            'uso.total.cacheLidos': FieldValue.increment(usoRevisor.cacheLidos),
-            'uso.total.cacheEscritos': FieldValue.increment(usoRevisor.cacheEscritos),
-            'uso.total.duracaoMs': FieldValue.increment(usoRevisor.duracaoMs ?? 0),
+          verificacao: { status, pendencias, verificadaEm: agora, modeloRevisor, reparos, avisos },
+          // Texts rewritten by an accepted repair (decision of Gon, 8/11/2026).
+          ...camposReparados,
+          ...(usoRevisor ? { 'uso.revisor': usoRevisor } : {}),
+          ...(usosReparo.length ? { 'uso.reparar': usosReparo } : {}),
+          ...(chamadas.length ? {
+            'uso.total.tokensEntrada': FieldValue.increment(soma('tokensEntrada')),
+            'uso.total.tokensSaida': FieldValue.increment(soma('tokensSaida')),
+            'uso.total.cacheLidos': FieldValue.increment(soma('cacheLidos')),
+            'uso.total.cacheEscritos': FieldValue.increment(soma('cacheEscritos')),
+            'uso.total.duracaoMs': FieldValue.increment(soma('duracaoMs')),
             'uso.total.usdEstimado': FieldValue.increment(usd),
-            'uso.total.usdSemCache': FieldValue.increment(usoRevisor.usdSemCache ?? 0),
+            'uso.total.usdSemCache': FieldValue.increment(soma('usdSemCache')),
           } : {}),
         });
         const aindaFecha = fecha && atual.estado === 'sintetizando' && atual.analiseAtual === versao;
@@ -117,9 +187,9 @@ export const verificar = onDocumentCreated(
         const naFicha = {
           ...(ia && atual.analiseAtual === versao ? lead : {}),
           ...(aindaFecha ? { estado, estadoEm: agora } : {}),
-          ...(usoRevisor ? {
-            'custo.tokensEntrada': FieldValue.increment(promptTotal(usoRevisor)),
-            'custo.tokensSaida': FieldValue.increment(usoRevisor.tokensSaida),
+          ...(chamadas.length ? {
+            'custo.tokensEntrada': FieldValue.increment(prompt),
+            'custo.tokensSaida': FieldValue.increment(soma('tokensSaida')),
             'custo.usdEstimado': FieldValue.increment(usd),
           } : {}),
         };
@@ -129,20 +199,29 @@ export const verificar = onDocumentCreated(
           em: agora, ator: { tipo: ia ? 'ia' : 'sistema', id: 'verificar' }, tipo: 'verificacao',
           detalhe: { versao, status, pendencias: pendencias.length, porTipo: contaPorTipo(pendencias), revisor: ia, confianca: (lead as Record<string, unknown>)['lead.modificadores.confianca'] ?? null },
         });
+        for (const r of resultados) {
+          tx.create(ref.collection('eventos').doc(), {
+            em: agora, ator: { tipo: 'ia', id: 'verificar' }, tipo: 'reparo',
+            detalhe: { versao, etapa: r.etapa, regras: [...new Set(r.registros.map((x) => x.regra))], aceito: r.aceito, motivo: r.motivo },
+          });
+        }
         if (usoRevisor) {
-          // Pending items by rule before and after repair and correction: equal until phases 2 and 4.
-          const porRegra = contaPorRegra(pendencias);
+          // Pending items by rule before the repair (first pass of the code checks) and after it; the
+          // reviewer's items count in both. The correction of phase 4 changes "depois" again.
+          const revisorItens = pendencias.filter((x) => x.tipo !== 'mecanica');
+          const antes = contaPorRegra([...primeira, ...revisorItens]);
+          const depois = contaPorRegra(pendencias);
           tx.set(
             db.collection('metricas').doc(mesDe((f.recebidaEm as Timestamp).toDate())),
             {
-              custo: { verificacao: { usdEstimado: FieldValue.increment(usd), tokensEntrada: FieldValue.increment(promptTotal(usoRevisor)), tokensSaida: FieldValue.increment(usoRevisor.tokensSaida) } },
+              custo: { verificacao: { usdEstimado: FieldValue.increment(usd), tokensEntrada: FieldValue.increment(prompt), tokensSaida: FieldValue.increment(soma('tokensSaida')) } },
               ...(desenho ? {
                 sintesePorDesenho: {
                   [desenho]: {
-                    usdEstimado: FieldValue.increment(usd), usdSemCache: FieldValue.increment(usoRevisor.usdSemCache ?? 0),
+                    usdEstimado: FieldValue.increment(usd), usdSemCache: FieldValue.increment(soma('usdSemCache')),
                     pendenciasPorRegra: {
-                      antes: Object.fromEntries(Object.entries(porRegra).map(([k, n]) => [k, FieldValue.increment(n)])),
-                      depois: Object.fromEntries(Object.entries(porRegra).map(([k, n]) => [k, FieldValue.increment(n)])),
+                      antes: Object.fromEntries(Object.entries(antes).map(([k, n]) => [k, FieldValue.increment(n)])),
+                      depois: Object.fromEntries(Object.entries(depois).map(([k, n]) => [k, FieldValue.increment(n)])),
                     },
                   },
                 },
@@ -164,7 +243,7 @@ export const verificar = onDocumentCreated(
             quadrante: rotuloQuadrante(l.quadrante), destino: rotuloDestino(l.destino), grau: l.grau, pontos: l.pontos,
             confianca: l.modificadores?.confianca, confiancaMotivo: l.modificadores?.confiancaMotivo ?? '',
             prazoEm: l.acao?.prazoEm ? (l.acao.prazoEm as Timestamp).toDate() : null,
-            portaProvavel: a.enquadramento?.portaProvavel ?? '–', resumoExecutivo: a.resumoExecutivo ?? '',
+            portaProvavel: a.enquadramento?.portaProvavel ?? '–', resumoExecutivo: textos.resumoExecutivo,
             link: base ? `${base}/admin/leads/${id}` : `fichas/${id}`,
           }).catch(async (e) => {
             const mensagem = String((e as Error)?.message ?? e).slice(0, 300);

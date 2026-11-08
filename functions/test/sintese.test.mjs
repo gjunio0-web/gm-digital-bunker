@@ -132,15 +132,17 @@ test('checagens: each rule of spec 02, 4.1 raises a "mecanica" issue', () => {
   assert.deepEqual(por('secao_curta'), [['s3', 'seção não vazia com 2 palavras (mínimo 40)']]);
   assert.deepEqual(por('cnpj_a_confirmar').map(([s]) => s), ['s2']);
   // Excerpts are exact substrings of the body, so the hub can find them.
-  for (const [regra, secao] of [['travessao', 's4'], ['pronome', 's5'], ['sigla', 's6'], ['cpf', 's7'], ['telefone', 's7']]) {
-    const [[s, t]] = por(regra);
-    assert.equal(s, secao, regra);
-    assert.ok(a.secoes[s].corpo.includes(t), `${regra}: ${t}`);
-  }
-  assert.deepEqual(por('cpf')[0][1], '529.982.247-25');
+  // Rules renamed in spec 02 v0.12: travessao and pronome are tipografia; cpf and telefone are dados_pessoais.
+  const tipografia = por('tipografia');
+  assert.deepEqual(tipografia.map(([s]) => s), ['s4', 's5', 'rascunhoResposta']);
+  for (const [s, t] of tipografia.slice(0, 2)) assert.ok(a.secoes[s].corpo.includes(t), t);
+  assert.ok(tipografia[2][1].includes('tu'));
+  const [[s6, t6]] = por('sigla');
+  assert.equal(s6, 's6');
+  assert.ok(a.secoes.s6.corpo.includes(t6));
+  assert.deepEqual(por('dados_pessoais'), [['s7', '529.982.247-25'], ['s7', '(11) 98765-4321']]);
   assert.equal(por('rascunho_longo').length, 1);
   assert.ok(por('rascunho_preco')[0][1].includes('R$'));
-  assert.ok(por('rascunho_pronome')[0][1].includes('tu'));
 });
 
 test('checagens: an English draft is not checked for Portuguese pronouns', () => {

@@ -182,8 +182,25 @@ test('analysis with a pending issue: analise_com_pendencias, medium-level reason
   const v = mapa((await le(`fichas/${id}/analise/v1`)).fields.verificacao);
   assert.equal(v.status.stringValue, 'com_pendencias');
   const p = v.pendencias.arrayValue.values.map((x) => mapa(x));
-  assert.deepEqual(p.map((x) => [x.tipo.stringValue, x.secao.stringValue, x.regra.stringValue]), [['mecanica', 's3', 'travessao']]);
+  assert.deepEqual(p.map((x) => [x.tipo.stringValue, x.secao.stringValue, x.regra.stringValue]), [['mecanica', 's3', 'tipografia']]);
   assert.equal(p[0].correcaoSugerida.nullValue, null);
+});
+
+test('repair: concrete times and no name in the draft are fixed by one repair call; the version keeps the fix', { timeout: 90_000 }, async () => {
+  const { id } = await (await envia({ ...media, email: 'p4@acme.com.br', mensagem: 'Queremos sair das planilhas com um conselho; teste de reparo.' })).json();
+  await ate(id, estado('analise_pronta'), 360);
+  const a = (await le(`fichas/${id}/analise/v1`)).fields;
+  const corpo = mapa(a.rascunhoResposta).corpo.stringValue;
+  assert.match(corpo, /^Olá, \S+,/);
+  assert.match(corpo, /\[opção de horário 1\] ou na quinta às|\[opção de horário 1\]/);
+  assert.doesNotMatch(corpo, /às 10h/);
+  const v = mapa(a.verificacao);
+  assert.equal(v.pendencias.arrayValue.values, undefined);
+  const reparos = v.reparos.arrayValue.values.map((x) => mapa(x));
+  assert.deepEqual(reparos.map((r) => [r.etapa.stringValue, r.regra.stringValue, r.aceito.booleanValue]).sort(), [
+    ['preparar_conversa', 'rascunho_horario_concreto', true], ['preparar_conversa', 'rascunho_sem_nome', true],
+  ]);
+  assert.equal(mapa(a.uso).reparar.arrayValue.values.length, 1);
 });
 
 test('human edit: v2 by a person gets only the code checks; state, confidence and deadline kept', { timeout: 60_000 }, async () => {
@@ -203,7 +220,7 @@ test('human edit: v2 by a person gets only the code checks; state, confidence an
     }
     assert.equal(v2.verificacao.status, 'com_pendencias');
     assert.equal(v2.verificacao.modeloRevisor, null);
-    assert.deepEqual(v2.verificacao.pendencias.map((x) => [x.tipo, x.secao, x.regra, x.correcaoSugerida]), [['mecanica', 's3', 'travessao', null]]);
+    assert.deepEqual(v2.verificacao.pendencias.map((x) => [x.tipo, x.secao, x.regra, x.correcaoSugerida]), [['mecanica', 's3', 'tipografia', null]]);
     assert.ok(v2.secoes.s3.corpo.includes(v2.verificacao.pendencias[0].trecho));
     const depois = (await ref.get()).data();
     assert.equal(depois.estado, 'analise_pronta');
