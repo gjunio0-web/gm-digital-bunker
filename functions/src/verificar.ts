@@ -1,7 +1,8 @@
-// verificar – runs on the creation of fichas/{id}/analise/{versao} (decision of Gon, 7/11/2026, to be
-// recorded in spec 01 v0.10 and spec 02 v0.11): the code checks of spec 02, 4.1 always; for an AI version,
-// first the repair of spec 02 v0.12, 3.4 (one call per stage with failures, then the checks again) and the
-// reviewer of 4.2 on the repaired text (autor.tipo = ia). Writes verificacao in the version; not done
+// verificar – runs on the creation of fichas/{id}/analise/{versao} (decision of Gon, 7/11/2026; spec 01 v0.11,
+// section 4): the code checks of spec 02, 4.1 always; for an AI version, first the repair of spec 02 v0.12, 3.4
+// (one call per stage with failures, then the checks again); for a synthesis or re-run, the reviewer of 4.2 on
+// the repaired text and, with scope or reading issues, the correction of 4.3, written as vN+1 (whose own
+// verification runs the checks with repair only, carries the treated issues and closes the state). Writes verificacao in the version; not done
 // again when the version already has it. For an AI version: graduar recalculates only the confidence (spec 04,
 // 2.5) and, for the current analysis of a ficha in "sintetizando", the final state analise_pronta or
 // analise_com_pendencias, prazoEm from that moment and the second e-mail to the administrator. A human edit
@@ -20,13 +21,20 @@ import { leMetodo } from './metodo.js';
 import { confiancaFinal } from './graduar.js';
 import { avisoAnalise } from './email.js';
 import { mesDe } from './qualificar.js';
-import { ETAPAS_COLETA, coletaDe, fontesDisponiveis, rotuloDestino, rotuloQuadrante } from './sintese.js';
+import { ETAPAS_COLETA, coletaDe, fontesDisponiveis, rotuloDestino, rotuloQuadrante, secaoS0 } from './sintese.js';
 import {
-  ESQUEMA_REVISOR, avisosDaColeta, avisosDoEnquadramento, checagens, mensagemRevisor, validaRevisor, vaiAoReparo, type AnaliseVerificada, type EtapaTexto, type Pendencia,
+  ESQUEMA_REVISOR, avisosDaColeta, avisosDoEnquadramento, checagens, mensagemRevisor, simulaRevisor, validaRevisor, vaiAoReparo, type AnaliseVerificada,
+  type EtapaTexto, type ItemChecklist, type Pendencia,
 } from './verificacao.js';
-import { regrasDoMetodo } from './metodoRegras.js';
+import { checklistDoRevisor, regrasDoMetodo } from './metodoRegras.js';
 import {
-  ESQUEMA_DA_ETAPA, MAX_TOKENS_REPARO, avaliaReparo, camposDaEtapa, itensDeReparo, jsonDaEtapa, mensagemReparar, simulaReparo,
+  ESQUEMA_CORRIGIR, analiseParaCorrecao, comTratamento, mensagemCorrigir, prontaAposCorrecao, simulaCorrecao, validaCorrecao, vaiACorrecao, versaoCorrigida,
+  type TratamentoDado,
+} from './correcao.js';
+import { CARGOS_ROTULO } from './textos.generated.js';
+import { totalDe } from './uso.js';
+import {
+  ESQUEMA_DA_ETAPA, MAX_TOKENS_REPARO, avaliaReparo, camposDaEtapa, itensDeReparo, jsonDaEtapa, mensagemReparar, semLinks, simulaReparo,
   type RegistroReparo, type VersaoTextos,
 } from './reparo.js';
 
@@ -54,6 +62,8 @@ export const verificar = onDocumentCreated(
       const regras = regrasDoMetodo(Object.fromEntries(metodo.blocos.map((b) => [b.nome, b.texto])));
       const precos = await lePrecos();
       const nome = String(f.original?.nome ?? '');
+      // Emulator: "correção" in the message makes the simulated reviewer raise one issue, to run the correction.
+      const comCorrecaoSimulada = /corre[çc][ãa]o/i.test(String(f.original?.mensagem ?? ''));
       // Texts of the version, rewritten by an accepted repair.
       let textos: VersaoTextos = {
         secoes: a.secoes ?? {}, resumoExecutivo: a.resumoExecutivo ?? '', rascunhoResposta: a.rascunhoResposta ?? { assunto: '', corpo: '' },
@@ -110,25 +120,31 @@ export const verificar = onDocumentCreated(
       textos = { ...textos, ...camposReparados };
       const pendencias: Pendencia[] = Object.keys(camposReparados).length ? checagens(verifica(textos), coleta, regras) : [...primeira];
 
-      // 4.2 – reviewer, AI versions only; no access to the collection.
-      // Model and effort from config/pipeline (modelos.revisor, esforco.revisor); usage in the same shape as
-      // the synthesis calls (spec 01 v0.11, uso).
+      // 4.2 – reviewer, for AI versions of a synthesis or re-run only (not for a correction version): Part 1
+      // checklist generated from escopo-limites.md, Part 2 reading. Model and effort from config/pipeline;
+      // no temperature: Claude 5.x models reject sampling parameters (migration guide of Sonnet 5.5).
+      const origem: string = a.autor?.origem ?? 'sintese';
+      const revisa = ia && (origem === 'sintese' || origem === 'reexecucao');
+      const ehCorrecao = ia && origem === 'correcao';
       let modeloRevisor: string | null = null;
       let usoRevisor: UsoChamada | null = null;
-      if (ia) {
+      let checklist: ItemChecklist[] = [];
+      if (revisa) {
         const esforco = esforcoDe(p, 'revisor');
         modeloRevisor = noEmulador() ? 'simulado' : modeloDe(p, 'revisor');
         if (!modeloRevisor) throw new Error('config/pipeline.modelos.revisor is empty');
-        let revisor: Pendencia[];
+        const regrasChecklist = checklistDoRevisor(regras.arquivos['escopo-limites.md'] ?? '');
+        const insumo = { secoes: textos.secoes, enquadramento: textos.enquadramento?.detalhe ?? null, conversa: textos.conversa, rascunhoResposta: textos.rascunhoResposta };
+        let saida: unknown;
         if (noEmulador()) {
-          revisor = [];
+          saida = simulaRevisor(regrasChecklist, semLinks(textos.secoes.s1?.corpo ?? ''), comCorrecaoSimulada);
           usoRevisor = usoChamada(precos, modeloRevisor, esforco, null, 0);
         } else {
-          const metodo = await leMetodo({ 'glossario.md': ['B'], 'escopo-limites.md': [1, 4, 5, 7] });
+          const metodoRevisor = await leMetodo({ 'glossario.md': 'tudo', 'escopo-limites.md': [1, 4, 5, 6, 7] });
           const inicio = Date.now();
           const r = await chamaClaude({
-            chave: CLAUDE_API_KEY.value(), modelo: modeloRevisor, metodo: metodo.blocos.map((b) => ({ nome: b.nome, texto: b.texto })),
-            usuario: mensagemRevisor(textos.secoes, textos.enquadramento?.detalhe ?? textos.enquadramento ?? null), esquema: ESQUEMA_REVISOR, maxTokens: 32_000, timeoutMs: 480_000,
+            chave: CLAUDE_API_KEY.value(), modelo: modeloRevisor, metodo: metodoRevisor.blocos.map((b) => ({ nome: b.nome, texto: b.texto })),
+            usuario: mensagemRevisor(insumo, regrasChecklist), esquema: ESQUEMA_REVISOR, maxTokens: 32_000, timeoutMs: 480_000,
             esforco: esforcoApi(esforco),
           }).catch(async (e) => {
             // A billed failure still counts in the cost of the ficha.
@@ -141,63 +157,144 @@ export const verificar = onDocumentCreated(
             }
             throw new Error(`revisor: ${String((e as Error)?.message ?? e)}`);
           });
-          revisor = validaRevisor(r.json);
+          saida = r.json;
           usoRevisor = usoChamada(precos, modeloRevisor, esforco, r.uso, Date.now() - inicio);
         }
-        pendencias.push(...revisor);
+        const rev = validaRevisor(saida);
+        checklist = rev.checklist;
+        pendencias.push(...rev.pendencias);
       }
-      const usdReparo = usosReparo.reduce((t, u) => t + (u.usdEstimado ?? 0), 0);
-      const usd = (usoRevisor?.usdEstimado ?? 0) + usdReparo;
-      // Calls of this verification (repairs and reviewer), for the totals of uso and of the ficha.
-      const chamadas: UsoChamada[] = [...usosReparo, ...(usoRevisor ? [usoRevisor] : [])];
-      const soma = (k: 'tokensEntrada' | 'tokensSaida' | 'cacheLidos' | 'cacheEscritos' | 'duracaoMs' | 'usdSemCache') => chamadas.reduce((t, c) => t + (c[k] ?? 0), 0);
-      const prompt = chamadas.reduce((t, c) => t + promptTotal(c), 0);
-      // Design of the synthesis that produced the version, for metricas.sintesePorDesenho.
-      const desenho = ia && a.uso ? chaveDesenho(a.uso) : null;
 
-      const status = pendencias.length ? 'com_pendencias' : 'pronta';
+      // A correction version carries the issues of its base with their treatment (spec 02 v0.12, 4.3).
+      const carregadas = ehCorrecao ? comTratamento(a.correcao?.pendencias ?? [], a.correcao?.tratamentos ?? []) : [];
+      if (ehCorrecao) avisos.push(...(a.correcao?.avisos ?? []));
+      const todas: Pendencia[] = [...pendencias, ...carregadas];
+      const status = ehCorrecao ? (prontaAposCorrecao(pendencias, carregadas) ? 'pronta' : 'com_pendencias') : todas.length ? 'com_pendencias' : 'pronta';
       const agora = Timestamp.now();
       // Final state only for the current AI version of a ficha still in "sintetizando".
-      const fecha = ia && f.estado === 'sintetizando' && f.analiseAtual === versao;
-      const lead = ia ? await confiancaFinal(ref, f, pendencias.length > 0, fecha ? agora.toDate() : null) : {};
+      const fechaSeNaoCorrigir = ia && f.estado === 'sintetizando' && f.analiseAtual === versao;
+
+      // 4.3 – correction: one call when the reviewer left scope or reading issues; the answer becomes vN+1.
+      const paraCorrigir = revisa && p.correcaoAtiva && fechaSeNaoCorrigir ? todas.filter(vaiACorrecao) : [];
+      let correcao: { versao: string; doc: Record<string, unknown>; uso: UsoChamada; tratamentos: TratamentoDado[] } | null = null;
+      let usoCorrecaoFalha: UsoChamada | null = null;
+      if (paraCorrigir.length) {
+        const modelo = noEmulador() ? 'simulado' : modeloDe(p, 'corrigir');
+        const esforco = esforcoDe(p, 'corrigir');
+        const analise = analiseParaCorrecao(textos);
+        const inicio = Date.now();
+        try {
+          let saida: unknown;
+          let uso: UsoChamada;
+          if (noEmulador()) {
+            saida = simulaCorrecao(analise, paraCorrigir);
+            uso = usoChamada(precos, modelo, esforco, null, 0);
+          } else {
+            if (!modelo) throw new Error('config/pipeline.modelos.corrigir is empty');
+            const metodoCorrecao = await leMetodo({ 'glossario.md': 'tudo', 'escopo-limites.md': 'tudo' });
+            const r = await chamaClaude({
+              chave: CLAUDE_API_KEY.value(), modelo, metodo: metodoCorrecao.blocos.map((b) => ({ nome: b.nome, texto: b.texto })),
+              usuario: mensagemCorrigir(analise, fontesDisponiveis(coleta), paraCorrigir), esquema: ESQUEMA_CORRIGIR, maxTokens: 64_000, timeoutMs: 300_000,
+              esforco: esforcoApi(esforco),
+            });
+            saida = r.json;
+            uso = usoChamada(precos, modelo, esforco, r.uso, Date.now() - inicio);
+          }
+          const c = validaCorrecao(saida, paraCorrigir.length);
+          const { campos, avisos: avisosCorrecao } = versaoCorrigida(textos, c, coleta);
+          const nova = `v${(await ref.collection('analise').get()).size + 1}`;
+          const s0 = secaoS0({
+            empresa: f.original?.empresa ?? '', rotuloCargo: CARGOS_ROTULO[f.original?.cargo] ?? f.original?.cargo ?? '', recebidaEm: (f.recebidaEm as Timestamp).toDate(),
+            criadaEm: agora.toDate(), versao: nova, lead: f.lead, versaoMetodo: a.versaoMetodo ?? metodo.versao, modelo,
+          });
+          correcao = {
+            versao: nova,
+            uso,
+            tratamentos: c.tratamentos,
+            doc: {
+              autor: { tipo: 'ia', id: modelo, origem: 'correcao' },
+              baseadaEm: versao,
+              versaoMetodo: a.versaoMetodo ?? metodo.versao,
+              secoes: { ...campos.secoes, s0 },
+              enquadramento: campos.enquadramento,
+              resumoExecutivo: campos.resumoExecutivo,
+              conversa: campos.conversa,
+              rascunhoResposta: campos.rascunhoResposta,
+              correcao: { pendencias: paraCorrigir, tratamentos: c.tratamentos, avisos: avisosCorrecao },
+              uso: { corrigir: uso, total: totalDe([uso]) },
+              criadaEm: agora,
+            },
+          };
+        } catch (e) {
+          // Without a correction, vN closes as before; a billed failure still counts.
+          if (e instanceof ErroComUso) usoCorrecaoFalha = usoChamada(precos, modelo, esforco, e.uso, Date.now() - inicio);
+          logger.warn('verificar: correction failed', { id, versao, mensagem: String((e as Error)?.message ?? e).slice(0, 300) });
+        }
+      }
+
+      const fecha = fechaSeNaoCorrigir && !correcao;
+      const lead = ia && !correcao ? await confiancaFinal(ref, f, status !== 'pronta', fecha ? agora.toDate() : null) : {};
       const estado = status === 'pronta' ? 'analise_pronta' : 'analise_com_pendencias';
+
+      const usdReparo = usosReparo.reduce((t, u) => t + (u.usdEstimado ?? 0), 0);
+      // Calls of this verification (repairs and reviewer) count in vN; the correction counts in vN+1; all in the ficha.
+      const chamadas: UsoChamada[] = [...usosReparo, ...(usoRevisor ? [usoRevisor] : []), ...(usoCorrecaoFalha ? [usoCorrecaoFalha] : [])];
+      const usd = chamadas.reduce((t, c) => t + (c.usdEstimado ?? 0), 0);
+      const daFicha = [...chamadas, ...(correcao ? [correcao.uso] : [])];
+      const usdFicha = daFicha.reduce((t, c) => t + (c.usdEstimado ?? 0), 0);
+      const soma = (cs: UsoChamada[], k: 'tokensEntrada' | 'tokensSaida' | 'cacheLidos' | 'cacheEscritos' | 'duracaoMs' | 'usdSemCache') => cs.reduce((t, c) => t + (c[k] ?? 0), 0);
+      const prompt = (cs: UsoChamada[]) => cs.reduce((t, c) => t + promptTotal(c), 0);
+      // Design of the synthesis behind the version, for metricas.sintesePorDesenho; a correction version reads
+      // it from its base.
+      const usoBase = ehCorrecao && a.baseadaEm ? (await ref.collection('analise').doc(a.baseadaEm).get()).get('uso') : a.uso;
+      const desenho = ia && usoBase ? chaveDesenho(usoBase) : null;
 
       await db.runTransaction(async (tx) => {
         const atual = (await tx.get(ref)).data();
         const v = (await tx.get(docVersao)).data();
+        const docNova = correcao ? ref.collection('analise').doc(correcao.versao) : null;
+        const jaExiste = docNova ? (await tx.get(docNova)).exists : false;
         if (!atual || !v || v.verificacao) return;
+        // The correction is written only while vN is still the current version of a ficha in "sintetizando".
+        const grava = !!correcao && !jaExiste && atual.estado === 'sintetizando' && atual.analiseAtual === versao;
         tx.update(docVersao, {
-          verificacao: { status, pendencias, verificadaEm: agora, modeloRevisor, reparos, avisos },
+          verificacao: {
+            status, pendencias: ehCorrecao ? todas : pendencias, verificadaEm: agora, modeloRevisor, reparos, avisos, checklist,
+            ...(grava ? { corrigidaEm: correcao!.versao } : {}),
+          },
           // Texts rewritten by an accepted repair (decision of Gon, 8/11/2026).
           ...camposReparados,
           ...(usoRevisor ? { 'uso.revisor': usoRevisor } : {}),
           ...(usosReparo.length ? { 'uso.reparar': usosReparo } : {}),
           ...(chamadas.length ? {
-            'uso.total.tokensEntrada': FieldValue.increment(soma('tokensEntrada')),
-            'uso.total.tokensSaida': FieldValue.increment(soma('tokensSaida')),
-            'uso.total.cacheLidos': FieldValue.increment(soma('cacheLidos')),
-            'uso.total.cacheEscritos': FieldValue.increment(soma('cacheEscritos')),
-            'uso.total.duracaoMs': FieldValue.increment(soma('duracaoMs')),
+            'uso.total.tokensEntrada': FieldValue.increment(soma(chamadas, 'tokensEntrada')),
+            'uso.total.tokensSaida': FieldValue.increment(soma(chamadas, 'tokensSaida')),
+            'uso.total.cacheLidos': FieldValue.increment(soma(chamadas, 'cacheLidos')),
+            'uso.total.cacheEscritos': FieldValue.increment(soma(chamadas, 'cacheEscritos')),
+            'uso.total.duracaoMs': FieldValue.increment(soma(chamadas, 'duracaoMs')),
             'uso.total.usdEstimado': FieldValue.increment(usd),
-            'uso.total.usdSemCache': FieldValue.increment(soma('usdSemCache')),
+            'uso.total.usdSemCache': FieldValue.increment(soma(chamadas, 'usdSemCache')),
           } : {}),
         });
+        if (grava) tx.create(docNova!, correcao!.doc);
         const aindaFecha = fecha && atual.estado === 'sintetizando' && atual.analiseAtual === versao;
+        const custos = grava ? daFicha : chamadas;
         // The confidence follows the current AI version only.
         const naFicha = {
-          ...(ia && atual.analiseAtual === versao ? lead : {}),
+          ...(ia && !grava && atual.analiseAtual === versao ? lead : {}),
           ...(aindaFecha ? { estado, estadoEm: agora } : {}),
-          ...(chamadas.length ? {
-            'custo.tokensEntrada': FieldValue.increment(prompt),
-            'custo.tokensSaida': FieldValue.increment(soma('tokensSaida')),
-            'custo.usdEstimado': FieldValue.increment(usd),
+          ...(grava ? { analiseAtual: correcao!.versao } : {}),
+          ...(custos.length ? {
+            'custo.tokensEntrada': FieldValue.increment(prompt(custos)),
+            'custo.tokensSaida': FieldValue.increment(soma(custos, 'tokensSaida')),
+            'custo.usdEstimado': FieldValue.increment(grava ? usdFicha : usd),
           } : {}),
         };
         // A human edit changes nothing in the ficha itself.
         if (Object.keys(naFicha).length) tx.update(ref, naFicha);
         tx.create(ref.collection('eventos').doc(), {
           em: agora, ator: { tipo: ia ? 'ia' : 'sistema', id: 'verificar' }, tipo: 'verificacao',
-          detalhe: { versao, status, pendencias: pendencias.length, porTipo: contaPorTipo(pendencias), revisor: ia, confianca: (lead as Record<string, unknown>)['lead.modificadores.confianca'] ?? null },
+          detalhe: { versao, status, pendencias: (ehCorrecao ? todas : pendencias).length, porTipo: contaPorTipo(ehCorrecao ? todas : pendencias), revisor: revisa, confianca: (lead as Record<string, unknown>)['lead.modificadores.confianca'] ?? null },
         });
         for (const r of resultados) {
           tx.create(ref.collection('eventos').doc(), {
@@ -205,24 +302,39 @@ export const verificar = onDocumentCreated(
             detalhe: { versao, etapa: r.etapa, regras: [...new Set(r.registros.map((x) => x.regra))], aceito: r.aceito, motivo: r.motivo },
           });
         }
-        if (usoRevisor) {
-          // Pending items by rule before the repair (first pass of the code checks) and after it; the
-          // reviewer's items count in both. The correction of phase 4 changes "depois" again.
+        if (grava) {
+          tx.create(ref.collection('eventos').doc(), {
+            em: agora, ator: { tipo: 'ia', id: 'verificar' }, tipo: 'correcao',
+            detalhe: {
+              versaoBase: versao, versao: correcao!.versao,
+              corrigidas: correcao!.tratamentos.filter((t) => t.tratamento === 'corrigida').length,
+              mantidas: correcao!.tratamentos.filter((t) => t.tratamento === 'mantida').length,
+            },
+          });
+        }
+        if (ia) {
+          // Metrics by design (spec 01 v0.11, metricas): pending items by rule before the repair (first pass of
+          // the code checks) and after it, checklist violations by rule, corrected and kept issues, cost.
           const revisorItens = pendencias.filter((x) => x.tipo !== 'mecanica');
           const antes = contaPorRegra([...primeira, ...revisorItens]);
           const depois = contaPorRegra(pendencias);
+          const violadas = checklist.filter((x) => x.resultado === 'violado').reduce<Record<string, number>>((t, x) => ({ ...t, [chave(x.regra)]: (t[chave(x.regra)] ?? 0) + 1 }), {});
+          const inc = (o: Record<string, number>) => Object.fromEntries(Object.entries(o).map(([k, n]) => [k, FieldValue.increment(n)]));
+          const usdMetrica = grava ? usdFicha : usd;
           tx.set(
             db.collection('metricas').doc(mesDe((f.recebidaEm as Timestamp).toDate())),
             {
-              custo: { verificacao: { usdEstimado: FieldValue.increment(usd), tokensEntrada: FieldValue.increment(prompt), tokensSaida: FieldValue.increment(soma('tokensSaida')) } },
+              custo: { verificacao: { usdEstimado: FieldValue.increment(usdMetrica), tokensEntrada: FieldValue.increment(prompt(custos)), tokensSaida: FieldValue.increment(soma(custos, 'tokensSaida')) } },
               ...(desenho ? {
                 sintesePorDesenho: {
                   [desenho]: {
-                    usdEstimado: FieldValue.increment(usd), usdSemCache: FieldValue.increment(soma('usdSemCache')),
-                    pendenciasPorRegra: {
-                      antes: Object.fromEntries(Object.entries(antes).map(([k, n]) => [k, FieldValue.increment(n)])),
-                      depois: Object.fromEntries(Object.entries(depois).map(([k, n]) => [k, FieldValue.increment(n)])),
-                    },
+                    usdEstimado: FieldValue.increment(usdMetrica), usdSemCache: FieldValue.increment(soma(custos, 'usdSemCache')),
+                    pendenciasPorRegra: { antes: inc(antes), depois: inc(depois) },
+                    ...(Object.keys(violadas).length ? { checklistViolado: inc(violadas) } : {}),
+                    ...(ehCorrecao ? {
+                      versoesCorrecao: FieldValue.increment(1),
+                      tratamentos: inc({ corrigida: carregadas.filter((x) => x.tratamento === 'corrigida').length, mantida: carregadas.filter((x) => x.tratamento === 'mantida').length }),
+                    } : {}),
                   },
                 },
               } : {}),
@@ -239,11 +351,11 @@ export const verificar = onDocumentCreated(
           const l = g.lead;
           const base = URL_BASE_POR_PROJETO[projeto()];
           await avisoAnalise(noEmulador() ? '' : SMTP2GO_API_KEY.value(), {
-            fichaId: id, empresa: g.original?.empresa ?? '', versao, pronta: status === 'pronta', pendencias: pendencias.length,
+            fichaId: id, empresa: g.original?.empresa ?? '', versao, pronta: status === 'pronta', pendencias: (ehCorrecao ? todas.filter((x: any) => x.tratamento !== 'corrigida') : todas).length,
             quadrante: rotuloQuadrante(l.quadrante), destino: rotuloDestino(l.destino), grau: l.grau, pontos: l.pontos,
             confianca: l.modificadores?.confianca, confiancaMotivo: l.modificadores?.confiancaMotivo ?? '',
             prazoEm: l.acao?.prazoEm ? (l.acao.prazoEm as Timestamp).toDate() : null,
-            portaProvavel: a.enquadramento?.portaProvavel ?? '–', resumoExecutivo: textos.resumoExecutivo,
+            portaProvavel: String(textos.enquadramento?.portaProvavel ?? '–'), resumoExecutivo: textos.resumoExecutivo,
             link: base ? `${base}/admin/leads/${id}` : `fichas/${id}`,
           }).catch(async (e) => {
             const mensagem = String((e as Error)?.message ?? e).slice(0, 300);
@@ -252,7 +364,7 @@ export const verificar = onDocumentCreated(
           });
         }
       }
-      logger.info('verificar: done', { id, versao, status, pendencias: pendencias.length, revisor: ia });
+      logger.info('verificar: done', { id, versao, status, pendencias: todas.length, revisor: revisa, correcao: correcao?.versao ?? null });
     } catch (e) {
       const mensagem = String((e as Error)?.message ?? e).slice(0, 500);
       logger.error('verificar failed', { id, versao, mensagem });
@@ -260,6 +372,8 @@ export const verificar = onDocumentCreated(
     }
   },
 );
+
+const chave = (k: string) => k.replace(/[.\s/]/g, '_');
 
 // Mechanical items by their rule; the reviewer's by type (revisor_<tipo>). Firestore map keys, no dots.
 const contaPorRegra = (ps: Pendencia[]) =>

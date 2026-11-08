@@ -208,6 +208,29 @@ test('repair: concrete times and no name in the draft are fixed by one repair ca
   assert.equal(mapa(a.uso).reparar.arrayValue.values.length, 1);
 });
 
+test('correction: a reading issue of the reviewer makes v2 (origin correcao) with the issue treated; the state closes on v2', { timeout: 120_000 }, async () => {
+  const { id } = await (await envia({ ...media, email: 'p5@acme.com.br', mensagem: 'Queremos sair das planilhas com um conselho; teste de correção.' })).json();
+  const f = await ate(id, (x) => estado('analise_pronta')(x) && x.analiseAtual?.stringValue === 'v2', 480);
+  assert.equal(f.analiseAtual.stringValue, 'v2');
+  const v1 = (await le(`fichas/${id}/analise/v1`)).fields;
+  assert.equal(mapa(v1.autor).origem.stringValue, 'sintese');
+  const ver1 = mapa(v1.verificacao);
+  assert.equal(ver1.corrigidaEm.stringValue, 'v2');
+  assert.equal(ver1.checklist.arrayValue.values.length, 14);
+  const v2 = (await le(`fichas/${id}/analise/v2`)).fields;
+  const autor = mapa(v2.autor);
+  assert.equal(autor.origem.stringValue, 'correcao');
+  assert.equal(v2.baseadaEm.stringValue, 'v1');
+  assert.match(mapa(mapa(v2.secoes).s0).corpo.stringValue, /\*\*Análise:\*\* v2/);
+  const p = mapa(v2.verificacao).pendencias.arrayValue.values.map((x) => mapa(x));
+  assert.deepEqual(p.map((x) => [x.tipo.stringValue, x.tratamento.stringValue]), [['lastro', 'corrigida']]);
+  assert.equal(mapa(v2.verificacao).modeloRevisor.nullValue, null);
+  assert.ok(mapa(mapa(v2.uso).corrigir));
+  const todos = await eventos(id);
+  assert.equal(todos.filter((e) => e.tipo.stringValue === 'correcao').length, 1);
+  assert.equal(todos.filter((e) => e.tipo.stringValue === 'verificacao').length, 2);
+});
+
 test('human edit: v2 by a person gets only the code checks; state, confidence and deadline kept', { timeout: 60_000 }, async () => {
   const app = initializeApp({ projectId: PROJETO }, 'edicao');
   try {

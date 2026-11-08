@@ -126,7 +126,8 @@ export const sintetizar = onDocumentUpdated(
         const doc = ref.collection('analise').doc(versao);
         if (!f || f.estado !== 'sintetizando' || (await tx.get(doc)).exists) throw new Error('sintetizar: ficha changed meanwhile');
         tx.create(doc, {
-          autor: { tipo: 'ia', id: modelo },
+          // Origin of the version (spec 01 v0.11): the first synthesis or a re-run; a correction writes its own.
+          autor: { tipo: 'ia', id: modelo, origem: anteriores.size ? 'reexecucao' : 'sintese' },
           baseadaEm: f.analiseAtual ?? null,
           versaoMetodo: metodo.versao,
           secoes,

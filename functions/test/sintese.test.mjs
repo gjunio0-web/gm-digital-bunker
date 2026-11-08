@@ -161,13 +161,13 @@ test('simulated analysis: passes the checks, and the "pendência" variant fails 
 test('output checks: schema mismatches throw; titles are fixed; at most three hypotheses', () => {
   assert.throws(() => validaEnquadrar({}), /enquadrar/);
   assert.throws(() => validaConversa({ perguntas: [] }), /preparar_conversa/);
-  assert.throws(() => validaRevisor({ pendencias: [{ tipo: 'outro', secao: 's1', trecho: 'x', correcaoSugerida: 'y' }] }), /revisor/);
+  assert.throws(() => validaRevisor({ checklist: [], pendencias: [{ tipo: 'outro', secao: 's1', trecho: 'x', correcaoSugerida: 'y' }] }), /revisor/);
   const e = simulaEnquadrar();
   const quatro = validaEnquadrar({ ...e, hipotesesDeAlavanca: [1, 2, 3, 4].map(() => e.hipotesesDeAlavanca[0]) });
   assert.equal(quatro.hipotesesDeAlavanca.length, 3);
   const m = simulaMontar(false);
   assert.equal(validaMontar({ ...m, s1: { ...m.s1, titulo: 'outro' } }).s1.titulo, 'Qualificação imediata');
-  assert.deepEqual(validaRevisor({ pendencias: [{ tipo: 'escopo', secao: 's6', trecho: 'x', correcaoSugerida: 'y' }] }), [{ tipo: 'escopo', secao: 's6', trecho: 'x', correcaoSugerida: 'y' }]);
+  assert.deepEqual(validaRevisor({ checklist: [], pendencias: [{ tipo: 'lastro', secao: 's6', trecho: 'x', correcaoSugerida: 'y' }] }).pendencias, [{ tipo: 'lastro', secao: 's6', trecho: 'x', correcaoSugerida: 'y' }]);
 });
 
 test('preparar_conversa gets only destino and modificadores in <lead>', () => {

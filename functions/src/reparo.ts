@@ -88,7 +88,7 @@ function percorre(v: unknown, caminho: string, visita: Visita, chave = ''): void
 
 // The choices of a stage output: text leaves blanked, titles (fixed by the code) and source pairs (checked
 // again by marca_sem_destino) left out.
-function estrutura(etapa: EtapaTexto, v: unknown): string {
+export function estrutura(etapa: EtapaTexto, v: unknown): string {
   const copia = (x: unknown, caminho: string, chave: string): unknown => {
     if (typeof x === 'string') return ehTextoLivre(etapa, caminho, chave) ? '§' : x;
     if (Array.isArray(x)) return x.map((y, i) => copia(y, `${caminho}[${i}]`, chave));
@@ -99,6 +99,8 @@ function estrutura(etapa: EtapaTexto, v: unknown): string {
   };
   return JSON.stringify(copia(v, '', ''));
 }
+
+export const mesmasEscolhas = (etapa: EtapaTexto, a: unknown, b: unknown) => estrutura(etapa, a) === estrutura(etapa, b);
 
 function folhasDeTexto(etapa: EtapaTexto, v: unknown): Map<string, string> {
   const r = new Map<string, string>();

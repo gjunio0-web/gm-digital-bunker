@@ -37,3 +37,22 @@ export const regrasDoMetodo = (arquivos: Record<string, string>): RegrasMetodo =
   graus: nomesDosGraus(arquivos['escopo-limites.md'] ?? ''),
   arquivos,
 });
+
+// Checklist of Part 1 of the reviewer (spec 02 v0.12, 4.2), generated from escopo-limites.md: the six limits of
+// section 5 (limite-1 to limite-6), the items of section 4 in order (orienta-1 to orienta-6), the rule on the
+// knowledge assistant (section 5) and the rule against reshaping a request (section 7, item 3).
+export interface RegraChecklist { regra: string; texto: string }
+export function checklistDoRevisor(escopoLimites: string): RegraChecklist[] {
+  const secao = (n: number) => escopoLimites.split(/^(?=## )/m).find((b) => b.startsWith(`## ${n}.`)) ?? '';
+  const s5 = secao(5);
+  const limites = [...s5.matchAll(/^(\d)\.\s+(.+)$/gm)].map((m) => ({ regra: `limite-${m[1]}`, texto: m[2].trim() }));
+  const orienta = [...secao(4).matchAll(/^-\s+(.+)$/gm)].map((m, i) => ({ regra: `orienta-${i + 1}`, texto: m[1].trim() }));
+  const assistente = s5.split('\n').find((l) => /assistente de conhecimento/i.test(l))?.trim();
+  const reformular = secao(7).split('\n').find((l) => /^3\.\s/.test(l))?.replace(/^3\.\s+/, '').trim();
+  return [
+    ...limites,
+    ...orienta,
+    ...(assistente ? [{ regra: 'assistente-conhecimento', texto: assistente }] : []),
+    ...(reformular ? [{ regra: 'nao-reformular', texto: reformular }] : []),
+  ];
+}
