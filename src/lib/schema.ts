@@ -37,7 +37,10 @@ const textos = {
 const tipoDaPagina: Partial<Record<PageId, string>> = { sobre: 'AboutPage', contato: 'ContactPage', publicacoes: 'CollectionPage' };
 const paginasComHub: PageId[] = ['inicio', 'metodo', 'publicacoes', 'sobre'];
 
-export function grafo(o: { lang: Lang; pageId: PageId; title: string; description: string }) {
+// `atualizadoMinimo` (optional, YYYY-MM-DD): a date computed at build time that dateModified must not be
+// earlier than. Used by Publications, whose cards come from the AI Strategy Hub (src/lib/artigos.ts):
+// dateModified is the later of the hand-kept date in datas.mjs and the newest article's date.
+export function grafo(o: { lang: Lang; pageId: PageId; title: string; description: string; atualizadoMinimo?: string }) {
   const { lang, pageId, title, description } = o;
   const tx = textos[lang];
   const nos: Record<string, unknown>[] = [];
@@ -85,7 +88,12 @@ export function grafo(o: { lang: Lang; pageId: PageId; title: string; descriptio
     description,
     inLanguage: lang,
     isPartOf: ref(ID.site),
-    ...(d ? { datePublished: d.publicado, dateModified: d.atualizado } : {}),
+    ...(d
+      ? {
+          datePublished: d.publicado,
+          dateModified: o.atualizadoMinimo && o.atualizadoMinimo > d.atualizado ? o.atualizadoMinimo : d.atualizado,
+        }
+      : {}),
   });
 
   if (pageId === 'livro') {

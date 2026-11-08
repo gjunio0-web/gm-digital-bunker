@@ -60,6 +60,12 @@ function ordenar(lista: Entrada[]): Entrada[] {
     .map((x) => x.a);
 }
 
+// Publication date (YYYY-MM-DD) of the most recent article in the Hub manifest. The Publications pages
+// pass it to the layout, so the page's structured-data dateModified follows new articles automatically.
+export async function ultimaPublicacao(): Promise<string> {
+  return (await carregarManifesto()).reduce((max, a) => (a.data > max ? a.data : max), '');
+}
+
 export async function artigosDoHub(lang?: 'en'): Promise<Artigo[]> {
   const lista = ordenar(await carregarManifesto());
   if (lang !== 'en') {

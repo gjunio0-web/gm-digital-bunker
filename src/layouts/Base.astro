@@ -25,8 +25,9 @@ interface Props {
   noActionBar?: boolean;
   noDialog?: boolean;
   noindex?: boolean;    // page never indexed (the 404): no canonical, no hreflang
+  atualizadoMinimo?: string; // structured-data dateModified floor computed at build time (Publications)
 }
-const { title, description, current = '', pageId = 'inicio', lang = 'pt-BR', ctaSecondary = false, noActionBar = false, noDialog = false, noindex = false } = Astro.props;
+const { title, description, current = '', pageId = 'inicio', lang = 'pt-BR', ctaSecondary = false, noActionBar = false, noDialog = false, noindex = false, atualizadoMinimo } = Astro.props;
 // Only the production build on the custom domain is indexable (src/lib/origem.mjs); the 404 never is.
 const robots = noindex || !INDEXAVEL;
 const u = t(lang);
@@ -35,7 +36,7 @@ const altPath = routePath(pageId, otherLang(lang));
 // The brand closes every title; a title that already carries it (the home pages) is used as written.
 const fullTitle = title.includes('GM Digital Bunker™') ? title : `${title} – GM Digital Bunker™`;
 const ogImage = lang === 'en' ? `${DOMINIO}/og/og-image-en.jpg` : `${DOMINIO}/og/og-image.jpg`;
-const dados = noindex ? undefined : grafo({ lang, pageId, title: fullTitle, description });
+const dados = noindex ? undefined : grafo({ lang, pageId, title: fullTitle, description, atualizadoMinimo });
 const ogAlt = lang === 'en'
   ? 'GM Digital Bunker™ – AI technology strategy for the real world. Senior decisions, executed with AI, through to the finished artifact.'
   : 'GM Digital Bunker™ – Estratégia de tecnologia em IA para o mundo real. Decisão sênior, executada com IA, até o artefato pronto.';
