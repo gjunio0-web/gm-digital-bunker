@@ -14,7 +14,7 @@ import { CLAUDE_API_KEY, REGIAO, SMTP2GO_API_KEY, URL_BASE_POR_PROJETO } from '.
 import { lePipeline } from './pipeline.js';
 import { chamaClaude, ErroComUso, noEmulador } from './claude.js';
 import { lePrecos } from './precos.js';
-import { chaveDesenho, esforcoApi, esforcoDe, modeloDe } from './modelos.js';
+import { chaveDesenho, comParametros, esforcoApi, esforcoDe, modeloDe } from './modelos.js';
 import { promptTotal } from './custo.js';
 import { usoChamada, type UsoChamada } from './uso.js';
 import { leMetodo } from './metodo.js';
@@ -51,7 +51,8 @@ export const verificar = onDocumentCreated(
     const docVersao = ref.collection('analise').doc(versao);
     const ia = a.autor?.tipo === 'ia';
     try {
-      const p = await lePipeline();
+      // Run parameters of the synthesis behind the version (phase B2): reparar and corrigir inherit from them.
+      const p = comParametros(await lePipeline(), a.parametrosSintese ?? null);
       const f = (await ref.get()).data();
       if (!f) return;
       const snaps = await Promise.all(ETAPAS_COLETA.map((e) => ref.collection('coleta').doc(e).get()));
@@ -215,6 +216,7 @@ export const verificar = onDocumentCreated(
               autor: { tipo: 'ia', id: modelo, origem: 'correcao' },
               baseadaEm: versao,
               versaoMetodo: a.versaoMetodo ?? metodo.versao,
+              parametrosSintese: a.parametrosSintese ?? null,
               secoes: { ...campos.secoes, s0 },
               enquadramento: campos.enquadramento,
               resumoExecutivo: campos.resumoExecutivo,

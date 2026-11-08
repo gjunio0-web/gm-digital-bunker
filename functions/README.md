@@ -30,6 +30,7 @@ Região de todas as funções: `REGIAO` em `src/config.ts` (`southamerica-east1`
 | `src/sintetizar.ts` | Gatilho da síntese: trava por transação, três chamadas, `graduar` entre a primeira e a segunda, gravação de `analise/vN`, custo |
 | `src/verificacao.ts` | Checagens em código da spec 02 v0.12, 4.1, sobre todo texto gerado (seções, resumo, rascunho, enquadramento e conversa), com pendências `{tipo, regra, secao, trecho, correcaoSugerida, local}`, e prompt, esquema e conferência do revisor (funções puras) |
 | `src/reparo.ts` | Reparo da spec 02 v0.12, 3.4: itens por etapa, mensagem, aceite pelo código (escolhas iguais e mudança fora dos trechos até `limiarReparo`) e simulação do emulador (funções puras) |
+| `src/sondarCache.ts`, `scripts/sondar-cache.mjs` | Sondagem de cache da Fase B2 (item 9.3): função privada com três chamadas (mesmo esquema duas vezes, depois outro) e o script que a chama e imprime só o uso; preparada, roda só por ordem de Gon |
 | `src/correcao.ts` | Correção da spec 02 v0.12, 4.3: esquema, mensagem, conferência dos tratamentos, versão `vN+1` (textos do enquadramento aceitos só com as escolhas da versão base) e estado final (funções puras) |
 | `src/metodoRegras.ts` | O que as checagens leem do método publicado: termos vetados (glossário, Parte C), nomes dos graus (escopo-limites, seção 6) seção citada por `[M:arquivo:seção]` e checklist do revisor (funções puras) |
 | `src/verificar.ts` | Gatilho da verificação na criação de `analise/vN`: checagens; em versão da IA, revisor, confiança, estado final, prazo e segundo e-mail; em edição humana, só as checagens |
@@ -113,6 +114,8 @@ cd functions && npm ci
 npm run seed -- gmdb-qualidade        # re-runnable; only adds missing fields, never overwrites
 npm run configurar -- gmdb-qualidade modelos.coleta=claude-haiku-5-5 esforco.revisor=baixo   # only with Gon's authorization
 npm run migrar-pipeline -- gmdb-qualidade [--aplicar]   # one-off, spec 01 v0.11; plan only without --aplicar
+npm run fichas-teste -- gmdb-qualidade --sintese --desenho=C --ficha=<id>   # phase B2: design for this run only
+npm run sondar-cache -- gmdb-qualidade <fichaId>   # phase B2 cache probe, only by Gon's order
 cd ..
 firebase deploy --project qualidade --only functions:receberFicha,functions:expurgar,firestore:rules,firestore:indexes
 firebase deploy --project gmdb-qualidade --only functions:coletarMinima,functions:coletar

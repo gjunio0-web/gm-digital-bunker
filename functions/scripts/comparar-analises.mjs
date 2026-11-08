@@ -1,4 +1,7 @@
-// Side-by-side comparison of the analysis versions of the test fichas (phase B, Haiku × Sonnet synthesis).
+// Side-by-side comparison of the analysis versions of the test fichas (phase B, Haiku × Sonnet synthesis;
+// phase B2: reads the usage per call of spec 01 v0.11 – model, effort, tokens, cache read and written, duration
+// and cost of each call, repairs, reviewer, correction and total –, the origin of the version, the repairs,
+// the warnings, the reviewer checklist and the treatment of each issue; mechanical issues collapsed).
 // Read-only: reads fichas with teste = true that have analise/vN and writes one self-contained HTML page,
 // styled with the GM Digital Bunker Design System tokens (dark default, light by the theme switch). Each
 // ficha lists all its versions; columns A and B default to the latest Sonnet version and the latest Haiku
@@ -30,9 +33,12 @@ for (const f of (await db.collection('fichas').where('teste', '==', true).get())
       return {
         id: a.id,
         n: Number(a.id.slice(1)),
-        modelo: x.autor?.id ?? '?',
+        modelo: x.uso?.montar_analise?.modelo ?? x.autor?.id ?? '?',
         autor: x.autor?.tipo ?? '?',
-        esforco: x.uso?.esforco ?? 'padrão do modelo',
+        origem: x.autor?.origem ?? null,
+        baseadaEm: x.baseadaEm ?? null,
+        // Effort of the synthesis: per call since spec 01 v0.11, one value before.
+        esforco: x.uso?.montar_analise?.esforco ?? x.uso?.esforco ?? 'padrão do modelo',
         criadaEm: data(x.criadaEm),
         uso: x.uso ?? {},
         lead: graduadas[a.id] ?? null,
@@ -193,29 +199,39 @@ function md(t) {
 }
 
 function opcoes(f) {
-  return f.versoes.map((v) => '<option value="' + v.id + '">' + v.id + ' · ' + esc(nomeModelo(v.modelo)) + ' · esforço ' + esc(v.esforco) + (v.autor === 'humano' ? ' · edição humana' : '') + (v.id === f.analiseAtual ? ' · atual' : '') + '</option>').join('');
+  return f.versoes.map((v) => '<option value="' + v.id + '">' + v.id + ' · ' + esc(nomeModelo(v.modelo)) + ' · esforço ' + esc(v.esforco) + (v.autor === 'humano' ? ' · edição humana' : v.origem === 'correcao' ? ' · correção de ' + esc(v.baseadaEm) : '') + (v.id === f.analiseAtual ? ' · atual' : '') + '</option>').join('');
 }
 function padrao(f, re) {
   const vs = f.versoes.filter((v) => re.test(v.modelo));
   return (vs[vs.length - 1] ?? f.versoes[f.versoes.length - 1]).id;
 }
 
+// Calls of a version, in both shapes: per call with total (spec 01 v0.11) or chamadas, revisor and usdEstimado
+// (phase B). Repairs come as a list, one per stage.
+function chamadasDe(u) {
+  if (u.total) return Object.entries(u).filter(([k]) => k !== 'total').flatMap(([k, x]) => Array.isArray(x) ? x.map((y) => ['reparar·' + (y.origem ?? '?'), y]) : [[k, x]]);
+  return [...Object.entries(u.chamadas ?? {}), ...(u.revisor ? [['revisor', u.revisor]] : [])];
+}
+const totalDe = (u) => u.total?.usdEstimado ?? u.usdEstimado ?? 0;
+const ORIGEM = { sintese: 'síntese', reexecucao: 'nova síntese', correcao: 'correção', edicao: 'edição' };
+
 function resumo(v, lado) {
   const u = v.uso ?? {};
-  const ch = u.chamadas ?? {};
-  const dur = Object.values(ch).reduce((t, c) => t + (c.duracaoMs ?? 0), 0);
+  const ch = chamadasDe(u);
+  const dur = ch.filter(([k]) => ['enquadrar', 'preparar_conversa', 'montar_analise'].includes(k)).reduce((t, [, c]) => t + (c.duracaoMs ?? 0), 0);
   const ps = v.verificacao?.pendencias ?? [];
   const tipos = ps.reduce((t, p) => (t[p.tipo] = (t[p.tipo] ?? 0) + 1, t), {});
   const l = v.lead;
   return '<div class="card"><div class="rot"><span class="lado ' + lado + '">' + lado.toUpperCase() + '</span><span class="contagem">' + v.id + '</span></div>' +
     '<h3>' + esc(nomeModelo(v.modelo)) + '</h3><dl class="meta">' +
+    '<dt>origem</dt><dd>' + esc(ORIGEM[v.origem] ?? v.origem ?? 'síntese') + (v.baseadaEm ? ' a partir de ' + esc(v.baseadaEm) : '') + '</dd>' +
     '<dt>esforço</dt><dd>' + esc(v.esforco) + '</dd>' +
     '<dt>criada em</dt><dd>' + quando(v.criadaEm) + '</dd>' +
     '<dt>análise</dt><dd>' + (l ? esc(rotulo[l.quadrante] ?? l.quadrante) + ' ' + esc(l.grau) + ' · ' + l.pontos + ' pontos · ' + esc(rotulo[l.destino] ?? l.destino) : '–') + '</dd>' +
     '<dt>escopo</dt><dd>' + esc(v.enquadramento?.escopo ?? '–') + ' · porta ' + esc(v.enquadramento?.portaProvavel ?? '–') + '</dd>' +
     '<dt>riscos</dt><dd>' + esc((v.enquadramento?.riscos ?? []).join(', ') || 'nenhum') + '</dd>' +
-    '<dt>custo</dt><dd>síntese ' + usd((u.usdEstimado ?? 0) - (u.revisor?.usdEstimado ?? 0)) + ' · revisor ' + usd(u.revisor?.usdEstimado) + ' · total ' + usd(u.usdEstimado) + '</dd>' +
-    '<dt>tokens</dt><dd>' + Object.entries(ch).map(([k, c]) => esc(k) + ' ' + c.tokensEntrada + '/' + c.tokensSaida).join(' · ') + '</dd>' +
+    '<dt>chamadas</dt><dd>' + (ch.map(([k, c]) => esc(k) + (c.modelo ? ' (' + esc(nomeModelo(c.modelo)) + (c.esforco ? ', ' + esc(c.esforco) : '') + ')' : '') + ': ' + usd(c.usdEstimado) + ' · ' + c.tokensEntrada + '/' + c.tokensSaida + ' tokens' + (c.cacheLidos !== undefined ? ' · cache ' + c.cacheLidos + ' lidos / ' + c.cacheEscritos + ' gravados' : '') + (c.duracaoMs ? ' · ' + Math.round(c.duracaoMs / 1000) + ' s' : '')).join('<br>') || '–') + '</dd>' +
+    '<dt>custo</dt><dd>total da versão ' + usd(totalDe(u)) + (u.total?.usdSemCache !== undefined ? ' (sem cache ' + usd(u.total.usdSemCache) + ')' : '') + '</dd>' +
     '<dt>tempo</dt><dd>' + (dur ? Math.round(dur / 1000) + ' s nas três chamadas' : 'não medido') + '</dd>' +
     '<dt>verificação</dt><dd>' + esc(v.verificacao?.status ?? '–') + ' · ' + ps.length + ' pendências' + (ps.length ? ' (' + Object.entries(tipos).map(([k, n]) => esc(k) + ' ' + n).join(', ') + ')' : '') + '</dd>' +
     '</dl></div>';
@@ -243,10 +259,29 @@ const perguntas = (v) => {
   const a = (c.pontosDeAtencao ?? []).map((x) => '<li>' + inline(x) + '</li>').join('');
   return '<h4>Perguntas</h4><ol>' + (p || '<li class="vazia">nenhuma</li>') + '</ol><h4>Materiais</h4><ul>' + (m || '<li class="vazia">nenhum</li>') + '</ul><h4>Pontos de atenção</h4><ul>' + (a || '<li class="vazia">nenhum</li>') + '</ul>';
 };
+const itemPend = (p) => '<li><span class="tag' + (p.tipo === 'escopo' ? ' escopo' : '') + '">' + esc(p.tipo) + (p.regra ? ' · ' + esc(p.regra) : '') + '</span>' +
+  (p.tratamento ? '<span class="tag">' + esc(p.tratamento) + '</span>' : '') + '<span class="contagem">' + esc(p.secao) + '</span><br>' + esc(p.trecho ?? p.texto ?? '') +
+  (p.correcaoSugerida ? '<br><span class="contagem">correção sugerida: ' + esc(p.correcaoSugerida) + '</span>' : '') + (p.razao ? '<br><span class="contagem">mantida porque: ' + esc(p.razao) + '</span>' : '') + '</li>';
+// Scope and reading issues first; mechanical ones collapsed below (alterações, seção 7, item 7).
 const pendencias = (v) => {
-  const ps = [...(v.verificacao?.pendencias ?? [])].sort((x, y) => (y.tipo === 'escopo') - (x.tipo === 'escopo'));
+  const ps = v.verificacao?.pendencias ?? [];
   if (!ps.length) return '<p class="vazia">sem pendências</p>';
-  return '<ul class="pend">' + ps.map((p) => '<li><span class="tag' + (p.tipo === 'escopo' ? ' escopo' : '') + '">' + esc(p.tipo) + (p.regra ? ' · ' + esc(p.regra) : '') + '</span><span class="contagem">' + esc(p.secao) + '</span><br>' + esc(p.trecho ?? p.texto ?? '') + (p.correcaoSugerida ? '<br><span class="contagem">correção: ' + esc(p.correcaoSugerida) + '</span>' : '') + '</li>').join('') + '</ul>';
+  const leitura = ps.filter((p) => p.tipo !== 'mecanica').sort((x, y) => (y.tipo === 'escopo') - (x.tipo === 'escopo'));
+  const mecanicas = ps.filter((p) => p.tipo === 'mecanica');
+  return (leitura.length ? '<ul class="pend">' + leitura.map(itemPend).join('') + '</ul>' : '<p class="vazia">sem pendências de escopo ou de leitura</p>') +
+    (mecanicas.length ? '<details><summary>Pendências mecânicas (' + mecanicas.length + ')</summary><ul class="pend">' + mecanicas.map(itemPend).join('') + '</ul></details>' : '');
+};
+// Repairs, warnings and the reviewer checklist (violations first, then the count of the rest).
+const diagnostico = (v) => {
+  const ver = v.verificacao ?? {};
+  const rep = (ver.reparos ?? []).map((r) => '<li><span class="tag">' + esc(r.regra) + '</span><span class="contagem">' + esc(r.etapa) + ' · ' + (r.aceito ? 'aceito' : 'rejeitado') + '</span><br>' + esc(r.trechoAntes) + (r.trechoDepois ? '<br>→ ' + esc(r.trechoDepois) : '') + '</li>').join('');
+  const avi = (ver.avisos ?? []).map((a) => '<li>' + esc(a) + '</li>').join('');
+  const ck = ver.checklist ?? [];
+  const violadas = ck.filter((c) => c.resultado === 'violado').map((c) => '<li><span class="tag escopo">' + esc(c.regra) + '</span><span class="contagem">' + esc(c.secao ?? '') + '</span><br>' + esc(c.trecho ?? '') + '</li>').join('');
+  const conta = (r) => ck.filter((c) => c.resultado === r).length;
+  return '<h4>Reparos</h4>' + (rep ? '<ul class="pend">' + rep + '</ul>' : '<p class="vazia">nenhum</p>') +
+    '<h4>Avisos</h4>' + (avi ? '<ul>' + avi + '</ul>' : '<p class="vazia">nenhum</p>') +
+    '<h4>Checklist do revisor</h4>' + (ck.length ? '<p class="contagem">' + conta('violado') + ' violadas · ' + conta('conforme') + ' conformes · ' + conta('nao_aplicavel') + ' não aplicáveis</p>' + (violadas ? '<ul class="pend">' + violadas + '</ul>' : '') : '<p class="vazia">sem checklist</p>');
 };
 
 function desenha() {
@@ -262,6 +297,7 @@ function desenha() {
   blocos.push(par('Rascunho da resposta', rascunho(a), rascunho(b), a.rascunhoResposta?.corpo, b.rascunhoResposta?.corpo));
   blocos.push(par('Preparação da conversa', perguntas(a), perguntas(b), null, null, false));
   blocos.push(par('Pendências da verificação', pendencias(a), pendencias(b), null, null, false));
+  blocos.push(par('Reparos, avisos e checklist', diagnostico(a), diagnostico(b), null, null, false));
   $('#conteudo').innerHTML = blocos.join('');
 }
 

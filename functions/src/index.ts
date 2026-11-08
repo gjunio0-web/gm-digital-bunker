@@ -12,3 +12,4 @@ export { coletarMinima } from './coletarMinima.js';
 export { coletar } from './coletar.js';
 export { sintetizar } from './sintetizar.js';
 export { verificar } from './verificar.js';
+export { sondarCache } from './sondarCache.js';

@@ -10,12 +10,18 @@
 // "coletada": the failed ones by default, or the stages given in --etapas=empresa_registro,empresa_pessoas
 // (any of the six); a new synthesis (v+1) follows by itself. --sintese re-runs only the synthesis of test
 // fichas in coletada, sintetizando (stopped by an error), analise_pronta or analise_com_pendencias.
-// --ficha=<id>[,<id>…] limits it to those fichas; --uma-por-vez runs one ficha at a time. The cost printed for a
+// With --sintese, the model and effort of the three synthesis stages can be set for that run only (phase B2,
+// spec/alteracoes-specs-01-02-portoes-correcao.md, section 7), without touching config/pipeline:
+// --desenho=A (Sonnet 5.5 in the three stages) or --desenho=C (Sonnet 5.5 in enquadrar, Haiku 5.5 in
+// preparar_conversa and montar_analise), and/or --modelos=etapa:modelo,… and --esforco=etapa:nivel,…;
+// without --esforco the effort is the one of config/pipeline. They are written in fichas/{id}.parametrosSintese,
+// which sintetizar takes and clears. --ficha=<id>[,<id>…] limits it to those fichas; --uma-por-vez runs one ficha at a time. The cost printed for a
 // re-run is the cost of that re-run only. Report without personal data.
 import { readFileSync } from 'node:fs';
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { valida } from '../lib/validacao.js';
+import { problemasDosParametros } from '../lib/modelos.js';
 
 const ETAPAS = ['empresa_digital', 'empresa_registro', 'empresa_pessoas', 'empresa_noticias', 'setor', 'mercado'];
 const opcoes = process.argv.slice(2).filter((a) => a.startsWith('--') && a !== '--reexecutar' && a !== '--sintese');
@@ -25,12 +31,35 @@ const soFichas = (opcoes.find((a) => a.startsWith('--ficha=')) ?? '--ficha=').sl
 const fora = (id) => soFichas.length > 0 && !soFichas.includes(id);
 const forcar = (opcoes.find((a) => a.startsWith('--etapas=')) ?? '--etapas=').slice(9).split(',').filter(Boolean);
 const invalidas = forcar.filter((e) => !ETAPAS.includes(e));
-if (!projeto || !arquivo || invalidas.length || opcoes.some((a) => a !== '--uma-por-vez' && !a.startsWith('--etapas=') && !a.startsWith('--ficha='))) {
-  console.error('Usage: npm run fichas-teste -- <project id> <file.json> | --reexecutar [--etapas=a,b] [--ficha=<id>] [--uma-por-vez] | --sintese [--ficha=<id>] [--uma-por-vez]');
+// Run parameters of a synthesis re-run (model IDs as in the Claude API documentation).
+const DESENHOS = {
+  A: { enquadrar: 'claude-sonnet-5-5', preparar_conversa: 'claude-sonnet-5-5', montar_analise: 'claude-sonnet-5-5' },
+  C: { enquadrar: 'claude-sonnet-5-5', preparar_conversa: 'claude-haiku-5-5', montar_analise: 'claude-haiku-5-5' },
+};
+const valorDe = (prefixo) => opcoes.find((a) => a.startsWith(prefixo))?.slice(prefixo.length) ?? null;
+const pares = (t) => Object.fromEntries((t ?? '').split(',').filter(Boolean).map((x) => x.split(':')));
+const desenho = valorDe('--desenho=');
+const parametros = {
+  ...(desenho || valorDe('--modelos=') ? { modelos: { ...(desenho ? DESENHOS[desenho.toUpperCase()] ?? { invalido: desenho } : {}), ...pares(valorDe('--modelos=')) } } : {}),
+  ...(valorDe('--esforco=') ? { esforco: pares(valorDe('--esforco=')) } : {}),
+};
+const comParametros = Object.keys(parametros).length > 0;
+const OPCOES = ['--uma-por-vez', '--etapas=', '--ficha=', '--desenho=', '--modelos=', '--esforco='];
+if (!projeto || !arquivo || invalidas.length || opcoes.some((a) => !OPCOES.some((o) => (o.endsWith('=') ? a.startsWith(o) : a === o))) || (comParametros && arquivo !== '--sintese')) {
+  console.error('Usage: npm run fichas-teste -- <project id> <file.json> | --reexecutar [--etapas=a,b] [--ficha=<id>] [--uma-por-vez] | --sintese [--desenho=A|C] [--modelos=etapa:modelo,…] [--esforco=etapa:nivel,…] [--ficha=<id>] [--uma-por-vez]');
   process.exit(1);
 }
 initializeApp({ projectId: projeto });
 const db = getFirestore();
+if (comParametros) {
+  const conhecidos = Object.keys((await db.doc('config/precos').get()).get('modelos') ?? {});
+  const problemas = problemasDosParametros(parametros, conhecidos);
+  if (problemas.length) {
+    console.error(`Invalid run parameters: ${problemas.join('; ')}`);
+    process.exit(1);
+  }
+  console.log(`run parameters: ${JSON.stringify(parametros)}`);
+}
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 const DIA_MS = 86_400_000;
 
@@ -92,7 +121,7 @@ async function reabre(c) {
     c.usdAntes = (await c.ref.get()).get('custo.usdEstimado') ?? 0;
     c.versaoAntes = (await c.ref.get()).get('analiseAtual') ?? null;
     const atual = (await c.ref.get()).get('estado');
-    await c.ref.update({ estado: atual === 'coletada' ? 'coletando' : 'coletada', estadoEm: Timestamp.now(), erro: null });
+    await c.ref.update({ estado: atual === 'coletada' ? 'coletando' : 'coletada', estadoEm: Timestamp.now(), erro: null, ...(comParametros ? { parametrosSintese: parametros } : {}) });
     console.log(`  ${c.ref.id}: synthesis from ${atual}`);
     return;
   }
@@ -136,10 +165,15 @@ async function relata(c) {
     const a = (await c.ref.collection('analise').doc(d.analiseAtual).get()).data();
     const ps = a?.verificacao?.pendencias ?? [];
     const porTipo = ps.reduce((t, x) => ({ ...t, [x.tipo]: (t[x.tipo] ?? 0) + 1 }), {});
-    const ch = a?.uso?.chamadas ?? {};
-    console.log(`  análise ${d.analiseAtual}: ${a?.verificacao?.status ?? 'sem verificação'} – pendências ${ps.length}${ps.length ? ` (${Object.entries(porTipo).map(([k, v]) => `${k} ${v}`).join(', ')})` : ''} – porta ${a?.enquadramento?.portaProvavel} – escopo ${a?.enquadramento?.escopo}`);
-    console.log(`  síntese (esforço ${a?.uso?.esforco ?? '-'}): ${Object.entries(ch).map(([k, v]) => `${k} ${v.tokensEntrada}/${v.tokensSaida} ${Math.round((v.duracaoMs ?? 0) / 1000)}s US$ ${(v.usdEstimado ?? 0).toFixed(4)}`).join(' – ')} – revisor US$ ${(a?.uso?.revisor?.usdEstimado ?? 0).toFixed(4)} – total da versão US$ ${(a?.uso?.usdEstimado ?? 0).toFixed(4)}`);
-    for (const x of ps.slice(0, 12)) console.log(`      [${x.tipo}] ${x.secao}: ${x.regra ? `(${x.regra}) ` : ''}${String(x.trecho ?? x.texto).slice(0, 150)}`);
+    console.log(`  análise ${d.analiseAtual} (${a?.autor?.origem ?? 'sintese'}${a?.baseadaEm ? ` a partir de ${a.baseadaEm}` : ''}): ${a?.verificacao?.status ?? 'sem verificação'} – pendências ${ps.length}${ps.length ? ` (${Object.entries(porTipo).map(([k, v]) => `${k} ${v}`).join(', ')})` : ''} – porta ${a?.enquadramento?.portaProvavel} – escopo ${a?.enquadramento?.escopo}`);
+    // Usage per call (spec 01 v0.11) of the current version and, for a correction, of its base.
+    const versoes = [a, ...(a?.baseadaEm && a?.autor?.origem === 'correcao' ? [(await c.ref.collection('analise').doc(a.baseadaEm).get()).data()] : [])];
+    for (const v of versoes.filter(Boolean).reverse()) {
+      const u = v.uso ?? {};
+      const linhas = Object.entries(u).filter(([k]) => k !== 'total').flatMap(([k, x]) => (Array.isArray(x) ? x.map((y) => [`${k}·${y.origem}`, y]) : [[k, x]]));
+      console.log(`  uso ${v === a ? d.analiseAtual : a.baseadaEm}: ${linhas.map(([k, x]) => `${k} ${x.modelo ?? ''} ${x.esforco ?? ''} ${x.tokensEntrada}/${x.tokensSaida} cache ${x.cacheLidos ?? 0}/${x.cacheEscritos ?? 0} ${Math.round((x.duracaoMs ?? 0) / 1000)}s US$ ${(x.usdEstimado ?? 0).toFixed(4)}`).join(' – ')} – total US$ ${(u.total?.usdEstimado ?? u.usdEstimado ?? 0).toFixed(4)}`);
+    }
+    for (const x of ps.slice(0, 12)) console.log(`      [${x.tipo}${x.tratamento ? ` – ${x.tratamento}` : ''}] ${x.secao}: ${x.regra ? `(${x.regra}) ` : ''}${String(x.trecho ?? x.texto).slice(0, 150)}`);
   }
   const usd = (d?.custo?.usdEstimado ?? 0) - (c.usdAntes ?? 0);
   console.log(`  custo ${c.reexecucao ? 'desta reexecução' : 'da ficha'}: US$ ${usd.toFixed(4)} – buscas da ficha ${d?.custo?.buscas ?? 0}`);

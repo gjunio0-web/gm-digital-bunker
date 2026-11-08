@@ -12,7 +12,7 @@ import { CLAUDE_API_KEY, REGIAO } from './config.js';
 import { lePipeline } from './pipeline.js';
 import { chamaClaude, ErroComUso, noEmulador, type Resposta } from './claude.js';
 import { lePrecos } from './precos.js';
-import { chaveDesenho, esforcoApi, esforcoDe, modeloDe } from './modelos.js';
+import { ETAPAS_SINTESE, chaveDesenho, comParametros, esforcoApi, esforcoDe, modeloDe, type EtapaSintese, type ParametrosSintese } from './modelos.js';
 import { promptDe, totalDe, usoChamada, type UsoChamada } from './uso.js';
 import { leMetodo } from './metodo.js';
 import { nomesDosGraus } from './metodoRegras.js';
@@ -44,22 +44,25 @@ export const sintetizar = onDocumentUpdated(
     // Usage of each call made, kept even when a later call fails (a billed call is paid for).
     const registros: Record<string, UsoChamada> = {};
     try {
-      const p = await lePipeline();
+      const configuracao = await lePipeline();
       const precos = await lePrecos();
-      const ETAPAS_SINTESE = ['enquadrar', 'preparar_conversa', 'montar_analise'] as const;
-      const modelos = Object.fromEntries(ETAPAS_SINTESE.map((e) => [e, noEmulador() ? 'simulado' : modeloDe(p, e)])) as Record<(typeof ETAPAS_SINTESE)[number], string>;
-      const vazio = ETAPAS_SINTESE.find((e) => !modelos[e]);
-      if (vazio) throw new Error(`config/pipeline.modelos.${vazio} is empty`);
 
-      // Claim: the transaction gives up if another delivery of the event got here first.
+      // Claim: the transaction gives up if another delivery of the event got here first. It also takes the run
+      // parameters of a re-run (parametrosSintese, phase B2) and clears them, so they serve one run only.
       let ficou = false;
+      let parametros: ParametrosSintese | null = null;
       await db.runTransaction(async (tx) => {
         const f = (await tx.get(ref)).data();
         if (!f || f.estado !== 'coletada' || !(f.estadoEm as Timestamp).isEqual(depois.estadoEm as Timestamp)) return;
         ficou = true;
-        tx.update(ref, { estado: 'sintetizando', estadoEm: Timestamp.now(), erro: null });
+        parametros = (f.parametrosSintese as ParametrosSintese | undefined) ?? null;
+        tx.update(ref, { estado: 'sintetizando', estadoEm: Timestamp.now(), erro: null, ...(parametros ? { parametrosSintese: FieldValue.delete() } : {}) });
       });
       if (!ficou) return;
+      const p = comParametros(configuracao, parametros);
+      const modelos = Object.fromEntries(ETAPAS_SINTESE.map((e) => [e, noEmulador() ? 'simulado' : modeloDe(p, e)])) as Record<EtapaSintese, string>;
+      const vazio = ETAPAS_SINTESE.find((e) => !modelos[e]);
+      if (vazio) throw new Error(`config/pipeline.modelos.${vazio} is empty`);
 
       const original = depois.original as Original;
       const normalizado = depois.normalizado as Normalizado;
@@ -79,7 +82,7 @@ export const sintetizar = onDocumentUpdated(
       const graus = listaDeGraus(nomesDosGraus(blocos.find((b) => b.nome === 'escopo-limites.md')?.texto ?? ''));
       // Each call with the model and effort of its stage (config/pipeline). A failed call names itself in
       // the error and, when it was billed, still counts in the cost.
-      const chama = async (nome: (typeof ETAPAS_SINTESE)[number], usuario: { texto: string; cache?: boolean }[], esquema: object, simulado: () => unknown): Promise<unknown> => {
+      const chama = async (nome: EtapaSintese, usuario: { texto: string; cache?: boolean }[], esquema: object, simulado: () => unknown): Promise<unknown> => {
         const esforco = esforcoDe(p, nome);
         if (noEmulador()) {
           registros[nome] = usoChamada(precos, modelos[nome], esforco, null, 0);
@@ -129,6 +132,8 @@ export const sintetizar = onDocumentUpdated(
           // Origin of the version (spec 01 v0.11): the first synthesis or a re-run; a correction writes its own.
           autor: { tipo: 'ia', id: modelo, origem: anteriores.size ? 'reexecucao' : 'sintese' },
           baseadaEm: f.analiseAtual ?? null,
+          // Run parameters of a re-run (phase B2); verificar reads them for reparar and corrigir.
+          parametrosSintese: parametros,
           versaoMetodo: metodo.versao,
           secoes,
           enquadramento: enquadramentoGravado(enq),

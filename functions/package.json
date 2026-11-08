@@ -16,6 +16,7 @@
     "configurar": "npm run build && node lib/configurar.js",
     "migrar-pipeline": "npm run build && node lib/migrarPipeline.js",
     "publicar-metodo": "npm run build && node scripts/publicar-metodo.mjs",
+    "sondar-cache": "node scripts/sondar-cache.mjs",
     "fichas-teste": "npm run build && node scripts/fichas-teste.mjs"
   },
   "dependencies": {

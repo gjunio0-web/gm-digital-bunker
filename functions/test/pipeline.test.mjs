@@ -93,3 +93,20 @@ test('uso per call: cache apart, totals summed, prompt for the ficha as before',
   assert.equal(t.usdEstimado, 0.033);
   assert.equal(promptDe([a, b]), 15_000);
 });
+
+test('run parameters of a synthesis re-run (phase B2): validated, put over the configuration, inherited by reparar and corrigir', async () => {
+  const { problemasDosParametros, comParametros, modeloDe, esforcoDe } = await import('../lib/modelos.js');
+  const conhecidos = ['claude-sonnet-5-5', 'claude-haiku-5-5'];
+  const c = { modelos: { preparar_conversa: 'claude-haiku-5-5', montar_analise: 'claude-haiku-5-5' } };
+  assert.deepEqual(problemasDosParametros(c, conhecidos), []);
+  assert.equal(problemasDosParametros({ modelos: { revisor: 'claude-haiku-5-5' } }, conhecidos).length, 1);
+  assert.equal(problemasDosParametros({ esforco: { enquadrar: 'high' } }, conhecidos).length, 1);
+  const p = combinaPipeline({ modelos: { enquadrar: 'claude-sonnet-5-5', preparar_conversa: 'claude-sonnet-5-5', montar_analise: 'claude-sonnet-5-5', revisor: 'claude-sonnet-5-5' }, esforco: { montar_analise: 'medio' } });
+  const q = comParametros(p, c);
+  assert.equal(modeloDe(q, 'montar_analise'), 'claude-haiku-5-5');
+  assert.equal(modeloDe(q, 'corrigir'), 'claude-haiku-5-5');
+  assert.equal(modeloDe(q, 'reparar', 'preparar_conversa'), 'claude-haiku-5-5');
+  assert.equal(modeloDe(q, 'revisor'), 'claude-sonnet-5-5');
+  assert.equal(esforcoDe(q, 'montar_analise'), 'medio');
+  assert.equal(comParametros(p, null), p);
+});
