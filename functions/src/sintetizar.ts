@@ -13,7 +13,7 @@ import { lePipeline } from './pipeline.js';
 import { chamaClaude, ErroComUso, noEmulador, type Resposta } from './claude.js';
 import { lePrecos } from './precos.js';
 import { ETAPAS_SINTESE, chaveDesenho, comParametros, esforcoApi, esforcoDe, modeloDe, type EtapaSintese, type ParametrosSintese } from './modelos.js';
-import { promptDe, totalDe, usoChamada, type UsoChamada } from './uso.js';
+import { custoNaFicha, promptDe, totalDe, usoChamada, type UsoChamada } from './uso.js';
 import { leMetodo } from './metodo.js';
 import { nomesDosGraus } from './metodoRegras.js';
 import { graduaAnalise } from './graduar.js';
@@ -82,10 +82,16 @@ export const sintetizar = onDocumentUpdated(
       const graus = listaDeGraus(nomesDosGraus(blocos.find((b) => b.nome === 'escopo-limites.md')?.texto ?? ''));
       // Each call with the model and effort of its stage (config/pipeline). A failed call names itself in
       // the error and, when it was billed, still counts in the cost.
+      // Progress (phase 6, item 3b): after each call, the stage done and its usage in sinteseEmCurso, and its cost
+      // in the ficha at once; the closing does not add them again.
+      const progresso = (nome: EtapaSintese, u: UsoChamada) =>
+        ref.update({ [`sinteseEmCurso.${nome}`]: u, 'sinteseEmCurso.atualizadoEm': Timestamp.now(), ...custoNaFicha(u) }).catch((e) =>
+          logger.warn('sintetizar: progress not written', { id, nome, mensagem: String((e as Error)?.message ?? e).slice(0, 200) }));
       const chama = async (nome: EtapaSintese, usuario: { texto: string; cache?: boolean }[], esquema: object, simulado: () => unknown): Promise<unknown> => {
         const esforco = esforcoDe(p, nome);
         if (noEmulador()) {
           registros[nome] = usoChamada(precos, modelos[nome], esforco, null, 0);
+          await progresso(nome, registros[nome]);
           return simulado();
         }
         let r: Resposta | null = null;
@@ -94,10 +100,16 @@ export const sintetizar = onDocumentUpdated(
           r = await chamaClaude({ chave: CLAUDE_API_KEY.value(), modelo: modelos[nome], metodo: blocos, usuario, esquema, maxTokens: MAX_TOKENS[nome], timeoutMs: TIMEOUT_CHAMADA_MS, esforco: esforcoApi(esforco) });
           return r.json;
         } catch (e) {
-          if (e instanceof ErroComUso) registros[nome] = usoChamada(precos, modelos[nome], esforco, e.uso, Date.now() - inicio);
+          if (e instanceof ErroComUso) {
+            registros[nome] = usoChamada(precos, modelos[nome], esforco, e.uso, Date.now() - inicio);
+            await progresso(nome, registros[nome]);
+          }
           throw new Error(`${nome}: ${String((e as Error)?.message ?? e)}`);
         } finally {
-          if (r) registros[nome] = usoChamada(precos, modelos[nome], esforco, r.uso, Date.now() - inicio);
+          if (r) {
+            registros[nome] = usoChamada(precos, modelos[nome], esforco, r.uso, Date.now() - inicio);
+            await progresso(nome, registros[nome]);
+          }
         }
       };
 
@@ -143,12 +155,8 @@ export const sintetizar = onDocumentUpdated(
           uso: { ...registros, total },
           criadaEm,
         });
-        tx.update(ref, {
-          analiseAtual: versao,
-          'custo.tokensEntrada': FieldValue.increment(promptDe(chamadas)),
-          'custo.tokensSaida': FieldValue.increment(total.tokensSaida),
-          'custo.usdEstimado': FieldValue.increment(usd),
-        });
+        // The cost of each call is already in the ficha (progresso).
+        tx.update(ref, { analiseAtual: versao, sinteseEmCurso: FieldValue.delete() });
         tx.create(ref.collection('eventos').doc(), { em: criadaEm, ator: { tipo: 'ia', id: 'sintetizar' }, tipo: 'sintese', detalhe: { versao, desenho, usdEstimado: usd } });
         // metricas: the synthesis cost as before, and the comparison by design (spec 01 v0.11, metricas).
         tx.set(
@@ -165,17 +173,8 @@ export const sintetizar = onDocumentUpdated(
     } catch (e) {
       const mensagem = String((e as Error)?.message ?? e).slice(0, 500);
       logger.error('sintetizar failed', { id, mensagem });
-      // Calls already made are paid for: their cost goes to the ficha even when the synthesis fails.
-      const ks = Object.values(registros);
-      const t = totalDe(ks);
-      const custo = ks.length
-        ? {
-            'custo.tokensEntrada': FieldValue.increment(promptDe(ks)),
-            'custo.tokensSaida': FieldValue.increment(t.tokensSaida),
-            'custo.usdEstimado': FieldValue.increment(t.usdEstimado),
-          }
-        : {};
-      await ref.update({ erro: { etapa: 'sintetizar', mensagem, em: Timestamp.now() }, ...custo }).catch(() => undefined);
+      // Calls already made are paid for: their cost went to the ficha after each one (progresso).
+      await ref.update({ erro: { etapa: 'sintetizar', mensagem, em: Timestamp.now() }, sinteseEmCurso: FieldValue.delete() }).catch(() => undefined);
     }
   },
 );

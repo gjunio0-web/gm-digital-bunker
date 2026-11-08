@@ -66,6 +66,11 @@ export const PIPELINE_PADRAO = {
   limiarReparo: 0.02,
   correcaoAtiva: true,
   autoAnalisar: true,
+  // Phase 6 (decisions of Gon, 8/11/2026): fichas stopped in coletando or sintetizando longer than this are
+  // marked with an interruption error by vigiar; at most this many fichas per day (São Paulo) go from the
+  // triagem to the analysis, null for no ceiling.
+  prazoParadaMin: 30,
+  maxAnalisesPorDia: 10 as number | null,
   prazoGuardaDias: 90,
   prazoGuardaDiasBreve: 30,
   limiteFichasPorEmailPorDia: 3,
@@ -87,6 +92,8 @@ export interface Pipeline {
   limiarReparo: number;
   correcaoAtiva: boolean;
   autoAnalisar: boolean;
+  prazoParadaMin: number;
+  maxAnalisesPorDia: number | null;
   prazoGuardaDias: number;
   prazoGuardaDiasBreve: number;
   limiteFichasPorEmailPorDia: number;

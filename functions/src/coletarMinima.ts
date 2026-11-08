@@ -6,7 +6,8 @@
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions';
 import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { APOLLO_API_KEY, CLAUDE_API_KEY, REGIAO } from './config.js';
+import { APOLLO_API_KEY, CLAUDE_API_KEY, REGIAO, SMTP2GO_API_KEY } from './config.js';
+import { avisoTeto } from './email.js';
 import { lePipeline } from './pipeline.js';
 import { lePrecos } from './precos.js';
 import { modeloDe } from './modelos.js';
@@ -20,7 +21,7 @@ import { graduaTriagem } from './graduar.js';
 import type { Normalizado, Original } from './validacao.js';
 
 export const coletarMinima = onDocumentCreated(
-  { document: 'fichas/{id}', region: REGIAO, secrets: [CLAUDE_API_KEY, APOLLO_API_KEY], memory: '1GiB', timeoutSeconds: 540, maxInstances: 5, retry: false },
+  { document: 'fichas/{id}', region: REGIAO, secrets: [CLAUDE_API_KEY, APOLLO_API_KEY, SMTP2GO_API_KEY], memory: '1GiB', timeoutSeconds: 540, maxInstances: 5, retry: false },
   async (evento) => {
     const id = evento.params.id;
     const db = getFirestore();
@@ -100,6 +101,10 @@ export const coletarMinima = onDocumentCreated(
       const decisao = await qualifica(ref, p, claude);
       etapa = 'graduar';
       const g = await graduaTriagem(ref, p);
+      if (g?.avisarTeto) {
+        await avisoTeto(noEmulador() ? '' : SMTP2GO_API_KEY.value(), g.avisarTeto.teto, g.avisarTeto.dia).catch((e) =>
+          logger.error('coletarMinima: ceiling notice failed', { id, mensagem: String((e as Error)?.message ?? e).slice(0, 300) }));
+      }
       logger.info('coletarMinima: done', { id, buscas: t.buscas, usd, decisao, quadrante: g?.lead.quadrante, grau: g?.lead.grau, estado: g?.estado });
     } catch (e) {
       const mensagem = String((e as Error)?.message ?? e).slice(0, 500);

@@ -13,6 +13,8 @@ import { deleteApp, initializeApp } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { leMetodo } from '../lib/metodo.js';
 import { ARQUIVOS_METODO } from '../lib/metodoArquivos.js';
+import { reivindicaVerificacao } from '../lib/reivindicacao.js';
+import { diaDeSaoPaulo } from '../lib/graduar.js';
 
 const PROJETO = 'gmdb-qualidade';
 // The in-process admin app must talk to the emulators, never to the real project.
@@ -55,6 +57,8 @@ const mapa = (v) => v.mapValue.fields;
 before(async () => {
   // More than 5 fichas come from the same IP here: raise the per-IP limit for the run (per-e-mail stays at 3).
   assert.equal((await grava('config/pipeline', { limiteFichasPorIpPorHora: { integerValue: '50' } })).status, 200);
+  // The run sends more fichas to analysis than the default daily ceiling (10); the ceiling has its own test.
+  assert.equal((await grava('config/pipeline', { maxAnalisesPorDia: { integerValue: '100' } })).status, 200);
 });
 
 const valida = { nome: 'Teste', empresa: 'ACME', cargo: 'ceo', email: 'teste@acme.com.br', site: 'acme.com.br', mensagem: '', lang: 'pt-BR', pagina: '/contato' };
@@ -315,6 +319,46 @@ test('autoAnalisar off: a ficha sent to analysis by the triagem stays in qualifi
     assert.equal((await lista(`fichas/${id}/coleta`)).length, 2);
   } finally {
     await grava('config/pipeline', { autoAnalisar: { booleanValue: true } });
+  }
+});
+
+test('daily ceiling: with the count of the day at the ceiling, a ficha for analysis stays in qualificada with teto_diario', { timeout: 60_000 }, async () => {
+  const dia = diaDeSaoPaulo(new Date());
+  const n = Number((await le(`controle/analises-${dia}`)).fields?.n?.integerValue ?? 0);
+  assert.equal((await grava('config/pipeline', { maxAnalisesPorDia: { integerValue: String(n) } })).status, 200);
+  try {
+    const { id } = await (await envia({ ...media, email: 'teto@acme.com.br' })).json();
+    const f = await ate(id, (x) => estado('qualificada')(x) && x.lead);
+    assert.equal(mapa(f.lead).quadrante.stringValue, 'priorizar');
+    await espera(1500);
+    assert.equal((await le(`fichas/${id}`)).fields.estado.stringValue, 'qualificada');
+    const ev = (await eventos(id)).find((e) => e.tipo.stringValue === 'teto_diario');
+    assert.ok(ev, 'teto_diario event');
+    const c = (await le(`controle/analises-${dia}`)).fields;
+    assert.equal(Number(c.n.integerValue), n);
+    assert.ok(Number(c.retidas.integerValue) >= 1);
+    assert.equal(c.avisado.booleanValue, true);
+  } finally {
+    await grava('config/pipeline', { maxAnalisesPorDia: { integerValue: '100' } });
+  }
+});
+
+test('claim of a version: two concurrent runs, exactly one wins; a version already verified is not claimed', async () => {
+  const app = initializeApp({ projectId: PROJETO }, 'reivindicacao');
+  try {
+    const db = getFirestore(app);
+    // Outside fichas/, so no trigger runs on these documents.
+    const doc = db.collection('teste-reivindicacao').doc(`v${Date.now()}`);
+    await doc.set({ autor: { tipo: 'ia' } });
+    const r = await Promise.all([reivindicaVerificacao(db, doc), reivindicaVerificacao(db, doc)]);
+    assert.deepEqual(r.sort(), [false, true]);
+    assert.ok((await doc.get()).get('verificacaoIniciadaEm'));
+    assert.equal(await reivindicaVerificacao(db, doc), false);
+    const feita = db.collection('teste-reivindicacao').doc(`f${Date.now()}`);
+    await feita.set({ verificacao: { status: 'pronta' } });
+    assert.equal(await reivindicaVerificacao(db, feita), false);
+  } finally {
+    await deleteApp(app);
   }
 });
 

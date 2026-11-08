@@ -8,7 +8,7 @@ import { logger } from 'firebase-functions';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { DIA_MS, IP_HASH_SALT, ORIGENS_POR_PROJETO, REGIAO, SMTP2GO_API_KEY } from './config.js';
 import { lePipeline } from './pipeline.js';
-import { ehRobo, valida } from './validacao.js';
+import { ehRobo, entradasXff, ipDe, valida } from './validacao.js';
 import { aviso, confirmacao } from './email.js';
 
 const HORA_MS = 60 * 60 * 1000;
@@ -16,7 +16,6 @@ const HORA_MS = 60 * 60 * 1000;
 const projeto = () => process.env.GCLOUD_PROJECT ?? '';
 const origensPermitidas = () => ORIGENS_POR_PROJETO[projeto()] ?? [];
 
-const ipDe = (cabecalho: string | undefined, ip: string | undefined) => (cabecalho || ip || '').split(',')[0].trim();
 const hashIp = (sal: string, ip: string) => createHash('sha256').update(`${sal}:${ip}`).digest('hex');
 
 export const receberFicha = onRequest(
@@ -59,6 +58,9 @@ export const receberFicha = onRequest(
       return;
     }
 
+    // Number of X-Forwarded-For entries only, never an address (phase 6, item 6); logged before the honeypot
+    // so the check in qualidade needs no stored ficha.
+    logger.info('receberFicha: x-forwarded-for', { xffEntradas: entradasXff(req.get('x-forwarded-for')) });
     const corpo = req.body ?? {};
     // Honeypot filled: answer as accepted, store nothing.
     if (ehRobo(corpo)) {

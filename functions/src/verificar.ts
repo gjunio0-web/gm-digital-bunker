@@ -16,7 +16,8 @@ import { chamaClaude, ErroComUso, noEmulador } from './claude.js';
 import { lePrecos } from './precos.js';
 import { chaveDesenho, comParametros, esforcoApi, esforcoDe, modeloDe } from './modelos.js';
 import { promptTotal } from './custo.js';
-import { usoChamada, type UsoChamada } from './uso.js';
+import { reivindicaVerificacao } from './reivindicacao.js';
+import { custoNaFicha, semPreco, usoChamada, type UsoChamada } from './uso.js';
 import { leMetodo } from './metodo.js';
 import { confiancaFinal } from './graduar.js';
 import { avisoAnalise } from './email.js';
@@ -51,6 +52,11 @@ export const verificar = onDocumentCreated(
     const docVersao = ref.collection('analise').doc(versao);
     const ia = a.autor?.tipo === 'ia';
     try {
+      // Only one run per version (phase 6, item 2).
+      if (!(await reivindicaVerificacao(db, docVersao))) {
+        logger.info('verificar: version already claimed', { id, versao });
+        return;
+      }
       // Run parameters of the synthesis behind the version (phase B2): reparar and corrigir inherit from them.
       const p = comParametros(await lePipeline(), a.parametrosSintese ?? null);
       const f = (await ref.get()).data();
@@ -63,6 +69,10 @@ export const verificar = onDocumentCreated(
       const regras = regrasDoMetodo(Object.fromEntries(metodo.blocos.map((b) => [b.nome, b.texto])));
       const precos = await lePrecos();
       const nome = String(f.original?.nome ?? '');
+      // Cost of each call in the ficha right after it, billed failures included (phase 6, item 3b): an
+      // interruption of the function does not lose the cost already paid. The closing does not add it again.
+      const cobra = (u: UsoChamada) =>
+        ref.update(custoNaFicha(u)).catch((e) => logger.warn('verificar: cost not written', { id, versao, mensagem: String((e as Error)?.message ?? e).slice(0, 200) }));
       // Emulator: "correção" in the message makes the simulated reviewer raise one issue, to run the correction.
       const comCorrecaoSimulada = /corre[çc][ãa]o/i.test(String(f.original?.mensagem ?? ''));
       // Texts of the version, rewritten by an accepted repair.
@@ -96,20 +106,27 @@ export const verificar = onDocumentCreated(
           if (noEmulador()) {
             saida = simulaReparo(etapa, antes, lista, nome);
             usosReparo.push({ ...usoChamada(precos, modelo, esforco, null, 0), origem: etapa });
+            await cobra(usosReparo[usosReparo.length - 1]);
           } else {
             if (!modelo) throw new Error(`config/pipeline.modelos.${etapa} is empty`);
             const r = await chamaClaude({
               chave: CLAUDE_API_KEY.value(), modelo, usuario: mensagemReparar(etapa, antes, fontesDisponiveis(coleta), lista), esquema: ESQUEMA_DA_ETAPA[etapa],
               maxTokens: MAX_TOKENS_REPARO[etapa], timeoutMs: 300_000, esforco: esforcoApi(esforco),
             });
-            usosReparo.push({ ...usoChamada(precos, modelo, esforco, r.uso, Date.now() - inicio), origem: etapa });
+            const u = { ...usoChamada(precos, modelo, esforco, r.uso, Date.now() - inicio), origem: etapa };
+            usosReparo.push(u);
+            await cobra(u);
             saida = r.json;
           }
           const av = avaliaReparo(etapa, antes, saida, lista, p.limiarReparo);
           return { etapa, ...av };
         } catch (e) {
           // A failed repair call keeps the original text; its failures become issues. A billed failure counts.
-          if (e instanceof ErroComUso) usosReparo.push({ ...usoChamada(precos, modelo, esforco, e.uso, Date.now() - inicio), origem: etapa });
+          if (e instanceof ErroComUso) {
+            const u = { ...usoChamada(precos, modelo, esforco, e.uso, Date.now() - inicio), origem: etapa };
+            usosReparo.push(u);
+            await cobra(u);
+          }
           logger.warn('verificar: repair call failed', { id, versao, etapa, mensagem: String((e as Error)?.message ?? e).slice(0, 300) });
           return { etapa, ...avaliaReparo(etapa, antes, null, lista, p.limiarReparo), motivo: 'chamada falhou' };
         }
@@ -140,6 +157,7 @@ export const verificar = onDocumentCreated(
         if (noEmulador()) {
           saida = simulaRevisor(regrasChecklist, semLinks(textos.secoes.s1?.corpo ?? ''), comCorrecaoSimulada);
           usoRevisor = usoChamada(precos, modeloRevisor, esforco, null, 0);
+          await cobra(usoRevisor);
         } else {
           const metodoRevisor = await leMetodo({ 'glossario.md': 'tudo', 'escopo-limites.md': [1, 4, 5, 6, 7] });
           const inicio = Date.now();
@@ -149,17 +167,12 @@ export const verificar = onDocumentCreated(
             esforco: esforcoApi(esforco),
           }).catch(async (e) => {
             // A billed failure still counts in the cost of the ficha.
-            if (e instanceof ErroComUso) {
-              const k = usoChamada(precos, modeloRevisor ?? '', esforco, e.uso, Date.now() - inicio);
-              await ref.update({
-                'custo.tokensEntrada': FieldValue.increment(promptTotal(k)), 'custo.tokensSaida': FieldValue.increment(k.tokensSaida),
-                'custo.usdEstimado': FieldValue.increment(k.usdEstimado ?? 0),
-              }).catch(() => undefined);
-            }
+            if (e instanceof ErroComUso) await cobra(usoChamada(precos, modeloRevisor ?? '', esforco, e.uso, Date.now() - inicio));
             throw new Error(`revisor: ${String((e as Error)?.message ?? e)}`);
           });
           saida = r.json;
           usoRevisor = usoChamada(precos, modeloRevisor, esforco, r.uso, Date.now() - inicio);
+          await cobra(usoRevisor);
         }
         const rev = validaRevisor(saida);
         checklist = rev.checklist;
@@ -190,6 +203,7 @@ export const verificar = onDocumentCreated(
           if (noEmulador()) {
             saida = simulaCorrecao(analise, paraCorrigir);
             uso = usoChamada(precos, modelo, esforco, null, 0);
+            await cobra(uso);
           } else {
             if (!modelo) throw new Error('config/pipeline.modelos.corrigir is empty');
             const metodoCorrecao = await leMetodo({ 'glossario.md': 'tudo', 'escopo-limites.md': 'tudo' });
@@ -200,6 +214,7 @@ export const verificar = onDocumentCreated(
             });
             saida = r.json;
             uso = usoChamada(precos, modelo, esforco, r.uso, Date.now() - inicio);
+            await cobra(uso);
           }
           const c = validaCorrecao(saida, paraCorrigir.length);
           const { campos, avisos: avisosCorrecao } = versaoCorrigida(textos, c, coleta);
@@ -229,7 +244,10 @@ export const verificar = onDocumentCreated(
           };
         } catch (e) {
           // Without a correction, vN closes as before; a billed failure still counts.
-          if (e instanceof ErroComUso) usoCorrecaoFalha = usoChamada(precos, modelo, esforco, e.uso, Date.now() - inicio);
+          if (e instanceof ErroComUso) {
+            usoCorrecaoFalha = usoChamada(precos, modelo, esforco, e.uso, Date.now() - inicio);
+            await cobra(usoCorrecaoFalha);
+          }
           logger.warn('verificar: correction failed', { id, versao, mensagem: String((e as Error)?.message ?? e).slice(0, 300) });
         }
       }
@@ -244,6 +262,14 @@ export const verificar = onDocumentCreated(
       const usd = chamadas.reduce((t, c) => t + (c.usdEstimado ?? 0), 0);
       const daFicha = [...chamadas, ...(correcao ? [correcao.uso] : [])];
       const usdFicha = daFicha.reduce((t, c) => t + (c.usdEstimado ?? 0), 0);
+      // Calls of this version without a price in config/precos (phase 6, item 5): the synthesis (or the
+      // correction that made the version), the repairs, the reviewer and a failed correction.
+      avisos.push(...semPreco([
+        ...Object.entries((a.uso ?? {}) as Record<string, any>).filter(([k]) => k !== 'total' && k !== 'reparar' && k !== 'revisor'),
+        ...usosReparo.map((u): [string, UsoChamada] => [`reparar.${u.origem}`, u]),
+        ...(usoRevisor ? [['revisor', usoRevisor] as [string, UsoChamada]] : []),
+        ...(usoCorrecaoFalha ? [['corrigir', usoCorrecaoFalha] as [string, UsoChamada]] : []),
+      ]));
       const soma = (cs: UsoChamada[], k: 'tokensEntrada' | 'tokensSaida' | 'cacheLidos' | 'cacheEscritos' | 'duracaoMs' | 'usdSemCache') => cs.reduce((t, c) => t + (c[k] ?? 0), 0);
       const prompt = (cs: UsoChamada[]) => cs.reduce((t, c) => t + promptTotal(c), 0);
       // Design of the synthesis behind the version, for metricas.sintesePorDesenho; a correction version reads
@@ -286,11 +312,7 @@ export const verificar = onDocumentCreated(
           ...(ia && !grava && atual.analiseAtual === versao ? lead : {}),
           ...(aindaFecha ? { estado, estadoEm: agora } : {}),
           ...(grava ? { analiseAtual: correcao!.versao } : {}),
-          ...(custos.length ? {
-            'custo.tokensEntrada': FieldValue.increment(prompt(custos)),
-            'custo.tokensSaida': FieldValue.increment(soma(custos, 'tokensSaida')),
-            'custo.usdEstimado': FieldValue.increment(grava ? usdFicha : usd),
-          } : {}),
+          // The cost of each call is already in the ficha (cobra).
         };
         // A human edit changes nothing in the ficha itself.
         if (Object.keys(naFicha).length) tx.update(ref, naFicha);

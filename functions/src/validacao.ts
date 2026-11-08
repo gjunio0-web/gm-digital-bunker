@@ -85,3 +85,12 @@ export function valida(corpo: unknown): Resultado {
 // Honeypot: any content in the hidden field marks the submission as automated.
 export const ehRobo = (corpo: unknown): boolean =>
   texto((corpo as Record<string, unknown> | null)?.['empresa-site']) !== '';
+
+// Origin IP for the rate limit (phase 6, item 6): the Google front end appends the address it saw to
+// X-Forwarded-For, so the last entry is the one a client cannot forge; the first ones come from the client.
+// Hypothesis from the Load Balancer documentation, checked in qualidade by logging only the number of entries.
+export const ipDe = (cabecalho: string | undefined, ip: string | undefined) => {
+  const entradas = (cabecalho ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+  return entradas.length ? entradas[entradas.length - 1] : (ip ?? '').trim();
+};
+export const entradasXff = (cabecalho: string | undefined) => (cabecalho ?? '').split(',').filter((x) => x.trim()).length;

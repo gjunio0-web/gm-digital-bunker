@@ -107,3 +107,24 @@ export function avisoAnalise(chave: string, a: AvisoAnalise): Promise<void> {
   ].join('\n');
   return envia(chave, { para: EMAIL_CONTATO, assunto: `Análise ${a.pronta ? 'pronta' : 'com pendências'} – ${a.empresa} (${a.quadrante}, grau ${a.grau})`, corpo });
 }
+
+// Notice of fichas stopped in coletando or sintetizando beyond config/pipeline.prazoParadaMin (phase 6, item 3c):
+// company, state, how long and the link; nothing is run again by itself.
+export function avisoParadas(chave: string, paradas: { empresa: string; estado: string; minutos: number; link: string }[]): Promise<void> {
+  const corpo = [
+    `${paradas.length} ficha(s) parada(s) além do prazo; o erro de interrupção foi gravado em cada uma, sem reexecução automática.`,
+    '',
+    ...paradas.map((p) => `- ${p.empresa}: ${p.estado} há ${p.minutos} min – ${p.link}`),
+  ].join('\n');
+  return envia(chave, { para: EMAIL_CONTATO, assunto: `Fichas paradas – ${paradas.length}`, corpo });
+}
+
+// Notice that the daily ceiling of analyses was reached (phase 6, item 4): sent once per day.
+export function avisoTeto(chave: string, teto: number, dia: string): Promise<void> {
+  const corpo = [
+    `O teto diário de ${teto} análises foi atingido em ${dia}.`,
+    'As fichas seguintes que a triagem mandaria à análise ficam em "qualificada", com o evento teto_diario; podem ser mandadas à análise pelo hub.',
+    'O teto fica em config/pipeline.maxAnalisesPorDia (null desliga).',
+  ].join('\n');
+  return envia(chave, { para: EMAIL_CONTATO, assunto: `Teto diário de análises atingido – ${dia}`, corpo });
+}

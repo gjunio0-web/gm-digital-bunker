@@ -10,7 +10,14 @@ import { DIA_MS, type Pipeline } from './config.js';
 import { confianca, entradaAnalise, entradaTriagem, gradua, guardaCurta, prazoDaAnalise, prazoDaTriagem, proximoEstado, type EnquadramentoGraduacao, type Lead } from './graduacao.js';
 import { mesDe } from './qualificar.js';
 
-export async function graduaTriagem(ref: DocumentReference, p: Pipeline): Promise<{ lead: Lead; estado: string } | null> {
+// Day in São Paulo (UTC-3, no daylight saving time since 2019), for the daily ceiling of analyses.
+export const diaDeSaoPaulo = (d: Date) => new Date(d.getTime() - 3 * 3_600_000).toISOString().slice(0, 10);
+
+// Daily ceiling (phase 6, item 4; decision of Gon, 8/11/2026): config/pipeline.maxAnalisesPorDia fichas a day go
+// from the triagem to coletando; beyond it the ficha stays in qualificada with a teto_diario event. Counted in
+// controle/analises-{aaaa-mm-dd}, inside the triagem transaction; the first ficha over the ceiling asks for the
+// notice (avisarTeto), once a day.
+export async function graduaTriagem(ref: DocumentReference, p: Pipeline): Promise<{ lead: Lead; estado: string; avisarTeto: { teto: number; dia: string } | null } | null> {
   const db = getFirestore();
   const f = (await ref.get()).data();
   if (!f || f.estado !== 'qualificada' || f.lead) return null;
@@ -23,20 +30,37 @@ export async function graduaTriagem(ref: DocumentReference, p: Pipeline): Promis
   const prazo = prazoDaTriagem(lead, recebidaEm.toDate());
   const curta = guardaCurta(lead);
   const agora = Timestamp.now();
+  const dia = diaDeSaoPaulo(agora.toDate());
+  const contador = db.collection('controle').doc(`analises-${dia}`);
+  let estadoFinal: string = estado;
+  let avisarTeto: { teto: number; dia: string } | null = null;
 
   await db.runTransaction(async (tx) => {
     const atual = (await tx.get(ref)).data();
+    const conta = estado === 'coletando' && p.maxAnalisesPorDia !== null ? (await tx.get(contador)).data() ?? {} : null;
     if (!atual || atual.estado !== 'qualificada' || atual.lead || !(atual.estadoEm as Timestamp).isEqual(estadoEmLido)) throw new Error('graduar: ficha changed meanwhile');
+    estadoFinal = estado;
+    avisarTeto = null;
+    if (conta) {
+      if ((conta.n ?? 0) >= (p.maxAnalisesPorDia ?? 0)) {
+        estadoFinal = 'qualificada';
+        if (!conta.avisado) avisarTeto = { teto: p.maxAnalisesPorDia ?? 0, dia };
+        tx.set(contador, { dia, retidas: FieldValue.increment(1), avisado: true, atualizadoEm: agora }, { merge: true });
+        tx.create(ref.collection('eventos').doc(), { em: agora, ator: { tipo: 'sistema', id: 'graduar' }, tipo: 'teto_diario', detalhe: { teto: p.maxAnalisesPorDia, dia } });
+      } else {
+        tx.set(contador, { dia, n: FieldValue.increment(1), atualizadoEm: agora }, { merge: true });
+      }
+    }
     tx.update(ref, {
       lead: { ...lead, acao: { ...lead.acao, prazoEm: prazo ? Timestamp.fromDate(prazo) : null }, calculadoEm: agora },
-      ...(estado !== 'qualificada' ? { estado, estadoEm: agora } : {}),
+      ...(estadoFinal !== 'qualificada' ? { estado: estadoFinal, estadoEm: agora } : {}),
       ...(curta ? { expurgoEm: Timestamp.fromMillis(recebidaEm.toMillis() + p.prazoGuardaDiasBreve * DIA_MS) } : {}),
     });
     tx.create(ref.collection('eventos').doc(), {
       em: agora,
       ator: { tipo: 'sistema', id: 'graduar' },
       tipo: 'triada',
-      detalhe: { quadrante: lead.quadrante, grau: lead.grau, pontos: lead.pontos, destino: lead.destino, proximoEstado: estado, versaoPesos: lead.versaoPesos },
+      detalhe: { quadrante: lead.quadrante, grau: lead.grau, pontos: lead.pontos, destino: lead.destino, proximoEstado: estadoFinal, versaoPesos: lead.versaoPesos },
     });
     tx.set(
       db.collection('metricas').doc(mesDe(recebidaEm.toDate())),
@@ -44,7 +68,7 @@ export async function graduaTriagem(ref: DocumentReference, p: Pipeline): Promis
       { merge: true },
     );
   });
-  return { lead, estado };
+  return { lead, estado: estadoFinal, avisarTeto };
 }
 
 const docsDaColeta = async (ref: DocumentReference) => {
