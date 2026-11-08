@@ -1,8 +1,9 @@
 ---
 titulo: Glossário do método – vocabulário que a análise preliminar deve usar
 arquivo: metodo/glossario.md
-versao: 0.1
-data: 2026-10-31
+versao: 0.2
+data: 2026-11-08
+mudancas_v0.2: Parte C ganha a lista "Termos vetados" em formato fixo, lida pelo código da checagem termo_vetado (decisão de Gon, 8/11/2026, a partir da Fase B); nota sobre "glue work" como termo do livro, que não é vetado
 fontes:
   - Livro "Quando é Melhor com IA" (vFinal 2), Apêndice A – Glossário Técnico, e seções indicadas em cada verbete
   - Dossiê institucional GM Digital Bunker™ (30/10/2026): glossário mínimo (parte 3, seção 04), definição única de automação, otimização e aumentação (parte 3, seção 03), Mapa de Alavancas (parte 4), seis limites de escopo (parte 5, A4)
@@ -103,3 +104,13 @@ Nota de origem. O livro não define automação, otimização e aumentação com
 - Hipótese declarada como hipótese; inferência separada de fato verificado; número sem fonte não entra.
 - Tom profissional e neutro, sem rotular terceiros ou concorrentes; "riscos identificados", não "o que pode dar errado".
 - Nome da prática: GM Digital Bunker™ na primeira menção de cada documento; depois, GM Digital Bunker.
+
+### Termos vetados
+
+Lista lida pelo código (regra `termo_vetado` da verificação, spec 02, seção 4.1). Uma linha por termo, no formato fixo `- vetado: "termo" → preferido: "termo" (nota)`. A comparação ignora maiúsculas; a nota explica o motivo e não é lida pelo código. A lista cresce quando a mesma pendência de vocabulário se repete em duas ou mais análises.
+
+- vetado: "chute" → preferido: "especulação sem lastro" (registro profissional; apontado na Fase B, 7/11/2026)
+- vetado: "executivo de tecnologia" → preferido: "executivo dedicado exclusivamente a tecnologia" (redação adotada em 29/10/2026, Parte B; o veto não alcança a forma completa)
+- vetado: "concorrente" → preferido: "outra empresa do segmento" (só quando a relação de concorrência não tem fonte; com fonte, "concorrente" é permitido – a exceção é decidida pelo revisor, não pelo código)
+
+Não vetado: "glue work". É termo do livro – seção 5.2, "O fim do glue work", e verbete "Fricção operacional (glue work)" do Apêndice A, reproduzido na Parte A deste glossário. Na análise, a forma preferida em prosa é "fricção operacional", com "glue work" entre parênteses na primeira ocorrência e a origem [livro, 5.2]. "Economia da fricção" é outro verbete [livro, 5.1 e 5.6] e não substitui "fricção operacional": a primeira é o atrito de retrabalho; a segunda, a leitura de retorno que esse atrito impõe.
