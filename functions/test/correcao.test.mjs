@@ -17,7 +17,9 @@ test('checklist: six limits, six items of section 4 in order, knowledge assistan
   assert.deepEqual(checklist.map((r) => r.regra), [
     'limite-1', 'limite-2', 'limite-3', 'limite-4', 'limite-5', 'limite-6',
     'orienta-1', 'orienta-2', 'orienta-3', 'orienta-4', 'orienta-5', 'orienta-6', 'assistente-conhecimento', 'nao-reformular',
+    'secao-s1', 'secao-s2', 'secao-s3', 'secao-s4', 'secao-s5', 'secao-s6', 'secao-s7',
   ]);
+  assert.match(checklist[16].texto, /^o conteúdo de s3 \(Setor\) corresponde ao propósito da seção: cadeia de valor/);
   assert.match(checklist[3].texto, /^Execução técnica em software de terceiros/);
   assert.match(checklist[6].texto, /^Contratos com fornecedores de IA/);
   assert.match(checklist[12].texto, /^Não induzir clientes a desenvolver assistente de conhecimento interno próprio/);
@@ -95,4 +97,27 @@ test('final state after a correction: ready only with every issue corrected and 
   assert.equal(prontaAposCorrecao([{ tipo: 'mecanica' }], todas), false);
   assert.equal(prontaAposCorrecao([], comTratamento(pend, [{ indice: 0, tratamento: 'corrigida' }])), false);
   assert.equal(simulaRevisor(checklist, 'texto', true).pendencias.length, 1);
+});
+
+test('structure: montar instruction lists the seven sections with their purposes; titles are schema constants', async () => {
+  const { instrucaoMontar, ESQUEMA_MONTAR, PROPOSITOS } = await import('../lib/sintese.js');
+  const i = instrucaoMontar('A0 (fora)');
+  assert.match(i, /^Monte a análise preliminar em sete seções \(s1 a s7\); s0 e s8 são montadas pelo código/);
+  assert.ok(i.includes(`- **s4 Potencial de mercado** – ${PROPOSITOS.s4}`));
+  assert.ok(!i.includes('oito seções'));
+  assert.equal(ESQUEMA_MONTAR.properties.s5.properties.titulo.const, 'Pessoas');
+});
+
+test('structure: reviewer rule is an enum of the generated ids; secao-* violations become structure issues', async () => {
+  const { esquemaRevisor } = await import('../lib/verificacao.js');
+  const ids = checklist.map((r) => r.regra);
+  assert.deepEqual(esquemaRevisor(ids).properties.checklist.items.properties.regra.enum, ids);
+  const r = validaRevisor({
+    checklist: [
+      { regra: 'secao-s3', resultado: 'violado', secao: null, trecho: 'Signatário…', correcaoSugerida: 'Levar à s5.' },
+      { regra: 'limite-4: Execução técnica', resultado: 'violado', secao: 's6', trecho: 'x', correcaoSugerida: 'y' },
+    ],
+    pendencias: [],
+  });
+  assert.deepEqual(r.pendencias.map((p) => [p.tipo, p.regra, p.secao]), [['estrutura', 'secao-s3', 's3'], ['escopo', 'limite-4', 's6']]);
 });

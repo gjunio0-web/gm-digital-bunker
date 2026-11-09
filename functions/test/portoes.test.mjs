@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { ETAPAS_COLETA, coletaDe, fontesDisponiveis, blocoDados } from '../lib/sintese.js';
+import { ETAPAS_COLETA, TITULOS, coletaDe, fontesDisponiveis, blocoDados } from '../lib/sintese.js';
 import {
   avisosDaColeta, checagens, folhasDaAnalise, grausSemNome, horarioConcreto, numerosSemFonte, ordemDeDatasInvertida, saudacaoComNome,
   siglasSemExtenso, telefonesFora, vaiAoReparo,
@@ -174,7 +174,7 @@ test('repair: word diff counts only what changed outside the listed excerpts', (
 });
 
 const textosDe = (v) => ({
-  secoes: Object.fromEntries(Object.entries(v.secoes).map(([s, x]) => [s, { titulo: s, corpo: x.corpo, vazia: x.vazia, motivoVazia: null }])),
+  secoes: Object.fromEntries(Object.entries(v.secoes).map(([s, x]) => [s, { titulo: TITULOS[s], corpo: x.corpo, vazia: x.vazia, motivoVazia: null }])),
   resumoExecutivo: v.resumoExecutivo, rascunhoResposta: v.rascunhoResposta, conversa: v.conversa, enquadramento: { detalhe: v.enquadramento },
 });
 

@@ -21,6 +21,23 @@ export const TITULOS = {
 export const SECOES_MODELO = ['s1', 's2', 's3', 's4', 's5', 's6', 's7'] as const;
 export type SecaoModelo = (typeof SECOES_MODELO)[number];
 
+// Purpose, content and sources of each section, literal text of spec 02 v0.13, 3.3. Used by the montar_analise
+// instruction and by the reviewer checklist (secao-s1 to secao-s7), so both read the same definition.
+export const PROPOSITOS: Record<SecaoModelo, string> = {
+  s1: 'em poucas linhas, quem é a empresa e quem escreveu, porte e situação cadastral, o que a ficha pede e a leitura inicial de aderência numa frase. Fontes: ficha, `qualificacao`, `empresa_registro`, `empresa_digital`.',
+  s2: 'atividade, presença digital, estrutura de tecnologia observada (os fatos, sem a classificação), vagas abertas e movimentos recentes. Fontes: `empresa_registro`, `empresa_digital`, `empresa_noticias`, e de `empresa_pessoas` só `empresa` (vagas e função de tecnologia interna).',
+  s3: 'cadeia de valor e posição da empresa, concorrentes e o que divulgam sobre IA, regulação, pressões, casos de uso recorrentes. Fonte: `setor`.',
+  s4: 'TAM, SAM e SOM com método e confiança, dinâmica, ligação com o problema declarado e a direção do potencial (de `enquadramento.leituraDoPotencial`). Fonte: `mercado`.',
+  s5: 'o signatário (cargo por fonte, senioridade, divergências entre fontes) e os decisores visíveis; trajetória profissional não coletada. Fonte: `empresa_pessoas` (`signatario`, `outrosDecisoresVisiveis`).',
+  s6: 'escopo com os itens e graus, classificação da estrutura de tecnologia (com remissão à s2), porta provável, hipóteses de alavanca, riscos do lead; da direção do potencial, só como orienta a porta. Sem pontos: o hub mostra a conta. Fonte: `enquadramento`.',
+  s7: 'o objetivo da conversa e o que ela precisa validar, ligados ao destino. Não liste as perguntas, os materiais nem os pontos de atenção: o hub os mostra a partir do bloco `conversa`. Fontes: `conversa`, `<lead>`.',
+};
+
+// Title check (spec 02 v0.13, 3.3): the model must bring the fixed title. The API does not guarantee the case
+// of const values, so the comparison ignores case and the canonical title is kept (decision of Gon, 9/11/2026).
+const normaTitulo = (t: unknown) => (typeof t === 'string' ? t.trim().toLocaleLowerCase('pt-BR') : null);
+export const tituloConfere = (s: SecaoModelo, t: unknown) => normaTitulo(t) === normaTitulo(TITULOS[s]);
+
 export interface FonteColeta { url: string; titulo?: string; tipo?: string; consultadoEm?: string }
 export interface BlocoColeta { status: string | null; conteudo: unknown; afirmacoes: unknown[]; fontes: FonteColeta[] }
 export type Coleta = Record<EtapaColeta, BlocoColeta>;
@@ -98,7 +115,7 @@ export const INSTRUCAO_CONVERSA =
 // The grade names come from escopo-limites.md (section 6) of the published method, copied by the code into
 // the instruction ("[lista literal dos cinco graus, A0 a A4]").
 export const instrucaoMontar = (graus: string) =>
-  `Monte a análise preliminar nas oito seções (s1 a s8; s0 é gerada pelo código). Cada seção tem um \`corpo\` em Markdown, de leitura diagonal: parágrafos curtos, listas só quando há enumeração real, nada de repetir a ficha. Cada afirmação factual no corpo termina com a marca de fonte \`[F:etapa:idx]\`, que o código converte em link; inferências terminam com \`[inferência]\`; o que não foi encontrado é dito em uma linha. Seções sem material recebem \`vazia = true\` e \`motivoVazia\`. Não inclua a seção 8: o código a monta a partir dos metadados. Os graus da escala de aderência aparecem sempre com o nome, na forma "A3 (alta)"; os nomes são: ${graus}. As lentes (automação, otimização, aumentação) e os eixos críticos (Gravidade de Dados, Continuidade de Formato, Confiabilidade & Verificabilidade) indicam a origem (prática ou livro, com a seção) na primeira ocorrência da análise. Para comparar datas, escreva as duas por extenso na mesma frase. Todo número tirado dos arquivos do método termina com a marca \`[M:arquivo:seção]\` (por exemplo \`[M:escopo-limites:1]\`), no lugar da marca de fonte da coleta.`;
+  `Monte a análise preliminar em sete seções (s1 a s7); s0 e s8 são montadas pelo código. Cada conteúdo vai na seção a que pertence; não antecipe nem repita conteúdo de outra seção; quando precisar do que está em outra, remeta a ela ("ver s2"). As seções, na ordem:\n\n${SECOES_MODELO.map((s) => `- **${s} ${TITULOS[s]}** – ${PROPOSITOS[s]}`).join('\n')}\n\nCada seção tem um \`corpo\` em Markdown, de leitura diagonal: parágrafos curtos, listas só quando há enumeração real, nada de repetir a ficha. Cada afirmação factual no corpo termina com a marca de fonte \`[F:etapa:idx]\`, que o código converte em link; inferências terminam com \`[inferência]\`; o que não foi encontrado é dito em uma linha. Seção sem material: \`vazia = true\` e \`motivoVazia\`. Os graus da escala de aderência aparecem sempre com o nome, na forma "A3 (alta)"; os nomes são: ${graus}. As lentes (automação, otimização, aumentação) e os eixos críticos (Gravidade de Dados, Continuidade de Formato, Confiabilidade & Verificabilidade) indicam a origem (prática ou livro, com a seção) na primeira ocorrência da análise. Para comparar datas, escreva as duas por extenso na mesma frase. Todo número tirado dos arquivos do método termina com a marca \`[M:arquivo:seção]\` (por exemplo \`[M:escopo-limites:1]\`), no lugar da marca de fonte da coleta.`;
 export const listaDeGraus = (graus: Record<string, string>) =>
   ['A0', 'A1', 'A2', 'A3', 'A4'].filter((g) => graus[g]).map((g) => `${g} (${graus[g]})`).join(', ');
 
@@ -173,8 +190,9 @@ export const ESQUEMA_CONVERSA = objeto({
   pontosDeAtencaoParaOConsultor: lista(texto),
 });
 
-const secao = objeto({ titulo: texto, corpo: texto, vazia: { type: 'boolean' }, motivoVazia: textoOuNulo });
-export const ESQUEMA_MONTAR = objeto({ ...Object.fromEntries(SECOES_MODELO.map((s) => [s, secao])), resumoExecutivo: texto });
+// Fixed title per section, as a schema constant (spec 02 v0.13, 3.3).
+const secao = (s: SecaoModelo) => objeto({ titulo: { type: 'string', const: TITULOS[s] }, corpo: texto, vazia: { type: 'boolean' }, motivoVazia: textoOuNulo });
+export const ESQUEMA_MONTAR = objeto({ ...Object.fromEntries(SECOES_MODELO.map((s) => [s, secao(s)])), resumoExecutivo: texto });
 
 // --- Defensive checks of the outputs; each throws on a mismatch --------------------------------------
 
@@ -243,7 +261,9 @@ export function validaMontar(v: unknown): Montagem {
   const ok = c && typeof c === 'object' && ehTexto(c.resumoExecutivo) &&
     SECOES_MODELO.every((s) => c[s] && ehTexto(c[s].corpo) && typeof c[s].vazia === 'boolean' && ehNuloOuTexto(c[s].motivoVazia));
   if (!ok) throw new Error('montar_analise: output does not match the schema');
-  // Titles are the fixed ones (spec 02, 3.3), whatever the model wrote.
+  // The fixed title is required, not imposed (spec 02 v0.13, 3.3): a section under another title is refused.
+  const fora = SECOES_MODELO.filter((s) => !tituloConfere(s, c[s].titulo));
+  if (fora.length) throw new Error(`montar_analise: section title is not the fixed one in ${fora.join(', ')}`);
   return {
     ...Object.fromEntries(SECOES_MODELO.map((s) => [s, { titulo: TITULOS[s], corpo: c[s].corpo, vazia: c[s].vazia, motivoVazia: c[s].motivoVazia }])),
     resumoExecutivo: corta(c.resumoExecutivo, 2000),
@@ -365,9 +385,9 @@ export function simulaConversa(nome = '', comReparo = false): Conversa {
 
 // "pendência" in the message makes the simulated analysis carry a long dash, so the code check fails.
 export function simulaMontar(comFalha: boolean): Montagem {
-  const s = (corpo: string): Secao => ({ titulo: '', corpo, vazia: false, motivoVazia: null });
-  const m = Object.fromEntries(SECOES_MODELO.map((k) => [k, s(`${frase} [inferência]. ${frase} [inferência].`)])) as Record<SecaoModelo, Secao>;
-  m.s2 = s(`${frase}; o Cadastro Nacional da Pessoa Jurídica (CNPJ) consta como a confirmar [inferência]. ${frase} [inferência].`);
-  if (comFalha) m.s3 = s(`${frase} — com travessão [inferência]. ${frase} [inferência].`);
+  const s = (corpo: string, k: SecaoModelo): Secao => ({ titulo: TITULOS[k], corpo, vazia: false, motivoVazia: null });
+  const m = Object.fromEntries(SECOES_MODELO.map((k) => [k, s(`${frase} [inferência]. ${frase} [inferência].`, k)])) as Record<SecaoModelo, Secao>;
+  m.s2 = s(`${frase}; o Cadastro Nacional da Pessoa Jurídica (CNPJ) consta como a confirmar [inferência]. ${frase} [inferência].`, 's2');
+  if (comFalha) m.s3 = s(`${frase} — com travessão [inferência]. ${frase} [inferência].`, 's3');
   return validaMontar({ ...m, resumoExecutivo: 'Resumo simulado no emulador.' });
 }

@@ -24,7 +24,7 @@ import { avisoAnalise } from './email.js';
 import { mesDe } from './qualificar.js';
 import { ETAPAS_COLETA, coletaDe, fontesDisponiveis, rotuloDestino, rotuloQuadrante, secaoS0 } from './sintese.js';
 import {
-  ESQUEMA_REVISOR, avisosDaColeta, avisosDoEnquadramento, checagens, mensagemRevisor, simulaRevisor, validaRevisor, vaiAoReparo, type AnaliseVerificada,
+  esquemaRevisor, avisosDaColeta, avisosDoEnquadramento, checagens, mensagemRevisor, simulaRevisor, validaRevisor, vaiAoReparo, type AnaliseVerificada,
   type EtapaTexto, type ItemChecklist, type Pendencia,
 } from './verificacao.js';
 import { checklistDoRevisor, regrasDoMetodo } from './metodoRegras.js';
@@ -163,7 +163,7 @@ export const verificar = onDocumentCreated(
           const inicio = Date.now();
           const r = await chamaClaude({
             chave: CLAUDE_API_KEY.value(), modelo: modeloRevisor, metodo: metodoRevisor.blocos.map((b) => ({ nome: b.nome, texto: b.texto })),
-            usuario: mensagemRevisor(insumo, regrasChecklist), esquema: ESQUEMA_REVISOR, maxTokens: 32_000, timeoutMs: 480_000,
+            usuario: mensagemRevisor(insumo, regrasChecklist), esquema: esquemaRevisor(regrasChecklist.map((r) => r.regra)), maxTokens: 32_000, timeoutMs: 480_000,
             esforco: esforcoApi(esforco),
           }).catch(async (e) => {
             // A billed failure still counts in the cost of the ficha.

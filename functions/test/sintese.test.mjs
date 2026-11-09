@@ -166,7 +166,9 @@ test('output checks: schema mismatches throw; titles are fixed; at most three hy
   const quatro = validaEnquadrar({ ...e, hipotesesDeAlavanca: [1, 2, 3, 4].map(() => e.hipotesesDeAlavanca[0]) });
   assert.equal(quatro.hipotesesDeAlavanca.length, 3);
   const m = simulaMontar(false);
-  assert.equal(validaMontar({ ...m, s1: { ...m.s1, titulo: 'outro' } }).s1.titulo, 'Qualificação imediata');
+  assert.throws(() => validaMontar({ ...m, s3: { ...m.s3, titulo: 'Pessoas' } }), /title is not the fixed one in s3/);
+  // The API does not guarantee the case of const values: a different case is accepted, the canonical title kept.
+  assert.equal(validaMontar({ ...m, s1: { ...m.s1, titulo: 'Qualificação Imediata' } }).s1.titulo, 'Qualificação imediata');
   assert.deepEqual(validaRevisor({ checklist: [], pendencias: [{ tipo: 'lastro', secao: 's6', trecho: 'x', correcaoSugerida: 'y' }] }).pendencias, [{ tipo: 'lastro', secao: 's6', trecho: 'x', correcaoSugerida: 'y' }]);
 });
 

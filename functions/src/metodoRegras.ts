@@ -1,6 +1,7 @@
 // What the code checks read from the published method (spec 02 v0.12, 4.1): the vetoed terms of
 // glossario.md Part C, the names of the adherence grades in escopo-limites.md section 6 and the text of a
 // method section cited by a [M:arquivo:seção] mark. Pure functions: no Firebase imports.
+import { PROPOSITOS, SECOES_MODELO, TITULOS } from './sintese.js';
 
 export interface TermoVetado { vetado: string; preferido: string }
 
@@ -38,9 +39,10 @@ export const regrasDoMetodo = (arquivos: Record<string, string>): RegrasMetodo =
   arquivos,
 });
 
-// Checklist of Part 1 of the reviewer (spec 02 v0.12, 4.2), generated from escopo-limites.md: the six limits of
+// Checklist of Part 1 of the reviewer (spec 02 v0.13, 4.2), generated from escopo-limites.md: the six limits of
 // section 5 (limite-1 to limite-6), the items of section 4 in order (orienta-1 to orienta-6), the rule on the
-// knowledge assistant (section 5) and the rule against reshaping a request (section 7, item 3).
+// knowledge assistant (section 5) and the rule against reshaping a request (section 7, item 3); and one item per
+// section, secao-s1 to secao-s7, with its purpose (spec 02 v0.13, 3.3).
 export interface RegraChecklist { regra: string; texto: string }
 export function checklistDoRevisor(escopoLimites: string): RegraChecklist[] {
   const secao = (n: number) => escopoLimites.split(/^(?=## )/m).find((b) => b.startsWith(`## ${n}.`)) ?? '';
@@ -54,5 +56,6 @@ export function checklistDoRevisor(escopoLimites: string): RegraChecklist[] {
     ...orienta,
     ...(assistente ? [{ regra: 'assistente-conhecimento', texto: assistente }] : []),
     ...(reformular ? [{ regra: 'nao-reformular', texto: reformular }] : []),
+    ...SECOES_MODELO.map((s) => ({ regra: `secao-${s}`, texto: `o conteúdo de ${s} (${TITULOS[s]}) corresponde ao propósito da seção: ${PROPOSITOS[s]}` })),
   ];
 }
