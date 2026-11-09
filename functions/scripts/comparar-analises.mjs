@@ -19,6 +19,9 @@ if (!projeto || !saida) {
 }
 initializeApp({ projectId: projeto });
 const db = getFirestore();
+// REST transport: over gRPC, reading the analysis versions of one test ficha stalled in Cloud Shell
+// (9/11/2026), with no error; the same reads over REST finish.
+db.settings({ preferRest: true });
 
 const data = (t) => t?.toDate?.().toISOString() ?? null;
 const fichas = [];

@@ -216,7 +216,7 @@ export function relatorio(fichas, geradoEm = new Date().toISOString()) {
   L.push(`- (b) taxa de pendências de escopo: ${okB ? 'atendida' : 'não atendida'} (atende em ${condB.filter((x) => x.ok).length} de ${pares.length} fichas)`);
   L.push(`- (c) itens removidos por origem nas versões do C: ${removC} – ${okC ? 'atendida' : 'não atendida'}`);
   L.push(`- **Resultado: critério ${okA && okB && okC ? 'atendido' : 'não atendido'}.**`, '');
-  L.push('Observações: (a) e (c) dependem de enquadrar, que é o mesmo modelo nos dois desenhos; só (b) depende do desenho. Duas amostras por desenho e ficha. A decisão sobre o desenho é de Gon.', '');
+  L.push(`Observações: (a) e (c) dependem de enquadrar, que é o mesmo modelo nos dois desenhos; só (b) depende do desenho. ${nAmostras} amostras por desenho e ficha. A decisão sobre o desenho é de Gon.`, '');
   return { md: L.join('\n'), rodadas: rs.length };
 }
 
