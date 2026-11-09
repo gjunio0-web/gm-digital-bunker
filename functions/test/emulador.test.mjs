@@ -220,7 +220,7 @@ test('correction: a reading issue of the reviewer makes v2 (origin correcao) wit
   assert.equal(mapa(v1.autor).origem.stringValue, 'sintese');
   const ver1 = mapa(v1.verificacao);
   assert.equal(ver1.corrigidaEm.stringValue, 'v2');
-  assert.equal(ver1.checklist.arrayValue.values.length, 14);
+  assert.equal(ver1.checklist.arrayValue.values.length, 21); // 14 scope items + secao-s1..s7
   const v2 = (await le(`fichas/${id}/analise/v2`)).fields;
   const autor = mapa(v2.autor);
   assert.equal(autor.origem.stringValue, 'correcao');
