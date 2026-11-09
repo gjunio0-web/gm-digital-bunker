@@ -16,6 +16,8 @@ const conta = (xs, chave) => xs.reduce((t, x) => {
   return t;
 }, {});
 const lista = (o) => Object.entries(o).sort(([a], [b]) => a.localeCompare(b)).map(([k, n]) => `${k} ${n}`).join(', ') || '–';
+// Checklist rule id without the text the reviewer sometimes appends ("limite-1: Operação contínua…").
+const regraId = (r) => String(r ?? '?').split(':')[0].trim();
 const usd = (n) => (typeof n === 'number' ? `US$ ${n.toFixed(4)}` : '–');
 const seg = (ms) => (typeof ms === 'number' && ms > 0 ? `${Math.round(ms / 1000)} s` : '–');
 const soma = (xs) => xs.reduce((t, x) => t + (x ?? 0), 0);
@@ -42,7 +44,8 @@ export function medidasDaRodada(base, correcao, lead) {
   const depois = conta(mecDepois, (p) => p.regra ?? '?');
   const revisor = conta(pend.filter((p) => p.tipo !== 'mecanica'), (p) => p.tipo);
   const violadas = (ver.checklist ?? []).filter((c) => c.resultado === 'violado');
-  const tratamentos = correcao?.correcao?.tratamentos ?? [];
+  // Treatments from the correction record or, without it, from the issues the correction version carries.
+  const tratamentos = correcao?.correcao?.tratamentos ?? (correcao?.verificacao?.pendencias ?? []).filter((p) => p.tratamento);
   const riscos = (det.riscosDoLead ?? []).map((r) => `${r.risco}/${r.origem ?? '?'}`);
   const removidos = det.escopo?.itensRemovidos ?? [];
   const avisos = ver.avisos ?? [];
@@ -68,8 +71,9 @@ export function medidasDaRodada(base, correcao, lead) {
     reparosRejeitados: reparos.filter((r) => !r.aceito).length,
     revisor,
     escopoPend: pend.filter((p) => p.tipo === 'escopo').length,
-    checklistViolado: conta(violadas, (c) => c.regra),
-    checklist: Object.fromEntries((ver.checklist ?? []).map((c) => [c.regra, c.resultado])),
+    checklistViolado: conta(violadas, (c) => regraId(c.regra)),
+    checklist: Object.fromEntries((ver.checklist ?? []).map((c) => [regraId(c.regra), c.resultado])),
+    checklistRotulosVariaveis: (ver.checklist ?? []).filter((c) => String(c.regra ?? '').includes(':')).length,
     corrigidas: tratamentos.filter((t) => t.tratamento === 'corrigida').length,
     mantidas: tratamentos.filter((t) => t.tratamento === 'mantida').length,
     correcaoFalhou: avisos.filter((a) => a.startsWith('correcao_falhou')).length,
