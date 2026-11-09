@@ -29,7 +29,7 @@ import {
 } from './verificacao.js';
 import { checklistDoRevisor, regrasDoMetodo } from './metodoRegras.js';
 import {
-  ESQUEMA_CORRIGIR, analiseParaCorrecao, comTratamento, mensagemCorrigir, prontaAposCorrecao, simulaCorrecao, validaCorrecao, vaiACorrecao, versaoCorrigida,
+  analiseParaCorrecao, comTratamento, mensagemCorrigir, prontaAposCorrecao, simulaCorrecao, validaCorrecao, vaiACorrecao, versaoCorrigida,
   type TratamentoDado,
 } from './correcao.js';
 import { CARGOS_ROTULO } from './textos.generated.js';
@@ -197,6 +197,9 @@ export const verificar = onDocumentCreated(
         const esforco = esforcoDe(p, 'corrigir');
         const analise = analiseParaCorrecao(textos);
         const inicio = Date.now();
+        // Usage of an answer that came back but was refused by the checks (phase B2: without the strict
+        // schema the format is checked here); already in the ficha cost, kept for the version usage.
+        let usoRecebido: UsoChamada | null = null;
         try {
           let saida: unknown;
           let uso: UsoChamada;
@@ -209,12 +212,13 @@ export const verificar = onDocumentCreated(
             const metodoCorrecao = await leMetodo({ 'glossario.md': 'tudo', 'escopo-limites.md': 'tudo' });
             const r = await chamaClaude({
               chave: CLAUDE_API_KEY.value(), modelo, metodo: metodoCorrecao.blocos.map((b) => ({ nome: b.nome, texto: b.texto })),
-              usuario: mensagemCorrigir(analise, fontesDisponiveis(coleta), paraCorrigir), esquema: ESQUEMA_CORRIGIR, maxTokens: 64_000, timeoutMs: 300_000,
+              usuario: mensagemCorrigir(analise, fontesDisponiveis(coleta), paraCorrigir), maxTokens: 64_000, timeoutMs: 300_000,
               esforco: esforcoApi(esforco),
             });
             saida = r.json;
             uso = usoChamada(precos, modelo, esforco, r.uso, Date.now() - inicio);
             await cobra(uso);
+            usoRecebido = uso;
           }
           const c = validaCorrecao(saida, paraCorrigir.length);
           const { campos, avisos: avisosCorrecao } = versaoCorrigida(textos, c, coleta);
@@ -247,8 +251,11 @@ export const verificar = onDocumentCreated(
           if (e instanceof ErroComUso) {
             usoCorrecaoFalha = usoChamada(precos, modelo, esforco, e.uso, Date.now() - inicio);
             await cobra(usoCorrecaoFalha);
-          }
-          logger.warn('verificar: correction failed', { id, versao, mensagem: String((e as Error)?.message ?? e).slice(0, 300) });
+          } else if (usoRecebido) usoCorrecaoFalha = usoRecebido;
+          const mensagem = String((e as Error)?.message ?? e).slice(0, 300);
+          // Recorded in the version, so the rate of refused corrections can be measured (phase B2).
+          avisos.push(`correcao_falhou: ${mensagem.slice(0, 160)}`);
+          logger.warn('verificar: correction failed', { id, versao, mensagem });
         }
       }
 

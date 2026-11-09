@@ -1,5 +1,6 @@
 // Claude Messages API over HTTP (spec 02, section 0): fixed system block with cache_control,
-// structured output by JSON schema (output_config.format), one retry on 429 / 5xx.
+// structured output by JSON schema (output_config.format) or, without a schema, JSON asked for in the text
+// and read by extraiJson; one retry on 429 / 5xx.
 // In the emulator nothing is sent: simulaClassificacao answers instead.
 import type { Uso } from './custo.js';
 
@@ -18,7 +19,10 @@ export interface Chamada {
   // A plain text, or text blocks; a block with cache = true ends a cached prefix (e.g. the collection
   // blocks the three synthesis calls share).
   usuario: string | { texto: string; cache?: boolean }[];
-  esquema: object;
+  // Strict output schema (output_config.format). Without it (the correction, whose combined schema exceeds the
+  // API's compiled grammar limit – phase B2, decision of Gon, 9/11/2026) the format goes in the prompt and the
+  // caller checks the answer.
+  esquema?: object;
   // Method files as extra system blocks (spec 02, section 0). The API accepts at most 4 cache breakpoints
   // per request, so only the last method block carries cache_control: the cached prefix covers SISTEMA_BASE
   // and every method block before it.
@@ -43,6 +47,15 @@ export class ErroComUso extends Error {
   }
 }
 
+// JSON of an answer without a strict schema: the object between the first "{" and the last "}", so a code
+// fence or a line of text around it does not matter. Throws when there is no valid object.
+export function extraiJson(texto: string): unknown {
+  const i = texto.indexOf('{');
+  const f = texto.lastIndexOf('}');
+  if (i < 0 || f < i) throw new Error('no JSON object');
+  return JSON.parse(texto.slice(i, f + 1));
+}
+
 const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function chamaClaude(c: Chamada): Promise<Resposta> {
@@ -63,7 +76,9 @@ export async function chamaClaude(c: Chamada): Promise<Resposta> {
         ? c.usuario
         : c.usuario.map((b) => ({ type: 'text', text: b.texto, ...(b.cache ? { cache_control: { type: 'ephemeral' } } : {}) })),
     }],
-    output_config: { format: { type: 'json_schema', schema: c.esquema }, ...(c.esforco ? { effort: c.esforco } : {}) },
+    ...(c.esquema || c.esforco
+      ? { output_config: { ...(c.esquema ? { format: { type: 'json_schema', schema: c.esquema } } : {}), ...(c.esforco ? { effort: c.esforco } : {}) } }
+      : {}),
   });
   for (let tentativa = 1; ; tentativa++) {
     const res = await fetch(API, {
@@ -85,7 +100,13 @@ export async function chamaClaude(c: Chamada): Promise<Resposta> {
     if (r.stop_reason !== 'end_turn') throw new ErroComUso(`Claude API stop_reason ${r.stop_reason}`, r.usage ?? { input_tokens: 0, output_tokens: 0 });
     const texto = r.content?.find((b) => b.type === 'text')?.text;
     if (!texto) throw new Error('Claude API answer without text');
-    return { json: JSON.parse(texto), uso: r.usage ?? { input_tokens: 0, output_tokens: 0 } };
+    const uso = r.usage ?? { input_tokens: 0, output_tokens: 0 };
+    // A billed answer that is not JSON still counts in the cost.
+    try {
+      return { json: c.esquema ? JSON.parse(texto) : extraiJson(texto), uso };
+    } catch {
+      throw new ErroComUso('Claude API answer is not valid JSON', uso);
+    }
   }
 }
 
