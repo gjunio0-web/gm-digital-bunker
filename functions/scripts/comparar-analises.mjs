@@ -1,5 +1,5 @@
 // Side-by-side comparison of the analysis versions of the test fichas (phase B, Haiku × Sonnet synthesis;
-// phase B2: reads the usage per call of spec 01 v0.11 – model, effort, tokens, cache read and written, duration
+// phase B2: each version marked with its round and design (scripts/b2-rodadas.mjs); reads the usage per call of spec 01 v0.11 – model, effort, tokens, cache read and written, duration
 // and cost of each call, repairs, reviewer, correction and total –, the origin of the version, the repairs,
 // the warnings, the reviewer checklist and the treatment of each issue; mechanical issues collapsed).
 // Read-only: reads fichas with teste = true that have analise/vN and writes one self-contained HTML page,
@@ -10,6 +10,7 @@
 import { writeFileSync } from 'node:fs';
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { ROTULO_RODADA, desenhoDe, rodadaDe } from './b2-rodadas.mjs';
 
 const [projeto, saida] = process.argv.slice(2);
 if (!projeto || !saida) {
@@ -51,10 +52,16 @@ for (const f of (await db.collection('fichas').where('teste', '==', true).get())
       };
     })
     .sort((a, b) => a.n - b.n);
+  // Phase B2: round and design of each version (the correction takes those of its base).
+  for (const v of versoes) {
+    const base = v.origem === 'correcao' ? versoes.find((x) => x.id === v.baseadaEm) ?? v : v;
+    v.rodada = rodadaDe(f.id, v, versoes);
+    v.desenho = desenhoDe(base.modelo);
+  }
   fichas.push({ id: f.id, empresa: f.get('original.empresa'), estado: f.get('estado'), analiseAtual: f.get('analiseAtual'), versoes });
 }
 fichas.sort((a, b) => a.empresa.localeCompare(b.empresa, 'pt-BR'));
-const json = JSON.stringify({ geradoEm: new Date().toISOString(), projeto, fichas }).replace(/</g, '\\u003c');
+const json = JSON.stringify({ geradoEm: new Date().toISOString(), projeto, fichas, rotulos: ROTULO_RODADA }).replace(/</g, '\\u003c');
 
 const html = `<!doctype html>
 <html lang="pt-BR" data-theme="dark">
@@ -199,9 +206,13 @@ function md(t) {
 }
 
 function opcoes(f) {
-  return f.versoes.map((v) => '<option value="' + v.id + '">' + v.id + ' · ' + esc(nomeModelo(v.modelo)) + ' · esforço ' + esc(v.esforco) + (v.autor === 'humano' ? ' · edição humana' : v.origem === 'correcao' ? ' · correção de ' + esc(v.baseadaEm) : '') + (v.id === f.analiseAtual ? ' · atual' : '') + '</option>').join('');
+  return f.versoes.map((v) => '<option value="' + v.id + '">' + v.id + ' · ' + esc(nomeModelo(v.modelo)) + ' · esforço ' + esc(v.esforco) + (v.autor === 'humano' ? ' · edição humana' : v.origem === 'correcao' ? ' · correção de ' + esc(v.baseadaEm) : '') + (v.rodada ? ' · ' + esc(D.rotulos[v.rodada] ?? v.rodada) + (v.rodada !== 'anterior' ? ' · desenho ' + v.desenho : '') : '') + (v.id === f.analiseAtual ? ' · atual' : '') + '</option>').join('');
 }
-function padrao(f, re) {
+// Default columns: the correction of round 1 in design A and in design C; without them, the latest Sonnet
+// and the latest Haiku version.
+function padrao(f, re, desenho) {
+  const b2 = f.versoes.filter((v) => v.rodada === 'R1c' && v.desenho === desenho && v.origem === 'correcao');
+  if (b2.length) return b2[b2.length - 1].id;
   const vs = f.versoes.filter((v) => re.test(v.modelo));
   return (vs[vs.length - 1] ?? f.versoes[f.versoes.length - 1]).id;
 }
@@ -225,6 +236,7 @@ function resumo(v, lado) {
   return '<div class="card"><div class="rot"><span class="lado ' + lado + '">' + lado.toUpperCase() + '</span><span class="contagem">' + v.id + '</span></div>' +
     '<h3>' + esc(nomeModelo(v.modelo)) + '</h3><dl class="meta">' +
     '<dt>origem</dt><dd>' + esc(ORIGEM[v.origem] ?? v.origem ?? 'síntese') + (v.baseadaEm ? ' a partir de ' + esc(v.baseadaEm) : '') + '</dd>' +
+    (v.rodada ? '<dt>fase B2</dt><dd>' + esc(D.rotulos[v.rodada] ?? v.rodada) + (v.rodada !== 'anterior' ? ' · desenho ' + v.desenho : '') + '</dd>' : '') +
     '<dt>esforço</dt><dd>' + esc(v.esforco) + '</dd>' +
     '<dt>criada em</dt><dd>' + quando(v.criadaEm) + '</dd>' +
     '<dt>análise</dt><dd>' + (l ? esc(rotulo[l.quadrante] ?? l.quadrante) + ' ' + esc(l.grau) + ' · ' + l.pontos + ' pontos · ' + esc(rotulo[l.destino] ?? l.destino) : '–') + '</dd>' +
@@ -305,8 +317,8 @@ function trocaFicha() {
   const f = D.fichas.find((x) => x.id === $('#ficha').value);
   $('#va').innerHTML = opcoes(f);
   $('#vb').innerHTML = opcoes(f);
-  $('#va').value = padrao(f, /sonnet/);
-  $('#vb').value = padrao(f, /haiku/);
+  $('#va').value = padrao(f, /sonnet/, 'A');
+  $('#vb').value = padrao(f, /haiku/, 'C');
   desenha();
 }
 

@@ -56,6 +56,7 @@ Região de todas as funções: `REGIAO` em `src/config.ts` (`southamerica-east1`
 | `src/coleta/envelope.ts` | Envelope da spec 02 §2: fontes verificadas, índices, regra de preenchimento |
 | `src/coleta/etapas.ts`, `textosSpec.ts` | Tetos de busca, arquivos do método, instruções e esquemas de cada etapa (textos da spec 02) |
 | `scripts/fichas-teste.mjs` | Fichas de teste gravadas direto no Firestore (sem e-mails), que seguem o pipeline sozinhas; reexecução de etapas (`--reexecutar`, `--etapas=`, `--ficha=`, `--uma-por-vez`) ou só da síntese (`--sintese`); relatório com a triagem, a análise, as etapas, as pendências e o custo |
+| `scripts/comparar-analises.mjs`, `scripts/relatorio-b2.mjs`, `scripts/b2-rodadas.mjs` | Página de comparação lado a lado das versões das fichas de teste e relatório em Markdown da Fase B2 (medidas da seção 7, itens 5 e 6, do documento de alterações), com cada versão marcada pela rodada e pelo desenho; somente leitura, saídas só para o administrador, fora do Git |
 | `src/seed.ts` | Grava `config/pipeline` e `config/metodo`; rodado de novo, só acrescenta campos ausentes, sem sobrescrever; cria `config/precos` só se ausente |
 | `src/migrarPipeline.ts`, `src/migracao.ts` | Migração única de `config/pipeline` para modelos e esforço por etapa (spec 01 v0.11); sem `--aplicar`, só mostra o plano |
 | `src/modelos.ts`, `src/uso.ts`, `src/precos.ts`, `src/precosIniciais.ts` | Modelo e esforço por etapa; uso por chamada; leitura de `config/precos`; tabela inicial (só semente) |
