@@ -13,7 +13,7 @@ const JANELAS = [
   // First round with correction, after the fix (commit b39ca61).
   { rodada: 'R1c', de: '2026-11-09T15:52:00Z', ate: '2026-11-09T16:28:00Z' },
   // Round 1 with correction again, after spec 02 v0.13 (fixed section titles and purposes; commit 4aced6e).
-  { rodada: 'R1e', de: '2026-11-09T20:11:00Z', ate: '2026-11-09T23:59:00Z' },
+  { rodada: 'R1e', de: '2026-11-09T20:11:00Z', ate: '2026-11-09T20:47:00Z' },
 ];
 // Latest round with correction: the default of the comparison page and the round of the correction measures.
 export const RODADA_CORRECAO = 'R1e';
