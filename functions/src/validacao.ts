@@ -94,3 +94,16 @@ export const ipDe = (cabecalho: string | undefined, ip: string | undefined) => {
   return entradas.length ? entradas[entradas.length - 1] : (ip ?? '').trim();
 };
 export const entradasXff = (cabecalho: string | undefined) => (cabecalho ?? '').split(',').filter((x) => x.trim()).length;
+
+// TEMPORARY (check in qualidade, authorized by Gon on 9/11/2026; remove after the check): where a test value
+// sent by the client lands in X-Forwarded-For. The test value is 203.0.113.7 (TEST-NET-3, reserved for
+// documentation), so only a position is logged, never an address. 'primeira': the client value stays in front
+// and the last entry is the one Google appends (ipDe is right); 'ultima': the client value is last (ipDe must change).
+export const MARCADOR_XFF = '203.0.113.7';
+export const posicaoMarcadorXff = (cabecalho: string | undefined): 'ausente' | 'unica' | 'primeira' | 'ultima' | 'meio' => {
+  const entradas = (cabecalho ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+  const i = entradas.indexOf(MARCADOR_XFF);
+  if (i < 0) return 'ausente';
+  if (entradas.length === 1) return 'unica';
+  return i === 0 ? 'primeira' : i === entradas.length - 1 ? 'ultima' : 'meio';
+};

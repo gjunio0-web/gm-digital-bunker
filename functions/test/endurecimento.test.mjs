@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { paradas } from '../lib/vigiar.js';
 import { diaDeSaoPaulo } from '../lib/graduar.js';
-import { entradasXff, ipDe } from '../lib/validacao.js';
+import { entradasXff, ipDe, posicaoMarcadorXff } from '../lib/validacao.js';
 import { semPreco } from '../lib/uso.js';
 
 const agora = new Date('2026-11-08T15:00:00Z');
@@ -45,4 +45,13 @@ test('semPreco: calls with usdEstimado null become custo_sem_preco warnings; sim
     ['reparar.s1', { modelo: 'claude-haiku-9', usdEstimado: null }],
   ]);
   assert.deepEqual(avisos, ['custo_sem_preco: montar (claude-novo)', 'custo_sem_preco: reparar.s1 (claude-haiku-9)']);
+});
+
+test('posicaoMarcadorXff (temporary): position of the test value 203.0.113.7 in X-Forwarded-For', () => {
+  assert.equal(posicaoMarcadorXff(undefined), 'ausente');
+  assert.equal(posicaoMarcadorXff('198.51.100.7'), 'ausente');
+  assert.equal(posicaoMarcadorXff('203.0.113.7'), 'unica');
+  assert.equal(posicaoMarcadorXff('203.0.113.7, 198.51.100.7'), 'primeira');
+  assert.equal(posicaoMarcadorXff('198.51.100.7,203.0.113.7'), 'ultima');
+  assert.equal(posicaoMarcadorXff('198.51.100.1, 203.0.113.7, 198.51.100.7'), 'meio');
 });
