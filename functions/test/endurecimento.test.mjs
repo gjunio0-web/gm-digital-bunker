@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { paradas } from '../lib/vigiar.js';
 import { diaDeSaoPaulo } from '../lib/graduar.js';
-import { entradasXff, ipDe } from '../lib/validacao.js';
+import { ipDe } from '../lib/validacao.js';
 import { semPreco } from '../lib/uso.js';
 
 const agora = new Date('2026-11-08T15:00:00Z');
@@ -33,8 +33,6 @@ test('ipDe: the last X-Forwarded-For entry, the one appended by the Google front
   assert.equal(ipDe('forjado, 198.51.100.7 ', undefined), '198.51.100.7');
   assert.equal(ipDe(undefined, '10.0.0.1'), '10.0.0.1');
   assert.equal(ipDe(' , ', '10.0.0.1'), '10.0.0.1');
-  assert.equal(entradasXff('a, b,c'), 3);
-  assert.equal(entradasXff(undefined), 0);
 });
 
 test('semPreco: calls with usdEstimado null become custo_sem_preco warnings; simulated calls do not', () => {

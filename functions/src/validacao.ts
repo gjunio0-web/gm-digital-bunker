@@ -93,4 +93,3 @@ export const ipDe = (cabecalho: string | undefined, ip: string | undefined) => {
   const entradas = (cabecalho ?? '').split(',').map((x) => x.trim()).filter(Boolean);
   return entradas.length ? entradas[entradas.length - 1] : (ip ?? '').trim();
 };
-export const entradasXff = (cabecalho: string | undefined) => (cabecalho ?? '').split(',').filter((x) => x.trim()).length;

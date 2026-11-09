@@ -8,7 +8,7 @@ import { logger } from 'firebase-functions';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { DIA_MS, IP_HASH_SALT, ORIGENS_POR_PROJETO, REGIAO, SMTP2GO_API_KEY } from './config.js';
 import { lePipeline } from './pipeline.js';
-import { ehRobo, entradasXff, ipDe, valida } from './validacao.js';
+import { ehRobo, ipDe, valida } from './validacao.js';
 import { aviso, confirmacao } from './email.js';
 
 const HORA_MS = 60 * 60 * 1000;
@@ -58,9 +58,6 @@ export const receberFicha = onRequest(
       return;
     }
 
-    // Number of X-Forwarded-For entries only, never an address (phase 6, item 6); logged before the honeypot
-    // so the check in qualidade needs no stored ficha.
-    logger.info('receberFicha: x-forwarded-for', { xffEntradas: entradasXff(req.get('x-forwarded-for')) });
     const corpo = req.body ?? {};
     // Honeypot filled: answer as accepted, store nothing.
     if (ehRobo(corpo)) {
