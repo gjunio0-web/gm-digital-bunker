@@ -6,7 +6,7 @@
 // Usage: node scripts/relatorio-b2.mjs <project id> <output.md>
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { FICHAS_B2, ROTULO_RODADA, desenhoDe, rodadaDe } from './b2-rodadas.mjs';
+import { FICHAS_B2, RODADA_CORRECAO, ROTULO_RODADA, desenhoDe, rodadaDe } from './b2-rodadas.mjs';
 
 // --- Pure part (tested without Firestore) ----------------------------------------------------------------
 
@@ -117,7 +117,7 @@ export function relatorio(fichas, geradoEm = new Date().toISOString()) {
   const L = [];
   L.push('# Fase B2 – relatório de medidas', '');
   L.push(`Gerado em ${geradoEm} a partir de gmdb-qualidade. Uso interno.`, '');
-  L.push('Rodadas: **automática** (primeira versão da quinta ficha, na configuração vigente); **rodada 1 sem correção** (8/11, todas as chamadas de correção recusadas pela API por gramática grande demais); **rodada 1 com correção** (9/11, depois do conserto, commit b39ca61). As versões de diagnóstico da Capal (v5 a v8) ficam fora. As rodadas 2 e 3 não foram executadas (decisão de Gon, 9/11/2026).', '');
+  L.push('Rodadas: **automática** (primeira versão da quinta ficha, na configuração vigente); **rodada 1 sem correção** (8/11, todas as chamadas de correção recusadas pela API por gramática grande demais); **rodada 1 com correção** (9/11, depois do conserto, commit b39ca61); **rodada 1 com correção, spec 02 v0.13** (9/11, títulos e propósitos fixos das seções e checklist de estrutura no revisor, commit 4aced6e). As versões de diagnóstico da Capal (v5 a v8) ficam fora. As rodadas 2 e 3 não foram executadas (decisão de Gon, 9/11/2026).', '');
   L.push('Desenho A: Sonnet 5.5 em enquadrar, preparar_conversa e montar_analise. Desenho C: Sonnet 5.5 em enquadrar; Haiku 5.5 em preparar_conversa e montar_analise. A correção usa o modelo de montar_analise. Nos dois desenhos, pontos, grau, quadrante, destino, tecnologia, escopo, porta, riscos e itens removidos saem de enquadrar, que é o mesmo modelo.', '');
   L.push('"Antes do reparo" = itens enviados ao reparo mais as falhas mecânicas de regras que não vão ao reparo; "depois" = pendências mecânicas gravadas na versão.', '');
 
@@ -147,8 +147,11 @@ export function relatorio(fichas, geradoEm = new Date().toISOString()) {
     L.push('');
   }
 
+  const rodadasB2 = [...new Set(rs.filter((r) => r.rodada !== 'automatica').map((r) => r.rodada))];
+  const amostras = rodadasB2.map((r) => ROTULO_RODADA[r]).join('; ');
+  const nAmostras = rodadasB2.length;
   L.push('## 2. Por desenho', '');
-  L.push('Amostras: rodada 1 sem correção e rodada 1 com correção (duas por ficha e desenho); a automática fica fora da comparação por desenho.', '');
+  L.push(`Amostras: ${amostras} (${nAmostras} por ficha e desenho); a automática fica fora da comparação por desenho. As medidas de correção são as da ${ROTULO_RODADA[RODADA_CORRECAO]}.`, '');
   const porDesenho = {};
   for (const d of ['A', 'C']) {
     const rd = rs.filter((r) => r.desenho === d && r.rodada !== 'automatica');
@@ -167,7 +170,7 @@ export function relatorio(fichas, geradoEm = new Date().toISOString()) {
         checklistMudou: checklistMudou(x),
       };
     });
-    const comCorr = rd.filter((r) => r.rodada === 'R1c');
+    const comCorr = rd.filter((r) => r.rodada === RODADA_CORRECAO);
     porDesenho[d] = { rd, linhas, comCorr };
     L.push(`### Desenho ${d}`, '');
     L.push('| Ficha | Pontos nas rodadas | Amplitude | Troca de grau | Tecnologia (valores distintos) | Escopo (distintos) | Porta (distintos) | Pendências de escopo por rodada | Removidos por origem | Checklist que mudou entre rodadas |');
@@ -193,7 +196,7 @@ export function relatorio(fichas, geradoEm = new Date().toISOString()) {
 
   L.push('## 3. Critério da seção 7, item 6, aplicado de forma mecânica', '');
   L.push('Texto: "o desenho C substitui o A se a variância de pontos e a taxa de pendências de escopo ficarem dentro da faixa do A nas cinco fichas, e se nenhuma versão do C trouxer item de escopo ou risco removido por origem."', '');
-  L.push('Leitura mecânica adotada: (a) por ficha, amplitude dos pontos do C ≤ amplitude do A; (b) por ficha, cada contagem de pendências de escopo do C entre o mínimo e o máximo do A; (c) soma de itens removidos por origem nas versões do C igual a zero. Amostras: duas rodadas por desenho.', '');
+  L.push(`Leitura mecânica adotada: (a) por ficha, amplitude dos pontos do C ≤ amplitude do A; (b) por ficha, cada contagem de pendências de escopo do C entre o mínimo e o máximo do A; (c) soma de itens removidos por origem nas versões do C igual a zero. Amostras: ${nAmostras} rodadas por desenho.`, '');
   const A = porDesenho.A?.linhas ?? [], C = porDesenho.C?.linhas ?? [];
   const pares = FICHAS_B2.map((id) => [A.find((l) => l.id === id), C.find((l) => l.id === id)]).filter(([a, c]) => a && c);
   const condA = pares.map(([a, c]) => ({ id: a.id, ok: (amplitude(c.pontos) ?? 0) <= (amplitude(a.pontos) ?? 0), a: amplitude(a.pontos), c: amplitude(c.pontos) }));

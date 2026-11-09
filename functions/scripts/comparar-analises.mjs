@@ -10,7 +10,7 @@
 import { writeFileSync } from 'node:fs';
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { ROTULO_RODADA, desenhoDe, rodadaDe } from './b2-rodadas.mjs';
+import { RODADA_CORRECAO, ROTULO_RODADA, desenhoDe, rodadaDe } from './b2-rodadas.mjs';
 
 const [projeto, saida] = process.argv.slice(2);
 if (!projeto || !saida) {
@@ -61,7 +61,7 @@ for (const f of (await db.collection('fichas').where('teste', '==', true).get())
   fichas.push({ id: f.id, empresa: f.get('original.empresa'), estado: f.get('estado'), analiseAtual: f.get('analiseAtual'), versoes });
 }
 fichas.sort((a, b) => a.empresa.localeCompare(b.empresa, 'pt-BR'));
-const json = JSON.stringify({ geradoEm: new Date().toISOString(), projeto, fichas, rotulos: ROTULO_RODADA }).replace(/</g, '\\u003c');
+const json = JSON.stringify({ geradoEm: new Date().toISOString(), projeto, fichas, rotulos: ROTULO_RODADA, rodadaCorrecao: RODADA_CORRECAO }).replace(/</g, '\\u003c');
 
 const html = `<!doctype html>
 <html lang="pt-BR" data-theme="dark">
@@ -208,10 +208,10 @@ function md(t) {
 function opcoes(f) {
   return f.versoes.map((v) => '<option value="' + v.id + '">' + v.id + ' · ' + esc(nomeModelo(v.modelo)) + ' · esforço ' + esc(v.esforco) + (v.autor === 'humano' ? ' · edição humana' : v.origem === 'correcao' ? ' · correção de ' + esc(v.baseadaEm) : '') + (v.rodada ? ' · ' + esc(D.rotulos[v.rodada] ?? v.rodada) + (v.rodada !== 'anterior' ? ' · desenho ' + v.desenho : '') : '') + (v.id === f.analiseAtual ? ' · atual' : '') + '</option>').join('');
 }
-// Default columns: the correction of round 1 in design A and in design C; without them, the latest Sonnet
+// Default columns: the correction of the latest round with correction (RODADA_CORRECAO) in design A and in design C; without them, the latest Sonnet
 // and the latest Haiku version.
 function padrao(f, re, desenho) {
-  const b2 = f.versoes.filter((v) => v.rodada === 'R1c' && v.desenho === desenho && v.origem === 'correcao');
+  const b2 = f.versoes.filter((v) => v.rodada === D.rodadaCorrecao && v.desenho === desenho && v.origem === 'correcao');
   if (b2.length) return b2[b2.length - 1].id;
   const vs = f.versoes.filter((v) => re.test(v.modelo));
   return (vs[vs.length - 1] ?? f.versoes[f.versoes.length - 1]).id;
