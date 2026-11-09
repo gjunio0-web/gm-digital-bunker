@@ -205,8 +205,8 @@ export function relatorio(fichas, geradoEm = new Date().toISOString()) {
     L.push(`| ${empresas[condA[i].id] ?? condA[i].id} | ${condA[i].a} / ${condA[i].c} | ${condA[i].ok ? 'atende' : 'não atende'} | ${condB[i].faixa} / ${condB[i].c} | ${condB[i].ok ? 'atende' : 'não atende'} |`);
   }
   L.push('');
-  L.push(`- (a) variância de pontos: ${okA ? 'atendida' : 'não atendida'} nas ${pares.length} fichas`);
-  L.push(`- (b) taxa de pendências de escopo: ${okB ? 'atendida' : 'não atendida'}`);
+  L.push(`- (a) variância de pontos: ${okA ? 'atendida' : 'não atendida'} (atende em ${condA.filter((x) => x.ok).length} de ${pares.length} fichas)`);
+  L.push(`- (b) taxa de pendências de escopo: ${okB ? 'atendida' : 'não atendida'} (atende em ${condB.filter((x) => x.ok).length} de ${pares.length} fichas)`);
   L.push(`- (c) itens removidos por origem nas versões do C: ${removC} – ${okC ? 'atendida' : 'não atendida'}`);
   L.push(`- **Resultado: critério ${okA && okB && okC ? 'atendido' : 'não atendido'}.**`, '');
   L.push('Observações: (a) e (c) dependem de enquadrar, que é o mesmo modelo nos dois desenhos; só (b) depende do desenho. Duas amostras por desenho e ficha. A decisão sobre o desenho é de Gon.', '');
