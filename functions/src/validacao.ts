@@ -88,22 +88,9 @@ export const ehRobo = (corpo: unknown): boolean =>
 
 // Origin IP for the rate limit (phase 6, item 6): the Google front end appends the address it saw to
 // X-Forwarded-For, so the last entry is the one a client cannot forge; the first ones come from the client.
-// Hypothesis from the Load Balancer documentation, checked in qualidade by logging only the number of entries.
+// Confirmed in qualidade on 9/11/2026: a test value sent by the client stayed first, with 2 entries in all.
 export const ipDe = (cabecalho: string | undefined, ip: string | undefined) => {
   const entradas = (cabecalho ?? '').split(',').map((x) => x.trim()).filter(Boolean);
   return entradas.length ? entradas[entradas.length - 1] : (ip ?? '').trim();
 };
 export const entradasXff = (cabecalho: string | undefined) => (cabecalho ?? '').split(',').filter((x) => x.trim()).length;
-
-// TEMPORARY (check in qualidade, authorized by Gon on 9/11/2026; remove after the check): where a test value
-// sent by the client lands in X-Forwarded-For. The test value is 203.0.113.7 (TEST-NET-3, reserved for
-// documentation), so only a position is logged, never an address. 'primeira': the client value stays in front
-// and the last entry is the one Google appends (ipDe is right); 'ultima': the client value is last (ipDe must change).
-export const MARCADOR_XFF = '203.0.113.7';
-export const posicaoMarcadorXff = (cabecalho: string | undefined): 'ausente' | 'unica' | 'primeira' | 'ultima' | 'meio' => {
-  const entradas = (cabecalho ?? '').split(',').map((x) => x.trim()).filter(Boolean);
-  const i = entradas.indexOf(MARCADOR_XFF);
-  if (i < 0) return 'ausente';
-  if (entradas.length === 1) return 'unica';
-  return i === 0 ? 'primeira' : i === entradas.length - 1 ? 'ultima' : 'meio';
-};
