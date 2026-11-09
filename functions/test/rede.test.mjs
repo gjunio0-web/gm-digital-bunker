@@ -11,10 +11,14 @@ test('address forms: hex IPv4-mapped, NAT64, 6to4, Teredo, decimal and hex IPv4 
     'http://[::ffff:169.254.169.254]/', 'http://[::ffff:127.0.0.1]/', 'http://[::ffff:a9fe:a9fe]/', 'http://[64:ff9b::a9fe:a9fe]/',
     'http://[2002:a9fe:a9fe::]/', 'http://[2001:0:4136:e378:8000:63bf:3fff:fdd2]/', 'http://2852039166/', 'http://0xa9.0xfe.0xa9.0xfe/', 'http://0251.0376.0251.0376/',
     'http://[::]/', 'http://[fe80::1]/', 'http://[fd12::1]/', 'http://[2001:db8::1]/',
+    // Deprecated IPv4-compatible form (::/96), even with a public IPv4 inside
+    'http://[::169.254.169.254]/', 'http://[::a9fe:a9fe]/', 'http://[::127.0.0.1]/', 'http://[::8.8.8.8]/',
   ]) await assert.rejects(exigeEnderecoPublico(new URL(u)), /address not allowed/, u);
   assert.equal(ipPrivado('::ffff:a9fe:a9fe'), true);
   assert.equal(ipPrivado('::ffff:8.8.8.8'), false);
   assert.equal(ipPrivado('2001:4860:4860::8888'), false);
+  assert.equal(ipPrivado('::a9fe:a9fe'), true);
+  assert.equal(ipPrivado('::808:808'), true);
   assert.equal(ipPrivado('nao-e-ip'), true);
   // The IPv4 list of before is kept.
   for (const ip of ['0.1.2.3', '100.64.0.1', '198.18.0.1', '192.0.0.1', '255.255.255.255']) assert.equal(ipPrivado(ip), true, ip);

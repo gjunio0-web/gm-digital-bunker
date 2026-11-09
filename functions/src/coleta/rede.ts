@@ -17,12 +17,15 @@ const MAX_REDIRECIONAMENTOS = 3;
 // the former list, plus anything ipaddr.js does not class as unicast. IPv6: only global unicast passes; the
 // IPv4-mapped form is checked as IPv4, and translation or tunnel prefixes that embed an IPv4 address
 // (64:ff9b::/96 NAT64, 2002::/16 6to4, Teredo) are refused outright. Anything that does not parse is refused.
+// The deprecated IPv4-compatible form (::/96, RFC 4291 2.5.5.1, e.g. "::a9fe:a9fe"), which ipaddr.js classes as
+// unicast, is refused too: the first 96 bits all zero (authorized by Gon, 9/11/2026).
 export function ipPrivado(ip: string): boolean {
   if (!ipaddr.isValid(ip)) return true;
   const a = ipaddr.parse(ip);
   if (a.kind() === 'ipv6') {
     const v6 = a as ipaddr.IPv6;
     if (v6.isIPv4MappedAddress()) return ipPrivado(v6.toIPv4Address().toString());
+    if (v6.parts.slice(0, 6).every((p) => p === 0)) return true;
     return v6.range() !== 'unicast';
   }
   const [o1, o2] = (a as ipaddr.IPv4).octets;
