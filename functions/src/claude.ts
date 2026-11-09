@@ -79,7 +79,9 @@ export async function chamaClaude(c: Chamada): Promise<Resposta> {
     const r = (await res.json().catch(() => null)) as
       | { content?: { type: string; text?: string }[]; usage?: Uso; stop_reason?: string; error?: { type?: string; message?: string } }
       | null;
-    if (!res.ok || !r) throw new Error(`Claude API HTTP ${res.status}: ${r?.error?.type ?? 'no body'}`);
+    // The API message says what in the request was refused (schema, parameter); it describes the request,
+    // not the ficha, and is cut short before it reaches the logs.
+    if (!res.ok || !r) throw new Error(`Claude API HTTP ${res.status}: ${r?.error?.type ?? 'no body'}${r?.error?.message ? ` – ${r.error.message.slice(0, 300)}` : ''}`);
     if (r.stop_reason !== 'end_turn') throw new ErroComUso(`Claude API stop_reason ${r.stop_reason}`, r.usage ?? { input_tokens: 0, output_tokens: 0 });
     const texto = r.content?.find((b) => b.type === 'text')?.text;
     if (!texto) throw new Error('Claude API answer without text');
