@@ -17,8 +17,7 @@ const JANELAS = [
   // Round 1 with correction again, after spec 02 v0.15 (section labels, rule bloco_sem_rotulo; commit b47ebd6).
   { rodada: 'R1f', de: '2026-11-10T02:02:00Z', ate: '2026-11-10T02:36:00Z' },
   // Retest of design C after spec 02 v0.16 (GAT Logística and Elite 90 Pro, three rounds per design, repair in
-  // Sonnet 5.5; commit f406a14). The end of the window is provisional until the run finishes.
-  { rodada: 'RT', de: '2026-11-10T21:47:00Z', ate: '2026-11-11T03:00:00Z' },
+  { rodada: 'RT', de: '2026-11-10T21:47:00Z', ate: '2026-11-10T22:38:00Z' },
 ];
 // Latest round with correction: the default of the comparison page and the round of the correction measures.
 export const RODADA_CORRECAO = 'RT';
