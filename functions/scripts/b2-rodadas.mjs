@@ -14,9 +14,12 @@ const JANELAS = [
   { rodada: 'R1c', de: '2026-11-09T15:52:00Z', ate: '2026-11-09T16:28:00Z' },
   // Round 1 with correction again, after spec 02 v0.13 (fixed section titles and purposes; commit 4aced6e).
   { rodada: 'R1e', de: '2026-11-09T20:11:00Z', ate: '2026-11-09T20:47:00Z' },
+  // Round 1 with correction again, after spec 02 v0.15 (section labels, rule bloco_sem_rotulo; commit b47ebd6).
+  // The end of the window is provisional until the run finishes.
+  { rodada: 'R1f', de: '2026-11-10T02:02:00Z', ate: '2026-11-10T05:00:00Z' },
 ];
 // Latest round with correction: the default of the comparison page and the round of the correction measures.
-export const RODADA_CORRECAO = 'R1e';
+export const RODADA_CORRECAO = 'R1f';
 
 export const ROTULO_RODADA = {
   automatica: 'automática',
@@ -24,6 +27,7 @@ export const ROTULO_RODADA = {
   diagnostico: 'diagnóstico',
   R1c: 'rodada 1 com correção',
   R1e: 'rodada 1 com correção, spec 02 v0.13',
+  R1f: 'rodada 1 com correção, spec 02 v0.15',
   anterior: 'antes da B2',
 };
 
