@@ -1,0 +1,114 @@
+{
+ "v14": {
+  "s1": [
+   "A Capal Cooperativa Agroindustrial é uma cooperativa ativa, com sede em Arapoti (PR), natureza juríd",
+   "A ficha pede entender onde a inteligência artificial (IA) ajuda no atendimento aos cooperados e no p",
+   "Leitura inicial de aderência: parcial, por um porte bem acima da referência da prática (ver s6). Hip"
+  ],
+  "s2": [
+   "**Atividade.** Cooperativa agroindustrial do Paraná, com insumos agropecuários, nutrição animal, rec",
+   "**Presença digital.** O site concentra links para área do cooperado, portal do colaborador, webmail ",
+   "**Estrutura de tecnologia observada.** Não foi encontrado executivo dedicado exclusivamente a tecnol",
+   "**Porte.** O LinkedIn declara 501 a 1.000 funcionários [F:empresa_pessoas:1]; Econodata e Crunchbase",
+   "**Vagas abertas.** Três vagas, todas de manutenção industrial: mecânico e eletricista em Ponta Gross",
+   "**Movimentos recentes.**\n- Em março de 2026, a Capal absorveu a Coopagrícola, chegando a 29 unidades",
+   "Não foi encontrada notícia sobre IA ou digitalização da Capal, o que deixa o gatilho do contato sem "
+  ],
+  "s3": [
+   "**Cadeia de valor.** Insumos e sementes, produção dos cooperados, recepção, secagem e armazenagem, i",
+   "**Posição da Capal.** Atua na oferta de insumos e na recepção e industrialização, com contato direto",
+   "**Outras cooperativas e o que divulgam sobre IA.**\n- Cocamar: visão computacional para estimar acide",
+   "Os relatos vêm de imprensa e terceiros; os sites das cooperativas não foram consultados.",
+   "**Regulação.**\n- A Lei Geral de Proteção de Dados (LGPD) alcança o tratamento de dados pessoais por ",
+   "**Pressões.**\n- Levantamento citado em artigo de 2021: 31,13% dos negócios do agronegócio em conform",
+   "**Casos de uso recorrentes (todos hipóteses, sem rotina mapeada).** Lentes: otimização, automação e ",
+   "Ganhos citados nos casos de referência, como 97% de assertividade [F:setor:1], são declarações de te"
+  ],
+  "s4": [
+   "**TAM (mercado total endereçável).** Não estimado como mercado de inteligência artificial (IA). Como",
+   "**SAM.** Não estimado. O dado paranaense (R$ 223 bilhões em 2025) reúne todos os ramos [F:mercado:14",
+   "**SOM.** Não estimado: faltam dados de adoção, preço e capacidade para 2 a 3 anos.",
+   "**Dinâmica.** Tendência de crescimento do ramo: receita de 2024 avançou 3,6% [F:mercado:13]; o gasto",
+   "**Ligação com o problema declarado.** A mensagem não descreve processo medido, então não há parcela ",
+   "**Direção do potencial.** Hipótese de defender margem, com confiança baixa. A sobra de R$ 116 milhõe"
+  ],
+  "s5": [
+   "**Signatário.** Ana Teste declara o cargo de diretor(a) no formulário. O cargo não foi confirmado: o",
+   "O nome informado não consta dos quadros societários consultados [F:empresa_pessoas:2] [F:empresa_pes",
+   "**Decisores visíveis.** A página institucional apresenta Conselho de Administração com presidente, v",
+   "A cobertura de março de 2026 trata Adilson Roberto Fuga como presidente-executivo e Erik Bosch como "
+  ],
+  "s6": [
+   "**Aderência do cliente.** Parcial. O faturamento de R$ 5,4 bilhões em 2025 [F:mercado:10] e a faixa ",
+   "**Escopo.** Grau sintético: assessoria A3 (alta) para o pedido; execução a verificar, pois A3 (alta)",
+   "**Estrutura de tecnologia.** Enxuta, por inferência, a confirmar. Os fatos estão em s2 [inferência].",
+   "**Porta provável.** Conselho de IA, hipótese a confirmar: a página de origem é a do Conselho e há op",
+   "**Hipóteses de alavanca** (sem rotina mapeada, sem arquétipo; eixos críticos do livro, 5.3).\n- Atend",
+   "**Riscos identificados.**\n- Porte fora da faixa de referência, como acima.\n- Cargo não confirmado: v",
+   "**Direção do potencial.** Defender margem, hipótese de confiança baixa, favorece abrir por um diagnó"
+  ],
+  "s7": [
+   "**Objetivo.** Entender o momento da Capal e onde a IA já aparece na operação, para decidir se o dest",
+   "**O que a conversa precisa validar.**\n- O papel de quem escreve e quem decide sobre IA, já que o car",
+   "O que não foi encontrado e deve ser tratado como pergunta: volume de atendimento, processo de planej"
+  ]
+ },
+ "v16": {
+  "s1": [
+   "A Capal Cooperativa Agroindustrial, com Cadastro Nacional da Pessoa Jurídica (CNPJ) 78.320.397/0001-",
+   "Porte: faturamento declarado de R$ 5,4 bilhões em 2025 [F:empresa_noticias:1], 29 unidades [F:empres",
+   "Quem escreveu declara cargo de diretor(a), que não foi localizado em nenhuma fonte pública consultad",
+   "O pedido é entender onde a inteligência artificial (IA) ajuda no atendimento aos cooperados e no pla",
+   "Leitura inicial: aderência parcial, pelo porte. O pedido de diagnóstico cabe no escopo; a graduação "
+  ],
+  "s2": [
+   "Atividade: cooperativa agroindustrial que reúne insumos agropecuários, sementes, fertilizantes e def",
+   "Presença: sede em Arapoti, com notícias de atuação em São Paulo, como plantio de safra de verão e di",
+   "Presença digital: o site tem seções de cooperativa, produtos, mídia, notícias, unidades e contato, f",
+   "Tecnologia observada: um episódio de podcast da seção de mídia apresenta um aplicativo novo para coo",
+   "Vagas: três vagas abertas, todas de manutenção industrial, em Ponta Grossa (PR) e Taquarivaí (SP), c",
+   "Funcionários: LinkedIn e ZoomInfo indicam faixa de 501 a 1.000 [F:empresa_pessoas:1][F:empresa_pesso",
+   "Movimentos recentes: em março de 2026 a Capal incorporou a Coopagrícola, e a estrutura passou a 29 u",
+   "Em setembro de 2026 foi divulgado plano de ampliação de 30% na suinocultura, com integração e uso do"
+  ],
+  "s3": [
+   "Cadeia de valor [inferência, a partir das atividades declaradas e da CNAE]: insumos e sementes, prod",
+   "Posição: a Capal atua na oferta de insumos aos cooperados e na recepção e industrialização de parte ",
+   "Programa de IA do Serviço Nacional de Aprendizagem Industrial (Senai) no Paraná: a divulgação cita a",
+   "O que outras cooperativas do segmento divulgam sobre IA, com base em imprensa e terceiros, sem consu",
+   "Regulação: a Lei Geral de Proteção de Dados (LGPD, Lei nº 13.709/2018) incide sobre dados de coopera",
+   "Pressões: digitalização que amplia o tratamento de dados pessoais e sensíveis, com produtores pouco ",
+   "Casos de uso recorrentes (hipóteses). As lentes são as da prática: otimização, automação e aumentaçã"
+  ],
+  "s4": [
+   "Método: o mercado total endereçável (TAM, Total Addressable Market) em sentido estrito não foi estim",
+   "- TAM, universo de referência: R$ 487,3 bilhões de ingressos em 2025 de 1.254 cooperativas agropecuá",
+   "Dinâmica: a receita do ramo em 2024 foi de R$ 438,2 bilhões em 1.172 cooperativas [F:mercado:12], co",
+   "Ligação com o problema declarado: a mensagem fala em dúvida sobre onde aplicar IA no atendimento e n",
+   "Direção do potencial: defender margem, com confiança baixa [inferência]. A sobra líquida de R$ 116 m"
+  ],
+  "s5": [
+   "Signatário. Cargo declarado no formulário: diretor(a) [F:empresa_pessoas:0]. Não confirmado: o Hunte",
+   "Divergência de contagem: a mensagem de qualificação fala em onze diretores e um presidente, mas as f",
+   "Trajetória profissional, publicações e falas do signatário não foram coletadas nesta análise. Nenhum",
+   "Decisores visíveis (cargo público, sem dados pessoais além do papel na empresa):\n- Erik Bosch: presi",
+   "Nenhum desses nomes aparece como executivo dedicado exclusivamente a tecnologia [F:empresa_pessoas:2"
+  ],
+  "s6": [
+   "Estrutura de tecnologia: categoria enxuta, classificada por inferência a partir dos fatos descritos ",
+   "Escopo: aprovado para os pedidos, com aderência parcial pelo porte (riscos do lead abaixo). Escala d",
+   "Porta provável: combinação de diagnóstico do Projeto “Estratégia e plataforma digital com IA” [M:por",
+   "Direção do potencial (defender margem, confiança baixa, ver s4): orienta abrir pelo diagnóstico da o",
+   "Hipóteses de alavanca, sem número de retorno:\n- Atendimento aos cooperados: respostas a dúvidas reco",
+   "Riscos identificados:\n- Porte acima da faixa de referência do cliente aderente [M:escopo-limites:1],"
+  ],
+  "s7": [
+   "Objetivo: entender se a dor principal está na operação, com recepção e planejamento da produção, ou ",
+   "O volume e os canais do atendimento aos cooperados, e se há repetição suficiente para justificar oti",
+   "Como o planejamento da safra e da produção e o registro de recepção são feitos hoje, e onde ficam as",
+   "A alçada de decisão sobre tecnologia e quem acompanha a parte digital da cooperativa. A resposta con",
+   "Se já existe algum piloto de IA, ferramenta contratada ou participação efetiva no programa de residê",
+   "Durante a conversa, evitar pedir dados pessoais de cooperados ou dados de produção com identificação"
+  ]
+ }
+}

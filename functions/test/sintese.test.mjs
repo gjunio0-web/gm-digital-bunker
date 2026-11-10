@@ -97,7 +97,8 @@ test('telefonesFora: a phone found in the company data collected raises nothing'
 });
 
 const secao = (corpo, vazia = false) => ({ corpo, vazia });
-const longo = (extra = '') => `${'palavra '.repeat(45)}${extra}`;
+// Sections open with a label in the format of spec 02 v0.15, so only the rule under test fails.
+const longo = (extra = '') => `**Rótulo.** ${'palavra '.repeat(45)}${extra}`;
 const analise = (sobrescreve = {}) => ({
   secoes: { s1: secao(longo()), s2: secao(longo()), s3: secao(longo()), s4: secao(longo()), s5: secao('', true), s6: secao(longo()), s7: secao(longo()) },
   rascunhoResposta: { assunto: 'Conversa', corpo: 'Podemos conversar na terça? GM Digital Bunker™' },
@@ -150,12 +151,12 @@ test('checagens: an English draft is not checked for Portuguese pronouns', () =>
   assert.deepEqual(p, []);
 });
 
-test('simulated analysis: passes the checks, and the "pendência" variant fails on the long dash', () => {
+test('simulated analysis: passes the checks, and the "pendência" variant fails on the s2 label and the long dash', () => {
   const ok = simulaMontar(false);
   const a = { secoes: ok, rascunhoResposta: simulaConversa().rascunhoResposta, lang: 'pt-BR', cnpjConfirmado: false };
   assert.deepEqual(checagens(a, coleta), []);
   const p = checagens({ ...a, secoes: simulaMontar(true) }, coleta);
-  assert.deepEqual(p.map((x) => x.secao), ['s3']);
+  assert.deepEqual(p.map((x) => [x.secao, x.regra]), [['s2', 'bloco_sem_rotulo'], ['s3', 'tipografia']]);
 });
 
 test('output checks: schema mismatches throw; titles are fixed; at most three hypotheses', () => {

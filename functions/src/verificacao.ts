@@ -346,6 +346,37 @@ export const avisosDoEnquadramento = (detalhe: any): string[] =>
   (Array.isArray(detalhe?.escopo?.itensRemovidos) ? detalhe.escopo.itensRemovidos : [])
     .map((i: any) => `item_removido_por_origem: ${String(i?.origem ?? 'sem origem')} – ${String(i?.pedidoOuDor ?? '').slice(0, 200)}`);
 
+// Section labels (spec 02 v0.15, 3.3 and 4.1, rule bloco_sem_rotulo). A label opens the paragraph in bold,
+// with a capital initial and the full stop inside the bold ("**Atividade.** Texto"), with no word limit.
+export const paragrafos = (corpo: string): string[] => corpo.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+const ROTULO_NO_FORMATO = /^\*\*\p{Lu}[^*\n]*\.\*\*(?:\s|$)/u;
+const NEGRITO_INICIAL = /^\*\*([^*\n]+)\*\*([.:]?)/u;
+export const rotuloNoFormato = (p: string): boolean => ROTULO_NO_FORMATO.test(p);
+// A bold label out of the format: "**Rótulo:**", "**Rótulo**." or "**Rótulo**:", or "**rótulo.**". Bold
+// without punctuation ("**Hipóteses de alavanca** (…") is not a label and is not checked.
+export function rotuloForaDoFormato(p: string): boolean {
+  if (rotuloNoFormato(p)) return false;
+  const m = NEGRITO_INICIAL.exec(p);
+  if (!m) return false;
+  const [, dentro, depois] = m;
+  return dentro.trimEnd().endsWith(':') || depois !== '' || dentro.trimEnd().endsWith('.');
+}
+export interface FalhaDeRotulo { indice: number; caso: 'sem_rotulo' | 'fora_do_formato'; paragrafo: string }
+// (a) s2 to s7: the first paragraph opens with a label in the format; any other opening fails, "Rótulo:"
+// included. (b) The following paragraphs of s2 to s7 and all of s1: the label is optional; only a bold label
+// out of the format fails.
+export function falhasDeRotulo(secao: string, corpo: string): FalhaDeRotulo[] {
+  const r: FalhaDeRotulo[] = [];
+  paragrafos(corpo).forEach((p, i) => {
+    if (secao !== 's1' && i === 0) {
+      if (!rotuloNoFormato(p)) r.push({ indice: i, caso: rotuloForaDoFormato(p) ? 'fora_do_formato' : 'sem_rotulo', paragrafo: p });
+    } else if (rotuloForaDoFormato(p)) r.push({ indice: i, caso: 'fora_do_formato', paragrafo: p });
+  });
+  return r;
+}
+// Opening of the paragraph without source links, so the repair finds it and the label insertion falls inside it.
+export const inicioDoParagrafo = (p: string): string => p.replace(/(\[F:[a-z_]+:\d+\])\([^)]*\)/g, '$1').slice(0, 80);
+
 // The code checks of spec 02 v0.12, 4.1, in its order. Each failure is {tipo: "mecanica", regra, secao,
 // trecho, correcaoSugerida: null, local}.
 export function checagens(a: AnaliseVerificada, coleta: Coleta, metodo?: RegrasMetodo): Pendencia[] {
@@ -367,6 +398,7 @@ export function checagens(a: AnaliseVerificada, coleta: Coleta, metodo?: RegrasM
     for (const x of numerosSemFonte(f.texto, metodo?.arquivos)) add(f, 'numero_sem_fonte', x);
     const s = a.secoes[f.secao];
     if (s && !s.vazia && palavras(f.texto) < 40) add(f, 'secao_curta', `seção não vazia com ${palavras(f.texto)} palavras (mínimo 40)`);
+    if (s && !s.vazia) for (const x of falhasDeRotulo(f.secao, f.texto)) add(f, 'bloco_sem_rotulo', inicioDoParagrafo(x.paragrafo));
   }
   if (!a.cnpjConfirmado && !/a confirmar/i.test(a.secoes.s2?.corpo ?? '')) add({ secao: 's2', local: 'secoes.s2.corpo' }, 'cnpj_a_confirmar', 'CNPJ não confirmado e a seção 2 não diz "a confirmar"');
   for (const f of folhas) {
@@ -422,8 +454,8 @@ export function checagens(a: AnaliseVerificada, coleta: Coleta, metodo?: RegrasM
   return p;
 }
 
-// Rules whose failures go to the repair call (spec 02 v0.12, 4.1); the others become issues directly.
-export const REGRAS_DE_REPARO = ['marca_sem_destino', 'rascunho_longo', 'rascunho_preco', 'rascunho_sem_nome', 'rascunho_horario_concreto', 'termo_vetado', 'grau_sem_nome', 'sigla', 'ordem_datas'] as const;
+// Rules whose failures go to the repair call (spec 02 v0.12, 4.1; bloco_sem_rotulo since v0.14); the others become issues directly.
+export const REGRAS_DE_REPARO = ['marca_sem_destino', 'rascunho_longo', 'rascunho_preco', 'rascunho_sem_nome', 'rascunho_horario_concreto', 'termo_vetado', 'grau_sem_nome', 'sigla', 'ordem_datas', 'bloco_sem_rotulo'] as const;
 export const vaiAoReparo = (x: Pendencia) => (REGRAS_DE_REPARO as readonly string[]).includes(x.regra ?? '');
 
 // Stage that wrote the field of an issue.

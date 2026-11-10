@@ -191,8 +191,13 @@ test('analysis with a pending issue: analise_com_pendencias, medium-level reason
   const v = mapa((await le(`fichas/${id}/analise/v1`)).fields.verificacao);
   assert.equal(v.status.stringValue, 'com_pendencias');
   const p = v.pendencias.arrayValue.values.map((x) => mapa(x));
-  assert.deepEqual(p.map((x) => [x.tipo.stringValue, x.secao.stringValue, x.regra.stringValue]), [['mecanica', 's3', 'tipografia']]);
-  assert.equal(p[0].correcaoSugerida.nullValue, null);
+  // s2 opens with "Atividade:" (spec 02 v0.15): bloco_sem_rotulo goes to the repair, which the simulation leaves
+  // unchanged, so it stays as a mechanical issue next to the long dash.
+  assert.deepEqual(p.map((x) => [x.tipo.stringValue, x.secao.stringValue, x.regra.stringValue]), [['mecanica', 's2', 'bloco_sem_rotulo'], ['mecanica', 's3', 'tipografia']]);
+  assert.match(p[0].trecho.stringValue, /^Atividade: /);
+  assert.ok(p.every((x) => x.correcaoSugerida.nullValue === null));
+  const reparos = v.reparos.arrayValue.values.map((x) => mapa(x));
+  assert.deepEqual(reparos.map((r) => [r.etapa.stringValue, r.regra.stringValue]), [['montar_analise', 'bloco_sem_rotulo']]);
 });
 
 test('repair: concrete times and no name in the draft are fixed by one repair call; the version keeps the fix', { timeout: 90_000 }, async () => {

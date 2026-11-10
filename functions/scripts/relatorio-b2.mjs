@@ -30,8 +30,16 @@ function chamadas(uso) {
     .flatMap(([k, x]) => (Array.isArray(x) ? x.map((y) => [`reparar·${y.origem ?? '?'}`, y]) : [[k, x]]));
 }
 
+// Repair calls of the round, from the "reparo" events of the base version and of its correction: total,
+// rejected by limiarReparo (motivo "mudança fora dos trechos de X%") and rejected for another reason.
+export function chamadasDeReparo(eventos) {
+  const xs = eventos ?? [];
+  const limiar = xs.filter((e) => !e.aceito && /^mudança fora dos trechos/.test(String(e.motivo ?? ''))).length;
+  return { total: xs.length, rejeitadasLimiar: limiar, rejeitadasOutras: xs.filter((e) => !e.aceito).length - limiar };
+}
+
 // One round of one ficha in one design: the base version (synthesis) and its correction, if any.
-export function medidasDaRodada(base, correcao, lead) {
+export function medidasDaRodada(base, correcao, lead, eventosReparo = []) {
   const enq = base.enquadramento ?? {};
   const det = enq.detalhe ?? {};
   const ver = base.verificacao ?? {};
@@ -69,6 +77,7 @@ export function medidasDaRodada(base, correcao, lead) {
     depois,
     reparosAceitos: reparos.filter((r) => r.aceito).length,
     reparosRejeitados: reparos.filter((r) => !r.aceito).length,
+    chamadasReparo: chamadasDeReparo(eventosReparo),
     revisor,
     escopoPend: pend.filter((p) => p.tipo === 'escopo').length,
     checklistViolado: conta(violadas, (c) => regraId(c.regra)),
@@ -96,7 +105,7 @@ export function rodadas(fichas) {
       const rodada = rodadaDe(f.id, v, f.versoes);
       if (rodada === 'anterior' || rodada === 'diagnostico') continue;
       const correcao = f.versoes.find((x) => x.origem === 'correcao' && x.baseadaEm === v.id) ?? null;
-      out.push({ ficha: f.id, empresa: f.empresa, rodada, desenho: desenhoDe(v.uso?.montar_analise?.modelo ?? v.autor?.id), versao: v.id, m: medidasDaRodada(v, correcao, f.graduadas?.[v.id]) });
+      out.push({ ficha: f.id, empresa: f.empresa, rodada, desenho: desenhoDe(v.uso?.montar_analise?.modelo ?? v.autor?.id), versao: v.id, m: medidasDaRodada(v, correcao, f.graduadas?.[v.id], [...(f.reparos?.[v.id] ?? []), ...(correcao ? f.reparos?.[correcao.id] ?? [] : [])]) });
     }
   }
   return out;
@@ -186,6 +195,8 @@ export function relatorio(fichas, geradoEm = new Date().toISOString()) {
     L.push(`- Reparos aceitos / rejeitados: ${tot((m) => m.reparosAceitos)} / ${tot((m) => m.reparosRejeitados)}`);
     L.push(`- Pendências do revisor por tipo: ${lista(totObj((m) => m.revisor))}`);
     L.push(`- Checklist violado por regra: ${lista(totObj((m) => m.checklistViolado))}`);
+    const cr = comCorr.map((r) => r.m.chamadasReparo ?? { total: 0, rejeitadasLimiar: 0, rejeitadasOutras: 0 });
+    L.push(`- Chamadas de reparo na ${ROTULO_RODADA[RODADA_CORRECAO]}: ${soma(cr.map((c) => c.total))}; rejeitadas pelo limiarReparo: ${soma(cr.map((c) => c.rejeitadasLimiar))}; rejeitadas por outro motivo: ${soma(cr.map((c) => c.rejeitadasOutras))}`);
     L.push(`- Rodada com correção: corrigidas ${soma(comCorr.map((r) => r.m.corrigidas))}, mantidas ${soma(comCorr.map((r) => r.m.mantidas))}, correções recusadas ${soma(comCorr.map((r) => r.m.correcaoFalhou))}; estado final pronta em ${comCorr.filter((r) => r.m.estadoFinal === 'pronta').length} de ${comCorr.length}`);
     const custoCorr = media(comCorr.map((r) => r.m.usd));
     const custoSem = media(rd.filter((r) => r.rodada === 'R1').map((r) => r.m.usd));
@@ -242,7 +253,12 @@ async function principal() {
       return { id: d.id, n: Number(d.id.slice(1)), ...x, origem: x.autor?.origem ?? null, criadaEm: x.criadaEm?.toDate?.().toISOString() ?? null };
     }).sort((a, b) => a.n - b.n);
     const graduadas = Object.fromEntries((await ref.collection('eventos').where('tipo', '==', 'graduada').get()).docs.map((e) => [e.get('detalhe.versao'), e.get('detalhe')]));
-    fichas.push({ id, empresa: f.get('original.empresa'), versoes, graduadas });
+    const reparos = {};
+    for (const e of (await ref.collection('eventos').where('tipo', '==', 'reparo').get()).docs) {
+      const d = e.get('detalhe') ?? {};
+      (reparos[d.versao] ??= []).push({ etapa: d.etapa, aceito: d.aceito, motivo: d.motivo ?? null });
+    }
+    fichas.push({ id, empresa: f.get('original.empresa'), versoes, graduadas, reparos });
   }
   const r = relatorio(fichas);
   writeFileSync(saida, r.md);
