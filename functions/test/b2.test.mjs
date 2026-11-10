@@ -64,3 +64,35 @@ test('relatorio: measures of a round, the per-design block and the mechanical cr
   assert.ok(r.md.includes('**Resultado: critério atendido.**'));
   assert.ok(!r.md.includes('v7'));
 });
+
+test('retest report: invented marks, repairs by rule, treatments kept by the code, totals', async () => {
+  const { marcasInventadas, medidasDaRodada } = await import('../scripts/relatorio-reteste.mjs');
+  const fontes = { setor: 0, mercado: 3, empresa_digital: 2 };
+  const versao = {
+    secoes: { s3: { corpo: 'Setor [F:setor:1].' }, s4: { corpo: 'TAM [F:mercado:2]; outra [F:mercado:5].' } },
+    rascunhoResposta: { corpo: 'Olá' }, conversa: {},
+    enquadramento: { detalhe: { estruturaTecnologia: { evidencias: [{ etapa: 'empresa_digital', fonteIdx: 1 }, { etapa: 'empresa_digital', fonteIdx: 4 }] } } },
+  };
+  assert.deepEqual(marcasInventadas(versao, fontes), ['setor:1', 'mercado:5', 'empresa_digital:4']);
+  const base = {
+    id: 'v1', secoes: {}, verificacao: { reparos: [{ regra: 'sigla', aceito: true }, { regra: 'marca_sem_destino', aceito: false }], avisos: [] },
+    uso: { total: { usdEstimado: 0.5, usdSemCache: 0.7, duracaoMs: 100000 } },
+  };
+  const correcao = {
+    id: 'v2', ...versao,
+    verificacao: { status: 'com_pendencias', reparos: [], pendencias: [{ tipo: 'mecanica', regra: 'marca_sem_destino' }, { tipo: 'lastro', tratamento: 'corrigida' }] },
+    correcao: { tratamentos: [{ tratamento: 'corrigida' }, { tratamento: 'mantida', razao: 'x' }, { tratamento: 'mantida', razao: 'bloco estruturado não editável pela correção' }] },
+    uso: { total: { usdEstimado: 0.1, usdSemCache: 0.2, duracaoMs: 50000 } },
+  };
+  const m = medidasDaRodada(base, correcao, [{ aceito: true }, { aceito: false, motivo: 'mudança fora dos trechos de 3.1%' }], fontes);
+  assert.equal(m.versoes, 'v1 → v2');
+  assert.equal(m.inventadas.length, 3);
+  assert.deepEqual(m.pedidos, { sigla: 1, marca_sem_destino: 1 });
+  assert.deepEqual(m.rejeitados, { marca_sem_destino: 1 });
+  assert.deepEqual([m.chamadasReparo, m.chamadasRejeitadasLimiar], [2, 1]);
+  assert.deepEqual([m.corrigidas, m.mantidas, m.mantidasPeloCodigo], [1, 1, 1]);
+  assert.deepEqual(m.mecanicas, { marca_sem_destino: 1 });
+  assert.equal(m.status, 'com_pendencias');
+  assert.ok(Math.abs(m.usd - 0.6) < 1e-9 && Math.abs(m.usdSemCache - 0.9) < 1e-9);
+  assert.equal(m.duracaoMs, 150000);
+});
