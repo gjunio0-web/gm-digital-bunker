@@ -243,6 +243,8 @@ async function principal() {
   const { getFirestore } = await import('firebase-admin/firestore');
   initializeApp({ projectId: projeto });
   const db = getFirestore();
+  // REST transport, as in comparar-analises.mjs: over gRPC the reads stalled in Cloud Shell with no error.
+  db.settings({ preferRest: true });
   const fichas = [];
   for (const id of FICHAS_B2) {
     const ref = db.collection('fichas').doc(id);
@@ -263,6 +265,8 @@ async function principal() {
   const r = relatorio(fichas);
   writeFileSync(saida, r.md);
   console.log(`${saida}: ${r.rodadas} rodadas, ${Math.round(r.md.length / 1024)} KB`);
+  // The REST client keeps connections open; end the process once the file is written.
+  process.exit(0);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) await principal();

@@ -342,3 +342,5 @@ if (D.fichas.length) trocaFicha(); else $('#conteudo').innerHTML = '<p class="va
 `;
 writeFileSync(saida, html);
 console.log(`${saida}: ${fichas.length} fichas, ${fichas.reduce((t, f) => t + f.versoes.length, 0)} versões, ${Math.round(html.length / 1024)} KB`);
+// The REST client keeps connections open; end the process once the file is written.
+process.exit(0);
