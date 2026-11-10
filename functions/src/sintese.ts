@@ -124,21 +124,23 @@ const DESTINO_ROTULO: Record<string, string> = {
 };
 export const rotuloDestino = (d: string) => DESTINO_ROTULO[d] ?? d;
 
-export const mensagemEnquadrar = (dados: string) => [{ texto: dados }, { texto: `${INSTRUCAO_ENQUADRAR}\nResponda no esquema.` }];
+// The common instruction on <fontes-disponiveis> is repeated at the end of the user message, right before the
+// schema, in the three synthesis calls (spec 02 v0.16, 3).
+export const mensagemEnquadrar = (dados: string) => [{ texto: dados }, { texto: `${INSTRUCAO_ENQUADRAR}\n${INSTRUCAO_FONTES}\nResponda no esquema.` }];
 
 // <lead> carries only lead.destino and lead.modificadores (spec 02, 3; spec 04, 3.1).
 export function mensagemConversa(dados: string, enquadramento: unknown, lead: Pick<Lead, 'destino' | 'modificadores'>) {
   const l = { destino: lead.destino, destinoRotulo: rotuloDestino(lead.destino), modificadores: lead.modificadores };
   return [
     { texto: dados },
-    { texto: [`<enquadramento>\n${json(enquadramento)}\n</enquadramento>`, `<lead>\n${json(l)}\n</lead>`, INSTRUCAO_CONVERSA, 'Responda no esquema.'].join('\n') },
+    { texto: [`<enquadramento>\n${json(enquadramento)}\n</enquadramento>`, `<lead>\n${json(l)}\n</lead>`, INSTRUCAO_CONVERSA, INSTRUCAO_FONTES, 'Responda no esquema.'].join('\n') },
   ];
 }
 
 export function mensagemMontar(dados: string, enquadramento: unknown, conversa: unknown, graus: string) {
   return [
     { texto: dados },
-    { texto: [`<enquadramento>\n${json(enquadramento)}\n</enquadramento>`, `<conversa>\n${json(conversa)}\n</conversa>`, instrucaoMontar(graus), 'Responda no esquema.'].join('\n') },
+    { texto: [`<enquadramento>\n${json(enquadramento)}\n</enquadramento>`, `<conversa>\n${json(conversa)}\n</conversa>`, instrucaoMontar(graus), INSTRUCAO_FONTES, 'Responda no esquema.'].join('\n') },
   ];
 }
 

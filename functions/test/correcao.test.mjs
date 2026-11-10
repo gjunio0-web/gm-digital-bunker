@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { checklistDoRevisor } from '../lib/metodoRegras.js';
 import { ESQUEMA_REVISOR, instrucaoRevisor, mensagemRevisor, simulaRevisor, validaRevisor } from '../lib/verificacao.js';
 import {
-  ESQUEMA_CORRIGIR, analiseParaCorrecao, comTratamento, mensagemCorrigir, prontaAposCorrecao, simulaCorrecao, vaiACorrecao, validaCorrecao, versaoCorrigida,
+  ESQUEMA_CORRIGIR, RAZAO_ENQUADRAMENTO, analiseParaCorrecao, comMantidasDoEnquadramento, comTratamento, ehDoEnquadramento, mantidaPeloCodigo, mensagemCorrigir, prontaAposCorrecao, simulaCorrecao, vaiACorrecao, validaCorrecao, versaoCorrigida,
 } from '../lib/correcao.js';
 import { coletaDe, enquadramentoGravado, normalizaEnquadramento, simulaConversa, simulaEnquadrar, simulaMontar, validaEnquadrar } from '../lib/sintese.js';
 
@@ -60,16 +60,21 @@ const textos = () => {
   };
 };
 
-test('correction: schema of the analysis plus treatments; message with numbered issues', () => {
-  for (const k of ['s1', 's7', 'resumoExecutivo', 'enquadramento', 'conversa', 'rascunhoResposta', 'tratamentos']) assert.ok(ESQUEMA_CORRIGIR.required.includes(k), k);
+test('correction: schema of the analysis plus treatments, without enquadramento; message with numbered issues', () => {
+  for (const k of ['s1', 's7', 'resumoExecutivo', 'conversa', 'rascunhoResposta', 'tratamentos']) assert.ok(ESQUEMA_CORRIGIR.required.includes(k), k);
+  assert.ok(!('enquadramento' in ESQUEMA_CORRIGIR.properties), 'spec 02 v0.16, 4.3');
   const t = textos();
   const pend = [{ tipo: 'lastro', secao: 's1', trecho: 'Leitura simulada', correcaoSugerida: 'marcar' }];
-  const msg = mensagemCorrigir(analiseParaCorrecao(t), '<fontes-disponiveis>\n</fontes-disponiveis>', pend)[0].texto;
+  const entrada = analiseParaCorrecao(t);
+  assert.ok(!('enquadramento' in entrada.analise));
+  const msg = mensagemCorrigir(entrada, '<fontes-disponiveis>\n</fontes-disponiveis>', pend)[0].texto;
+  assert.match(msg, /<enquadramento>[\s\S]*<\/enquadramento>\n<analise>/);
+  assert.match(msg, /O enquadramento é só contexto: não o devolva\./);
   assert.match(msg, /<pendencias>[\s\S]*"indice": 0[\s\S]*<\/pendencias>/);
   assert.match(msg, /Corrija a análise nos trechos apontados em <pendencias>/);
 });
 
-test('correction: texts taken, choices of the enquadramento kept; missing treatment counts as kept', () => {
+test('correction: texts taken, enquadramento copied from vN; missing treatment counts as kept', () => {
   const t = textos();
   const pend = [{ tipo: 'lastro', secao: 's1', trecho: 'Leitura simulada no emulador', correcaoSugerida: 'marcar' }, { tipo: 'tom', secao: 's2', trecho: 'x', correcaoSugerida: 'y' }];
   const saida = simulaCorrecao(analiseParaCorrecao(t), pend);
@@ -81,12 +86,26 @@ test('correction: texts taken, choices of the enquadramento kept; missing treatm
   assert.match(v.campos.secoes.s1.corpo, /Leitura simulada no emulador \[inferência\]/);
   assert.equal(v.campos.secoes.s8.titulo, 'Fontes');
   assert.deepEqual(v.avisos, []);
-  // A correction that changes a choice keeps the enquadramento of the base, with a warning.
-  const outra = structuredClone(saida);
-  outra.enquadramento.porta.provavel = 'projeto';
+  // An enquadramento returned anyway is ignored: vN+1 copies the one of vN (spec 02 v0.16, 4.3).
+  const outra = { ...structuredClone(saida), enquadramento: { porta: { provavel: 'projeto' } } };
   const v2 = versaoCorrigida(t, validaCorrecao(outra, 2), coletaDe({}));
-  assert.equal(v2.campos.enquadramento.portaProvavel, 'conselho');
-  assert.match(v2.avisos[0], /^correcao_enquadramento:/);
+  assert.deepEqual(v2.campos.enquadramento, t.enquadramento);
+});
+
+test('correction: issues in the enquadramento are kept by the code, after the corrected ones', () => {
+  const pend = [
+    { tipo: 'lastro', secao: 's1', trecho: 'a', correcaoSugerida: 'b' },
+    { tipo: 'lastro_interno', secao: 'enquadramento', trecho: 'c', correcaoSugerida: 'd' },
+    { tipo: 'escopo', regra: 'limite-4', secao: 'enquadramento', trecho: 'e', correcaoSugerida: 'f' },
+  ];
+  assert.deepEqual(pend.map(ehDoEnquadramento), [false, true, true]);
+  assert.deepEqual(mantidaPeloCodigo(pend[1]), { ...pend[1], tratamento: 'mantida', razao: RAZAO_ENQUADRAMENTO });
+  assert.equal(RAZAO_ENQUADRAMENTO, 'bloco estruturado não editável pela correção');
+  const c = comMantidasDoEnquadramento({ tratamentos: [{ indice: 0, tratamento: 'corrigida', novoTrecho: 'x', razao: null }] }, 2);
+  const todas = comTratamento([pend[0], pend[1], pend[2]], c.tratamentos);
+  assert.deepEqual(todas.map((x) => [x.secao, x.tratamento]), [['s1', 'corrigida'], ['enquadramento', 'mantida'], ['enquadramento', 'mantida']]);
+  assert.equal(todas[2].razao, RAZAO_ENQUADRAMENTO);
+  assert.equal(prontaAposCorrecao([], todas), false);
 });
 
 test('final state after a correction: ready only with every issue corrected and no mechanical issue', () => {

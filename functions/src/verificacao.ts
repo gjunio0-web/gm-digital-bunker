@@ -199,12 +199,35 @@ function dentroDeParentese(texto: string, i: number): boolean {
   for (const c of linha) abertos += c === '(' ? 1 : c === ')' && abertos > 0 ? -1 : 0;
   return abertos > 0;
 }
-const semExtenso = (texto: string, m: RegExpExecArray) =>
-  !(dentroDeParentese(texto, m.index) || texto.slice(m.index + m[0].length).trimStart().startsWith('('));
+const explicadaAli = (texto: string, i: number, n: number) =>
+  dentroDeParentese(texto, i) || texto.slice(i + n).trimStart().startsWith('(');
+// Sentence around a position: bounded by a blank line or by a full stop, question or exclamation mark followed
+// by a space, except the full stop of a bold label ("**TAM.** Mercado total endereçável (TAM)" is one
+// sentence – spec 02 v0.16, 4.1).
+const FIM_DE_FRASE = /[.!?](?!\*\*)(?=\s|$)|\n\s*\n/g;
+function frase(texto: string, i: number, n: number): [number, number] {
+  let ini = 0;
+  let fim = texto.length;
+  for (const m of texto.matchAll(FIM_DE_FRASE)) {
+    const pos = m.index ?? 0;
+    if (pos < i) ini = pos + m[0].length;
+    else if (pos >= i + n) { fim = pos; break; }
+  }
+  return [ini, fim];
+}
+// The first occurrence is explained when it, or another occurrence of the same acronym in the same sentence
+// (before or after it), sits inside or right before a parenthesis (spec 02 v0.16, 4.1).
+function semExtenso(texto: string, m: RegExpExecArray, sigla: string): boolean {
+  if (explicadaAli(texto, m.index, m[0].length)) return false;
+  const [ini, fim] = frase(texto, m.index, m[0].length);
+  const re = new RegExp(`(?<![\\p{L}\\p{N}-])${sigla}s?(?![\\p{L}\\p{N}-])`, 'gu');
+  for (const o of semUrls(texto.slice(ini, fim)).matchAll(re)) if (explicadaAli(texto, ini + (o.index ?? 0), o[0].length)) return false;
+  return true;
+}
 export function siglasSemExtenso(textoAnalise: string): string[] {
   return SIGLAS.filter((s) => {
     const m = primeiraSigla(semUrls(textoAnalise), s);
-    return m !== null && semExtenso(textoAnalise, m);
+    return m !== null && semExtenso(textoAnalise, m, s);
   });
 }
 
@@ -377,6 +400,16 @@ export function falhasDeRotulo(secao: string, corpo: string): FalhaDeRotulo[] {
 // Opening of the paragraph without source links, so the repair finds it and the label insertion falls inside it.
 export const inicioDoParagrafo = (p: string): string => p.replace(/(\[F:[a-z_]+:\d+\])\([^)]*\)/g, '$1').slice(0, 80);
 
+// cnpj_a_confirmar (spec 02 v0.16, 4.1): an unconfirmed CNPJ needs "não confirmado" or "a confirmar" in s2;
+// when neither is there, the code appends "CNPJ a confirmar." as the last paragraph of s2 (a continuation
+// paragraph, so bloco_sem_rotulo does not apply), with no repair and no issue. Returns the new body, or null
+// when nothing changes (CNPJ confirmed, s2 empty or already saying it).
+export const CNPJ_AVISADO = /n[ãa]o confirmado|a confirmar/i;
+export function comCnpjAConfirmar(s2: { corpo?: string; vazia?: boolean } | undefined, cnpjConfirmado: boolean): string | null {
+  if (cnpjConfirmado || !s2 || s2.vazia || CNPJ_AVISADO.test(s2.corpo ?? '')) return null;
+  return `${(s2.corpo ?? '').trimEnd()}\n\nCNPJ a confirmar.`;
+}
+
 // The code checks of spec 02 v0.12, 4.1, in its order. Each failure is {tipo: "mecanica", regra, secao,
 // trecho, correcaoSugerida: null, local}.
 export function checagens(a: AnaliseVerificada, coleta: Coleta, metodo?: RegrasMetodo): Pendencia[] {
@@ -400,7 +433,7 @@ export function checagens(a: AnaliseVerificada, coleta: Coleta, metodo?: RegrasM
     if (s && !s.vazia && palavras(f.texto) < 40) add(f, 'secao_curta', `seção não vazia com ${palavras(f.texto)} palavras (mínimo 40)`);
     if (s && !s.vazia) for (const x of falhasDeRotulo(f.secao, f.texto)) add(f, 'bloco_sem_rotulo', inicioDoParagrafo(x.paragrafo));
   }
-  if (!a.cnpjConfirmado && !/a confirmar/i.test(a.secoes.s2?.corpo ?? '')) add({ secao: 's2', local: 'secoes.s2.corpo' }, 'cnpj_a_confirmar', 'CNPJ não confirmado e a seção 2 não diz "a confirmar"');
+  if (!a.cnpjConfirmado && !a.secoes.s2?.vazia && !CNPJ_AVISADO.test(a.secoes.s2?.corpo ?? '')) add({ secao: 's2', local: 'secoes.s2.corpo' }, 'cnpj_a_confirmar', 'CNPJ não confirmado e a seção 2 não diz "não confirmado" nem "a confirmar"');
   for (const f of folhas) {
     const t = f.texto.indexOf('—');
     if (t >= 0) add(f, 'tipografia', contexto(f.texto, t, 1));
@@ -415,7 +448,7 @@ export function checagens(a: AnaliseVerificada, coleta: Coleta, metodo?: RegrasM
     const limpo = semUrls(todo);
     for (const sigla of SIGLAS) {
       const m = primeiraSigla(limpo, sigla);
-      if (!m || !semExtenso(todo, m)) continue;
+      if (!m || !semExtenso(todo, m, sigla)) continue;
       let inicio = 0;
       for (const f of g) {
         if (m.index < inicio + f.texto.length) {

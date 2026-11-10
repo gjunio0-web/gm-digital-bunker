@@ -24,12 +24,13 @@ import { avisoAnalise } from './email.js';
 import { mesDe } from './qualificar.js';
 import { ETAPAS_COLETA, coletaDe, fontesDisponiveis, rotuloDestino, rotuloQuadrante, secaoS0 } from './sintese.js';
 import {
-  esquemaRevisor, avisosDaColeta, avisosDoEnquadramento, checagens, mensagemRevisor, simulaRevisor, validaRevisor, vaiAoReparo, type AnaliseVerificada,
+  comCnpjAConfirmar, esquemaRevisor, avisosDaColeta, avisosDoEnquadramento, checagens, mensagemRevisor, simulaRevisor, validaRevisor, vaiAoReparo, type AnaliseVerificada,
   type EtapaTexto, type ItemChecklist, type Pendencia,
 } from './verificacao.js';
 import { checklistDoRevisor, regrasDoMetodo } from './metodoRegras.js';
 import {
-  analiseParaCorrecao, comTratamento, mensagemCorrigir, prontaAposCorrecao, simulaCorrecao, validaCorrecao, vaiACorrecao, versaoCorrigida,
+  analiseParaCorrecao, comMantidasDoEnquadramento, comTratamento, ehDoEnquadramento, mantidaPeloCodigo, mensagemCorrigir, prontaAposCorrecao,
+  simulaCorrecao, validaCorrecao, vaiACorrecao, versaoCorrigida,
   type TratamentoDado,
 } from './correcao.js';
 import { CARGOS_ROTULO } from './textos.generated.js';
@@ -86,6 +87,15 @@ export const verificar = onDocumentCreated(
         conversa: t.conversa, nome, lang: f.original?.lang ?? 'pt-BR',
         cnpjConfirmado: coleta.empresa_registro.status === 'concluida' && (coleta.empresa_registro.conteudo as any)?.confirmado === true,
       });
+
+      // cnpj_a_confirmar is applied by the code (spec 02 v0.16, 4.1): "CNPJ a confirmar." as the last paragraph
+      // of s2 when the CNPJ is not confirmed and s2 does not say so; written with the version, with no issue.
+      const camposCodigo: Partial<VersaoTextos> = {};
+      const s2Cnpj = comCnpjAConfirmar(textos.secoes.s2, verifica(textos).cnpjConfirmado);
+      if (s2Cnpj !== null) {
+        textos = { ...textos, secoes: { ...textos.secoes, s2: { ...textos.secoes.s2, corpo: s2Cnpj } } };
+        camposCodigo.secoes = textos.secoes;
+      }
 
       // 4.1 – code checks, first pass.
       const primeira: Pendencia[] = checagens(verifica(textos), coleta, regras);
@@ -182,6 +192,10 @@ export const verificar = onDocumentCreated(
       // A correction version carries the issues of its base with their treatment (spec 02 v0.12, 4.3).
       const carregadas = ehCorrecao ? comTratamento(a.correcao?.pendencias ?? [], a.correcao?.tratamentos ?? []) : [];
       if (ehCorrecao) avisos.push(...(a.correcao?.avisos ?? []));
+      // Issues located in the enquadramento never go to the correction (spec 02 v0.16, 4.3): the code marks them
+      // as kept, with the reason, whenever a correction would be considered.
+      const corrigivel = revisa && p.correcaoAtiva && ia && f.estado === 'sintetizando' && f.analiseAtual === versao;
+      if (corrigivel) for (let i = 0; i < pendencias.length; i++) if (ehDoEnquadramento(pendencias[i])) pendencias[i] = mantidaPeloCodigo(pendencias[i]);
       const todas: Pendencia[] = [...pendencias, ...carregadas];
       const status = ehCorrecao ? (prontaAposCorrecao(pendencias, carregadas) ? 'pronta' : 'com_pendencias') : todas.length ? 'com_pendencias' : 'pronta';
       const agora = Timestamp.now();
@@ -189,7 +203,8 @@ export const verificar = onDocumentCreated(
       const fechaSeNaoCorrigir = ia && f.estado === 'sintetizando' && f.analiseAtual === versao;
 
       // 4.3 – correction: one call when the reviewer left scope or reading issues; the answer becomes vN+1.
-      const paraCorrigir = revisa && p.correcaoAtiva && fechaSeNaoCorrigir ? todas.filter(vaiACorrecao) : [];
+      const paraCorrigir = corrigivel ? todas.filter((x) => vaiACorrecao(x) && !ehDoEnquadramento(x)) : [];
+      const mantidasNoEnquadramento = corrigivel ? todas.filter((x) => vaiACorrecao(x) && ehDoEnquadramento(x)) : [];
       let correcao: { versao: string; doc: Record<string, unknown>; uso: UsoChamada; tratamentos: TratamentoDado[] } | null = null;
       let usoCorrecaoFalha: UsoChamada | null = null;
       if (paraCorrigir.length) {
@@ -220,7 +235,7 @@ export const verificar = onDocumentCreated(
             await cobra(uso);
             usoRecebido = uso;
           }
-          const c = validaCorrecao(saida, paraCorrigir.length);
+          const c = comMantidasDoEnquadramento(validaCorrecao(saida, paraCorrigir.length), mantidasNoEnquadramento.length);
           const { campos, avisos: avisosCorrecao } = versaoCorrigida(textos, c, coleta);
           const nova = `v${(await ref.collection('analise').get()).size + 1}`;
           const s0 = secaoS0({
@@ -241,7 +256,7 @@ export const verificar = onDocumentCreated(
               resumoExecutivo: campos.resumoExecutivo,
               conversa: campos.conversa,
               rascunhoResposta: campos.rascunhoResposta,
-              correcao: { pendencias: paraCorrigir, tratamentos: c.tratamentos, avisos: avisosCorrecao },
+              correcao: { pendencias: [...paraCorrigir, ...mantidasNoEnquadramento], tratamentos: c.tratamentos, avisos: avisosCorrecao },
               uso: { corrigir: uso, total: totalDe([uso]) },
               criadaEm: agora,
             },
@@ -297,7 +312,8 @@ export const verificar = onDocumentCreated(
             status, pendencias: ehCorrecao ? todas : pendencias, verificadaEm: agora, modeloRevisor, reparos, avisos, checklist,
             ...(grava ? { corrigidaEm: correcao!.versao } : {}),
           },
-          // Texts rewritten by an accepted repair (decision of Gon, 8/11/2026).
+          // Texts changed by the code (cnpj_a_confirmar) and rewritten by an accepted repair (decision of Gon, 8/11/2026).
+          ...camposCodigo,
           ...camposReparados,
           ...(usoRevisor ? { 'uso.revisor': usoRevisor } : {}),
           ...(usosReparo.length ? { 'uso.reparar': usosReparo } : {}),
