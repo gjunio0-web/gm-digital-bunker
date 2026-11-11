@@ -19,7 +19,7 @@ test('checklist: six limits, six items of section 4 in order, knowledge assistan
     'orienta-1', 'orienta-2', 'orienta-3', 'orienta-4', 'orienta-5', 'orienta-6', 'assistente-conhecimento', 'nao-reformular',
     'secao-s1', 'secao-s2', 'secao-s3', 'secao-s4', 'secao-s5', 'secao-s6', 'secao-s7',
   ]);
-  assert.match(checklist[16].texto, /^o conteúdo de s3 \(Setor\) corresponde ao propósito da seção: cadeia de valor/);
+  assert.match(checklist[16].texto, /^o conteúdo de s3 \(Setor\) corresponde ao propósito da seção e cada subseção traz o conteúdo do seu rótulo\. Propósito: cadeia de valor[\s\S]* Rótulos, nesta ordem: \*\*Setor\.\*\*/);
   assert.match(checklist[3].texto, /^Execução técnica em software de terceiros/);
   assert.match(checklist[6].texto, /^Contratos com fornecedores de IA/);
   assert.match(checklist[12].texto, /^Não induzir clientes a desenvolver assistente de conhecimento interno próprio/);
@@ -39,9 +39,10 @@ test('reviewer: reads sections, enquadramento, conversa and draft; violations be
       { regra: 'limite-1', resultado: 'conforme', secao: null, trecho: null, correcaoSugerida: null },
     ],
     pendencias: [{ tipo: 'lastro_interno', secao: 'rascunho', trecho: 'reduziu o tempo em 40%', correcaoSugerida: 'retirar' }],
-  });
+  }, Object.fromEntries(checklist.map((x) => [x.regra, x.nome])));
   assert.equal(r.checklist.length, 2);
-  assert.deepEqual(r.pendencias[0], { tipo: 'escopo', regra: 'limite-4', secao: 's6', trecho: 'implantar o CRM', correcaoSugerida: 'orientar a escolha' });
+  assert.deepEqual(r.pendencias[0], { tipo: 'escopo', regra: 'limite-4', regraNome: 'limite 4 – execução técnica em software de terceiros', secao: 's6', trecho: 'implantar o CRM', correcaoSugerida: 'orientar a escolha' });
+  assert.equal(r.pendencias[1].regraNome, null, 'reading issues have no checklist rule');
   assert.equal(r.pendencias[1].tipo, 'lastro_interno');
   assert.throws(() => validaRevisor({ checklist: [{ regra: 'x', resultado: 'talvez' }], pendencias: [] }), /revisor/);
   assert.ok(r.pendencias.every(vaiACorrecao));

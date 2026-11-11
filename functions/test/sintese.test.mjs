@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   coletaDe, linkaMarcas, secaoS8, simulaMontar, simulaEnquadrar, simulaConversa, validaEnquadrar, validaMontar, validaConversa,
-  mensagemConversa, enquadramentoGravado,
+  mensagemConversa, enquadramentoGravado, ROTULOS,
 } from '../lib/sintese.js';
 import { checagens, cpfValido, cpfs, numerosSemFonte, palavras, siglasSemExtenso, telefonesFora, temPronome, validaRevisor } from '../lib/verificacao.js';
 import { entradaAnalise, gradua, noticiaRecente, confianca, PESOS_PADRAO } from '../lib/graduacao.js';
@@ -97,10 +97,11 @@ test('telefonesFora: a phone found in the company data collected raises nothing'
 });
 
 const secao = (corpo, vazia = false) => ({ corpo, vazia });
-// Sections open with a label in the format of spec 02 v0.15, so only the rule under test fails.
-const longo = (extra = '') => `**Rótulo.** ${'palavra '.repeat(45)}${extra}`;
+// Sections carry their full label list (spec 02 v0.17), so only the rule under test fails; the extra text goes
+// into the first subsection.
+const longo = (s, extra = '') => ROTULOS[s].map((r, i) => `**${r}.** ${i ? 'texto.' : `${'palavra '.repeat(45)}${extra}`}`).join('\n\n');
 const analise = (sobrescreve = {}) => ({
-  secoes: { s1: secao(longo()), s2: secao(longo()), s3: secao(longo()), s4: secao(longo()), s5: secao('', true), s6: secao(longo()), s7: secao(longo()) },
+  secoes: { s1: secao(longo('s1')), s2: secao(longo('s2')), s3: secao(longo('s3')), s4: secao(longo('s4')), s5: secao('', true), s6: secao(longo('s6')), s7: secao(longo('s7')) },
   rascunhoResposta: { assunto: 'Conversa', corpo: 'Podemos conversar na terça? GM Digital Bunker™' },
   lang: 'pt-BR',
   cnpjConfirmado: true,
@@ -114,13 +115,13 @@ test('checagens: a clean analysis has no issues', () => {
 test('checagens: each rule of spec 02, 4.1 raises a "mecanica" issue', () => {
   const a = analise({
     secoes: {
-      s1: secao(longo('Ver [F:setor:9].')),
-      s2: secao(longo('Tem 12 filiais.')),
+      s1: secao(longo('s1', 'Ver [F:setor:9].')),
+      s2: secao(longo('s2', 'Tem 12 filiais.')),
       s3: secao('curta demais'),
-      s4: secao(longo('texto — com travessão')),
-      s5: secao(longo('vamos te ligar')),
-      s6: secao(longo('A LGPD incide.')),
-      s7: secao(longo('CPF 529.982.247-25 e celular (11) 98765-4321.')),
+      s4: secao(longo('s4', 'texto — com travessão')),
+      s5: secao(longo('s5', 'vamos te ligar')),
+      s6: secao(longo('s6', 'A LGPD incide.')),
+      s7: secao(longo('s7', 'CPF 529.982.247-25 e celular (11) 98765-4321.')),
     },
     rascunhoResposta: { assunto: 'Proposta', corpo: `${'p '.repeat(121)} R$ 5 mil, tu` },
     cnpjConfirmado: false,
@@ -151,12 +152,12 @@ test('checagens: an English draft is not checked for Portuguese pronouns', () =>
   assert.deepEqual(p, []);
 });
 
-test('simulated analysis: passes the checks, and the "pendência" variant fails on the s2 label and the long dash', () => {
+test('simulated analysis: passes the checks, and the "pendência" variant fails on the s2 label (format and list) and the long dash', () => {
   const ok = simulaMontar(false);
   const a = { secoes: ok, rascunhoResposta: simulaConversa().rascunhoResposta, lang: 'pt-BR', cnpjConfirmado: false };
   assert.deepEqual(checagens(a, coleta), []);
   const p = checagens({ ...a, secoes: simulaMontar(true) }, coleta);
-  assert.deepEqual(p.map((x) => [x.secao, x.regra]), [['s2', 'bloco_sem_rotulo'], ['s3', 'tipografia']]);
+  assert.deepEqual(p.map((x) => [x.secao, x.regra]), [['s2', 'bloco_sem_rotulo'], ['s2', 'rotulo_fora_da_lista'], ['s3', 'tipografia']]);
 });
 
 test('output checks: schema mismatches throw; titles are fixed; at most three hypotheses', () => {
@@ -170,7 +171,7 @@ test('output checks: schema mismatches throw; titles are fixed; at most three hy
   assert.throws(() => validaMontar({ ...m, s3: { ...m.s3, titulo: 'Pessoas' } }), /title is not the fixed one in s3/);
   // The API does not guarantee the case of const values: a different case is accepted, the canonical title kept.
   assert.equal(validaMontar({ ...m, s1: { ...m.s1, titulo: 'Qualificação Imediata' } }).s1.titulo, 'Qualificação imediata');
-  assert.deepEqual(validaRevisor({ checklist: [], pendencias: [{ tipo: 'lastro', secao: 's6', trecho: 'x', correcaoSugerida: 'y' }] }).pendencias, [{ tipo: 'lastro', secao: 's6', trecho: 'x', correcaoSugerida: 'y' }]);
+  assert.deepEqual(validaRevisor({ checklist: [], pendencias: [{ tipo: 'lastro', secao: 's6', trecho: 'x', correcaoSugerida: 'y' }] }).pendencias, [{ tipo: 'lastro', regraNome: null, secao: 's6', trecho: 'x', correcaoSugerida: 'y' }]);
 });
 
 test('preparar_conversa gets only destino and modificadores in <lead>', () => {

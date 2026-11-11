@@ -191,13 +191,15 @@ test('analysis with a pending issue: analise_com_pendencias, medium-level reason
   const v = mapa((await le(`fichas/${id}/analise/v1`)).fields.verificacao);
   assert.equal(v.status.stringValue, 'com_pendencias');
   const p = v.pendencias.arrayValue.values.map((x) => mapa(x));
-  // s2 opens with "Atividade:" (spec 02 v0.15): bloco_sem_rotulo goes to the repair, which the simulation leaves
-  // unchanged, so it stays as a mechanical issue next to the long dash.
-  assert.deepEqual(p.map((x) => [x.tipo.stringValue, x.secao.stringValue, x.regra.stringValue]), [['mecanica', 's2', 'bloco_sem_rotulo'], ['mecanica', 's3', 'tipografia']]);
+  // s2 opens with "Atividade:" (spec 02 v0.15 and v0.17): bloco_sem_rotulo and rotulo_fora_da_lista go to the
+  // repair, which the simulation leaves unchanged, so they stay as mechanical issues next to the long dash.
+  assert.deepEqual(p.map((x) => [x.tipo.stringValue, x.secao.stringValue, x.regra.stringValue]), [['mecanica', 's2', 'bloco_sem_rotulo'], ['mecanica', 's2', 'rotulo_fora_da_lista'], ['mecanica', 's3', 'tipografia']]);
+  assert.match(p[1].trecho.stringValue, /^rótulos de s2 – faltando: Atividade\./);
+  assert.ok(p.every((x) => x.regraNome.nullValue === null), 'mechanical issues have no checklist rule name');
   assert.match(p[0].trecho.stringValue, /^Atividade: /);
   assert.ok(p.every((x) => x.correcaoSugerida.nullValue === null));
   const reparos = v.reparos.arrayValue.values.map((x) => mapa(x));
-  assert.deepEqual(reparos.map((r) => [r.etapa.stringValue, r.regra.stringValue]), [['montar_analise', 'bloco_sem_rotulo']]);
+  assert.deepEqual(reparos.map((r) => [r.etapa.stringValue, r.regra.stringValue]), [['montar_analise', 'bloco_sem_rotulo'], ['montar_analise', 'rotulo_fora_da_lista']]);
 });
 
 test('repair: concrete times and no name in the draft are fixed by one repair call; the version keeps the fix', { timeout: 90_000 }, async () => {
@@ -225,7 +227,11 @@ test('correction: a reading issue of the reviewer makes v2 (origin correcao) wit
   assert.equal(mapa(v1.autor).origem.stringValue, 'sintese');
   const ver1 = mapa(v1.verificacao);
   assert.equal(ver1.corrigidaEm.stringValue, 'v2');
-  assert.equal(ver1.checklist.arrayValue.values.length, 21); // 14 scope items + secao-s1..s7
+  const itens = ver1.checklist.arrayValue.values.map((x) => mapa(x));
+  assert.equal(itens.length, 21); // 14 scope items + secao-s1..s7
+  // regraNome written by the code (spec 02 v0.18 and v0.19, 4.2).
+  assert.equal(itens[3].regraNome.stringValue, 'limite 4 – execução técnica em software de terceiros');
+  assert.equal(itens[15].regraNome.stringValue, 's2 – A empresa');
   const v2 = (await le(`fichas/${id}/analise/v2`)).fields;
   const autor = mapa(v2.autor);
   assert.equal(autor.origem.stringValue, 'correcao');

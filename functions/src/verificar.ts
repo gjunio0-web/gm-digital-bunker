@@ -22,7 +22,7 @@ import { leMetodo } from './metodo.js';
 import { confiancaFinal } from './graduar.js';
 import { avisoAnalise } from './email.js';
 import { mesDe } from './qualificar.js';
-import { ETAPAS_COLETA, coletaDe, fontesDisponiveis, rotuloDestino, rotuloQuadrante, secaoS0 } from './sintese.js';
+import { ETAPAS_COLETA, coletaDe, fontesDisponiveis, portaParaExibir, rotuloDestino, rotuloQuadrante, secaoS0 } from './sintese.js';
 import {
   comCnpjAConfirmar, esquemaRevisor, avisosDaColeta, avisosDoEnquadramento, checagens, mensagemRevisor, simulaRevisor, validaRevisor, vaiAoReparo, type AnaliseVerificada,
   type EtapaTexto, type ItemChecklist, type Pendencia,
@@ -184,7 +184,7 @@ export const verificar = onDocumentCreated(
           usoRevisor = usoChamada(precos, modeloRevisor, esforco, r.uso, Date.now() - inicio);
           await cobra(usoRevisor);
         }
-        const rev = validaRevisor(saida);
+        const rev = validaRevisor(saida, Object.fromEntries(regrasChecklist.map((r) => [r.regra, r.nome])));
         checklist = rev.checklist;
         pendencias.push(...rev.pendencias);
       }
@@ -402,7 +402,7 @@ export const verificar = onDocumentCreated(
             quadrante: rotuloQuadrante(l.quadrante), destino: rotuloDestino(l.destino), grau: l.grau, pontos: l.pontos,
             confianca: l.modificadores?.confianca, confiancaMotivo: l.modificadores?.confiancaMotivo ?? '',
             prazoEm: l.acao?.prazoEm ? (l.acao.prazoEm as Timestamp).toDate() : null,
-            portaProvavel: String(textos.enquadramento?.portaProvavel ?? '–'), resumoExecutivo: textos.resumoExecutivo,
+            portaProvavel: portaParaExibir(textos.enquadramento as any), resumoExecutivo: textos.resumoExecutivo,
             link: base ? `${base}/admin/leads/${id}` : `fichas/${id}`,
           }).catch(async (e) => {
             const mensagem = String((e as Error)?.message ?? e).slice(0, 300);

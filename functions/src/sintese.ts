@@ -33,6 +33,31 @@ export const PROPOSITOS: Record<SecaoModelo, string> = {
   s7: 'o objetivo da conversa e o que ela precisa validar, ligados ao destino. Não liste as perguntas, os materiais nem os pontos de atenção: o hub os mostra a partir do bloco `conversa`. Fontes: `conversa`, `<lead>`.',
 };
 
+// Fixed subsection labels of each section, in order (spec 02 v0.17, 3.3): the montar_analise instruction, the
+// rotulo_fora_da_lista check, the repair and the reviewer checklist all read this one list. Names without the
+// full stop; in s5 "Signatária" counts as "Signatário".
+export const ROTULOS: Record<SecaoModelo, readonly string[]> = {
+  s1: ['Empresa', 'Quem escreveu', 'Porte e situação cadastral', 'Pedido', 'Leitura inicial de aderência'],
+  s2: ['Atividade', 'Cadastro', 'Porte', 'Presença digital', 'Estrutura de tecnologia observada', 'Vagas abertas', 'Movimentos recentes'],
+  s3: ['Setor', 'Cadeia de valor e posição da empresa', 'Outras empresas do segmento e IA', 'Regulação', 'Pressões', 'Casos de uso recorrentes'],
+  s4: ['Mercado total endereçável (TAM)', 'Mercado atendível (SAM)', 'Mercado obtível (SOM)', 'Dinâmica', 'Ligação com o problema declarado', 'Direção do potencial'],
+  s5: ['Signatário', 'Divergências entre fontes', 'Relação com tecnologia', 'Atuação profissional pública', 'Trajetória profissional', 'Outros decisores visíveis'],
+  s6: ['Escopo', 'Estrutura de tecnologia', 'Porta provável', 'Hipóteses de alavanca', 'Riscos do lead', 'Direção do potencial e porta'],
+  s7: ['Objetivo da conversa', 'O que validar', 'Ligação com o destino'],
+};
+export const EQUIVALENTES_ROTULO: Record<string, string> = { 'Signatária': 'Signatário' };
+
+// The label lists of the instruction, literal text of spec 02 v0.17, 3.3.
+export const LISTAS_ROTULOS: Record<SecaoModelo, string> = {
+  s1: '**Empresa.** (nome e atividade em uma linha) · **Quem escreveu.** (signatário e cargo declarado) · **Porte e situação cadastral.** (em uma linha; o detalhe fica na s2) · **Pedido.** (o que a ficha pede) · **Leitura inicial de aderência.** (uma frase).',
+  s2: '**Atividade.** (o que vende, para quem, produtos e serviços, presença geográfica; `empresa_digital`, CNAE de `empresa_registro`) · **Cadastro.** (CNPJ, razão social, natureza, abertura, município, situação; `empresa_registro`) · **Porte.** (funcionários estimados por fonte e divergências; `empresa_digital.apollo`, `empresa_pessoas.empresa`) · **Presença digital.** (site, canais, Instagram, idiomas, automações visíveis, menções a IA no material público; `empresa_digital`) · **Estrutura de tecnologia observada.** (tecnologias detectadas e função de tecnologia interna, só os fatos) · **Vagas abertas.** (vagas e áreas; `empresa_pessoas.empresa`, `empresa_digital.vagasNoSite`) · **Movimentos recentes.** (notícias dos últimos 12 meses; `empresa_noticias`). Ressalvas de lastro vão na subseção do assunto ressalvado, não em subseção própria.',
+  s3: '**Setor.** (nome do setor, com base no CNAE e no site, e a divergência entre registro e site; quando a etapa não tiver fontes indexadas, a ressalva vai aqui, na primeira frase) · **Cadeia de valor e posição da empresa.** · **Outras empresas do segmento e IA.** (e o que divulgam sobre IA; ferramentas de mercado quando não houver empresas comparáveis) · **Regulação.** · **Pressões.** · **Casos de uso recorrentes.** (com lente e critérios do Mapa).',
+  s4: '**Mercado total endereçável (TAM).** · **Mercado atendível (SAM).** · **Mercado obtível (SOM).** (cada um com valor, ano, método e confiança, ou "não estimado" com a razão; o SOM com horizonte de 2 a 3 anos, estimativa própria rotulada) · **Dinâmica.** (tendência, concentração, novos entrantes digitais, preço) · **Ligação com o problema declarado.** · **Direção do potencial.** (direção e confiança).',
+  s5: '**Signatário.** (ou **Signatária.**; cargo confirmado, cargo por fonte, senioridade) · **Divergências entre fontes.** (sem escolher) · **Relação com tecnologia.** · **Atuação profissional pública.** (só no papel profissional, regra 4) · **Trajetória profissional.** (sempre "não coletada", em uma linha) · **Outros decisores visíveis.** (nomes e cargos).',
+  s6: '**Escopo.** (itens, classificação e graus com nome) · **Estrutura de tecnologia.** (classificação, com remissão à s2) · **Porta provável.** (porta, sinais e alternativa; com `combinacao`, nomeie as portas e a sequência) · **Hipóteses de alavanca.** · **Riscos do lead.** · **Direção do potencial e porta.** (só como a direção orienta a porta; o detalhe fica na s4).',
+  s7: '**Objetivo da conversa.** · **O que validar.** (sem listar as perguntas) · **Ligação com o destino.**',
+};
+
 // Title check (spec 02 v0.13, 3.3): the model must bring the fixed title. The API does not guarantee the case
 // of const values, so the comparison ignores case and the canonical title is kept (decision of Gon, 9/11/2026).
 const normaTitulo = (t: unknown) => (typeof t === 'string' ? t.trim().toLocaleLowerCase('pt-BR') : null);
@@ -107,7 +132,7 @@ export function blocoDados(f: FichaSintese, qualificacao: unknown, coleta: Colet
 // --- Instructions (literal text of spec 02 v0.12, sections 3.1 to 3.3) ---------------------------------
 
 export const INSTRUCAO_ENQUADRAR =
-  'Enquadre esta empresa e este pedido na prática, usando escopo-limites.md (seções 1, 3, 4, 5 e 6), portas-materiais.md (seção 1) e mapa-alavancas.md (seções 4 e 10). Para cada afirmação, cite o bloco de coleta e o índice de fonte, ou marque como inferência. Estrutura de tecnologia: classifique nas quatro categorias (enxuta, sem_sinal, equipe_propria, executivo), com evidência da coleta completa; o porte não é avaliado aqui, é calculado em código. Hipóteses de alavanca: no máximo três, cada uma ligada a um sinal concreto da coleta e classificada pelos critérios do Mapa; nunca com número de retorno. Riscos do lead: só os sustentados por sinal; não especule. Não reformule pedidos fora do escopo para que caibam. Setor: combine CNAE principal, CNAEs secundários e a descrição do site; se o registro e o site divergirem, registre a divergência sem escolher um lado; o setor do Apollo entra só como dado secundário, atribuído ao fornecedor (spec 03, seção 3.4). Cada item avaliado do escopo e cada risco do lead declara a sua origem: `ficha` (consta do pedido ou da dor na mensagem), `hipotese` (vem de uma hipótese de alavanca desta análise) ou `coleta` (vem de um sinal da coleta, com fonte). Só itens de origem `ficha` podem ser classificados como `nao_faz`; só riscos de origem `ficha` ou `coleta` entram na lista principal. Não crie itens para o que ninguém pediu: se a prática não faz algo que a empresa não pediu, isso não é item de escopo nem risco. O risco `outro` exige `sinal` com fonte e não é pontuado. A direção do potencial vem com grau de confiança; sem dado de receita, margem ou volume da própria empresa, a confiança é `baixa` ou a direção é `indeterminado`.';
+  'Enquadre esta empresa e este pedido na prática, usando escopo-limites.md (seções 1, 3, 4, 5 e 6), portas-materiais.md (seção 1) e mapa-alavancas.md (seções 4 e 10). Para cada afirmação, cite o bloco de coleta e o índice de fonte, ou marque como inferência. Estrutura de tecnologia: classifique nas quatro categorias (enxuta, sem_sinal, equipe_propria, executivo), com evidência da coleta completa; o porte não é avaliado aqui, é calculado em código. Hipóteses de alavanca: no máximo três, cada uma ligada a um sinal concreto da coleta e classificada pelos critérios do Mapa; nunca com número de retorno. Riscos do lead: só os sustentados por sinal; não especule. Não reformule pedidos fora do escopo para que caibam. Setor: combine CNAE principal, CNAEs secundários e a descrição do site; se o registro e o site divergirem, registre a divergência sem escolher um lado; o setor do Apollo entra só como dado secundário, atribuído ao fornecedor (spec 03, seção 3.4). Com porta provável `combinacao`, diga em `porta.combinacao` quais portas e em que sequência (por exemplo, "Projeto seguido de Conselho de IA como continuidade"); com outra porta, `porta.combinacao` é null. Cada item avaliado do escopo e cada risco do lead declara a sua origem: `ficha` (consta do pedido ou da dor na mensagem), `hipotese` (vem de uma hipótese de alavanca desta análise) ou `coleta` (vem de um sinal da coleta, com fonte). Só itens de origem `ficha` podem ser classificados como `nao_faz`; só riscos de origem `ficha` ou `coleta` entram na lista principal. Não crie itens para o que ninguém pediu: se a prática não faz algo que a empresa não pediu, isso não é item de escopo nem risco. O risco `outro` exige `sinal` com fonte e não é pontuado. A direção do potencial vem com grau de confiança; sem dado de receita, margem ou volume da própria empresa, a confiança é `baixa` ou a direção é `indeterminado`.';
 
 export const INSTRUCAO_CONVERSA =
   'Com o enquadramento, prepare a primeira conversa. Perguntas: de três a cinco, cada uma ligada a uma lacuna declarada na coleta (campo `nao_encontrado` ou `indeterminado`) ou a uma hipótese a validar; formule-as como perguntas abertas que o decisor consiga responder sem preparação. Materiais: de portas-materiais.md seção 3, coerentes com a porta provável, na quantidade do destino (Convidar: dois; Verificar a aderência: um; Nutrir: um, de entrada; Encerrar com cortesia: nenhum ou a página Serviços). Rascunho da resposta, seguindo as regras de portas-materiais.md seção 5: saudação com o primeiro nome do signatário ("Olá, Nome,"); escreva conforme o destino informado em `<lead>` – convite direto com os marcadores literais `[opção de horário 1]` e `[opção de horário 2]`, nunca com dia ou hora concretos; convite condicionado a uma pergunta sobre porte e estrutura; nutrição sem agenda; ou cortesia. Com escopo barrado, encaminhamento para o que a prática oferece; com ressalva, só a parte do pedido que cabe. Quadrante, grau, pontos, porte numérico e preço nunca aparecem. Até 120 palavras; no idioma da ficha (`lang`); assinatura "GM Digital Bunker™" sem nome de pessoa. Sobre a prática e seus casos, diga apenas o que consta de escopo-limites.md e portas-materiais.md; não atribua ao caso Elite 90 Pro autorização, porte do cliente, redução de tempo ou efeito em receita. Cada ponto de atenção que cite um limite de escopo nomeia o limite (\'limite 4 – execução técnica em software de terceiros\').';
@@ -115,7 +140,7 @@ export const INSTRUCAO_CONVERSA =
 // The grade names come from escopo-limites.md (section 6) of the published method, copied by the code into
 // the instruction ("[lista literal dos cinco graus, A0 a A4]").
 export const instrucaoMontar = (graus: string) =>
-  `Monte a análise preliminar em sete seções (s1 a s7); s0 e s8 são montadas pelo código. Cada conteúdo vai na seção a que pertence; não antecipe nem repita conteúdo de outra seção; quando precisar do que está em outra, remeta a ela ("ver s2"). As seções, na ordem:\n\n${SECOES_MODELO.map((s) => `- **${s} ${TITULOS[s]}** – ${PROPOSITOS[s]}`).join('\n')}\n\nCada seção tem um \`corpo\` em Markdown, de leitura diagonal: parágrafos curtos, listas só quando há enumeração real, nada de repetir a ficha. De s2 a s7, cada subseção começa com um rótulo curto em negrito, com inicial maiúscula e terminado em ponto dentro do negrito, seguido do texto na mesma linha ("**Atividade.** Texto…"); os parágrafos seguintes da mesma subseção não levam rótulo. Na s1 o rótulo é opcional. Cada afirmação factual no corpo termina com a marca de fonte \`[F:etapa:idx]\`, que o código converte em link; inferências terminam com \`[inferência]\`; o que não foi encontrado é dito em uma linha. Seção sem material: \`vazia = true\` e \`motivoVazia\`. Os graus da escala de aderência aparecem sempre com o nome, na forma "A3 (alta)"; os nomes são: ${graus}. As lentes (automação, otimização, aumentação) e os eixos críticos (Gravidade de Dados, Continuidade de Formato, Confiabilidade & Verificabilidade) indicam a origem (prática ou livro, com a seção) na primeira ocorrência da análise. Para comparar datas, escreva as duas por extenso na mesma frase. Todo número tirado dos arquivos do método termina com a marca \`[M:arquivo:seção]\` (por exemplo \`[M:escopo-limites:1]\`), no lugar da marca de fonte da coleta.`;
+  `Monte a análise preliminar em sete seções (s1 a s7); s0 e s8 são montadas pelo código. Cada conteúdo vai na seção a que pertence; não antecipe nem repita conteúdo de outra seção; quando precisar do que está em outra, remeta a ela ("ver s2"). A s1 é o resumo: traz em uma linha porte, situação e aderência, e o detalhe e as fontes ficam na seção do assunto (s2 e s6); isso não conta como repetição. As seções, na ordem:\n\n${SECOES_MODELO.map((s) => `- **${s} ${TITULOS[s]}** – ${PROPOSITOS[s]}`).join('\n')}\n\nCada seção tem um \`corpo\` em Markdown, de leitura diagonal: parágrafos curtos, listas só quando há enumeração real, nada de repetir a ficha. Cada subseção começa com um rótulo em negrito, terminado em ponto dentro do negrito, seguido do texto na mesma linha ("**Atividade.** Texto…"); os parágrafos seguintes da mesma subseção não levam rótulo. Use só os rótulos da lista da seção, nesta ordem, cada um uma vez e todos eles; subseção sem material aparece com uma linha que diga "não encontrado" ou a razão; seção inteira sem material recebe \`vazia = true\`, sem rótulos. Listas por seção:\n\n${SECOES_MODELO.map((s) => `- **${s}:** ${LISTAS_ROTULOS[s]}`).join('\n')}\n\nO rótulo é só o nome da subseção: o valor ("aprovado", "enxuta") vai no texto, nunca no rótulo. Cada afirmação factual no corpo termina com a marca de fonte \`[F:etapa:idx]\`, que o código converte em link; inferências terminam com \`[inferência]\`; o que não foi encontrado é dito em uma linha. Seção sem material: \`vazia = true\` e \`motivoVazia\`. Os graus da escala de aderência aparecem sempre com o nome, na forma "A3 (alta)"; os nomes são: ${graus}. As lentes (automação, otimização, aumentação) e os eixos críticos (Gravidade de Dados, Continuidade de Formato, Confiabilidade & Verificabilidade) indicam a origem (prática ou livro, com a seção) na primeira ocorrência da análise. Para comparar datas, escreva as duas por extenso na mesma frase. Todo número tirado dos arquivos do método termina com a marca \`[M:arquivo:seção]\` (por exemplo \`[M:escopo-limites:1]\`), no lugar da marca de fonte da coleta.`;
 export const listaDeGraus = (graus: Record<string, string>) =>
   ['A0', 'A1', 'A2', 'A3', 'A4'].filter((g) => graus[g]).map((g) => `${g} (${graus[g]})`).join(', ');
 
@@ -345,6 +370,24 @@ export function enquadramentoDoModelo(e: Enquadramento): Enquadramento {
   return { ...e, escopo };
 }
 
+// porta.combinacao (spec 02 v0.17, 3.1): required and not empty when porta.provavel = combinacao, null otherwise.
+// The condition does not fit the strict schema, so the code checks it and repeats the call once. A blank text
+// counts as null.
+export function comCombinacaoNormalizada(e: Enquadramento): Enquadramento {
+  const c = typeof e.porta.combinacao === 'string' && e.porta.combinacao.trim() ? e.porta.combinacao.trim() : null;
+  return { ...e, porta: { ...e.porta, combinacao: c } };
+}
+export const combinacaoConfere = (e: Enquadramento) => (e.porta.provavel === 'combinacao') === (e.porta.combinacao !== null);
+
+// The door as the notices show it (spec 05, rule also used by the analysis e-mail): with combinacao, the text of
+// the combination, read from portaCombinacao or, in versions written before spec 02 v0.17, from the detail.
+export function portaParaExibir(enq: { portaProvavel?: unknown; portaCombinacao?: unknown; detalhe?: any } | undefined): string {
+  const porta = String(enq?.portaProvavel ?? '–');
+  if (porta !== 'combinacao') return porta;
+  const texto = [enq?.portaCombinacao, enq?.detalhe?.porta?.combinacao].find((x) => typeof x === 'string' && x.trim());
+  return texto ? `combinação – ${String(texto).trim()}` : 'combinação (não detalhada)';
+}
+
 // Copy of enquadrar for the list filters (spec 01, analise/vN.enquadramento) – estruturaTecnologia,
 // escopo (the result), portaProvavel and riscos – plus the full output of 3.1 for the detail.
 export function enquadramentoGravado(e: Enquadramento) {
@@ -352,6 +395,8 @@ export function enquadramentoGravado(e: Enquadramento) {
     estruturaTecnologia: { categoria: e.estruturaTecnologia.categoria, evidencia: e.estruturaTecnologia.evidencia },
     escopo: e.escopo.resultado,
     portaProvavel: e.porta.provavel,
+    // Which doors and in what sequence, only when portaProvavel = combinacao (spec 01, spec 02 v0.17, 3.1).
+    portaCombinacao: e.porta.provavel === 'combinacao' ? e.porta.combinacao : null,
     // Every risk, "outro" included; the origin of each one stays in detalhe (decision of Gon, 8/11/2026).
     riscos: e.riscosDoLead.map((r) => r.risco),
     detalhe: e,
@@ -388,11 +433,14 @@ export function simulaConversa(nome = '', comReparo = false): Conversa {
 // "pendência" in the message makes the simulated analysis carry a long dash, so the code check fails.
 export function simulaMontar(comFalha: boolean): Montagem {
   const s = (corpo: string, k: SecaoModelo): Secao => ({ titulo: TITULOS[k], corpo, vazia: false, motivoVazia: null });
-  // s2 to s7 open with a label in the format of spec 02 v0.15, so the simulated version passes bloco_sem_rotulo.
-  const m = Object.fromEntries(SECOES_MODELO.map((k) => [k, s(`${k === 's1' ? '' : '**Simulação.** '}${frase} [inferência]. ${frase} [inferência].`, k)])) as Record<SecaoModelo, Secao>;
-  m.s2 = s(`**Simulação.** ${frase}; o Cadastro Nacional da Pessoa Jurídica (CNPJ) consta como a confirmar [inferência]. ${frase} [inferência].`, 's2');
-  // The "pendência" variant also opens s2 without a label ("Rótulo:"), which the simulated repair leaves as it is.
-  if (comFalha) m.s2 = s(`Atividade: ${frase}; o Cadastro Nacional da Pessoa Jurídica (CNPJ) consta como a confirmar [inferência]. ${frase} [inferência].`, 's2');
-  if (comFalha) m.s3 = s(`**Simulação.** ${frase} — com travessão [inferência]. ${frase} [inferência].`, 's3');
+  // Every section uses its full label list in order (spec 02 v0.17, 3.3), so the clean version passes
+  // bloco_sem_rotulo and rotulo_fora_da_lista.
+  const texto = (r: string) => (r === 'Cadastro' ? 'O Cadastro Nacional da Pessoa Jurídica (CNPJ) consta como a confirmar [inferência].' : `${frase} [inferência].`);
+  const corpo = (k: SecaoModelo, primeiro?: string) => ROTULOS[k].map((r, i) => (i === 0 && primeiro !== undefined ? primeiro : `**${r}.** ${texto(r)}`)).join('\n\n');
+  const m = Object.fromEntries(SECOES_MODELO.map((k) => [k, s(corpo(k), k)])) as Record<SecaoModelo, Secao>;
+  // The "pendência" variant opens s2 without a label ("Atividade:"), which the simulated repair leaves as it is,
+  // and puts a travessão in s3.
+  if (comFalha) m.s2 = s(corpo('s2', `Atividade: ${frase} [inferência].`), 's2');
+  if (comFalha) m.s3 = s(corpo('s3', `**Setor.** ${frase} — com travessão [inferência].`), 's3');
   return validaMontar({ ...m, resumoExecutivo: 'Resumo simulado no emulador.' });
 }

@@ -23,7 +23,7 @@ import { CARGOS_ROTULO } from './textos.generated.js';
 import {
   ESQUEMA_CONVERSA, ESQUEMA_ENQUADRAR, ESQUEMA_MONTAR, ETAPAS_COLETA, SECOES_MODELO, blocoDados, coletaDe, enquadramentoGravado,
   enquadramentoDoModelo, linkaMarcas, listaDeGraus, mensagemConversa, normalizaEnquadramento, mensagemEnquadrar, mensagemMontar, secaoS0, secaoS8, simulaConversa, simulaEnquadrar, simulaMontar,
-  validaConversa, validaEnquadrar, validaMontar, type FichaSintese,
+  combinacaoConfere, comCombinacaoNormalizada, validaConversa, validaEnquadrar, validaMontar, type FichaSintese,
 } from './sintese.js';
 import type { Normalizado, Original } from './validacao.js';
 
@@ -115,7 +115,16 @@ export const sintetizar = onDocumentUpdated(
 
       // Validation in code of spec 02 v0.12, 3.1: items removed by origin and escopo.resultado recalculated
       // before graduar.
-      const enq = normalizaEnquadramento(validaEnquadrar(await chama('enquadrar', mensagemEnquadrar(dados), ESQUEMA_ENQUADRAR, simulaEnquadrar)));
+      // porta.combinacao checked in code (spec 02 v0.17, 3.1): a refused answer is repeated once, and the usage
+      // of the refused call stays in uso as enquadrar_recusada.
+      const enquadra = async () => comCombinacaoNormalizada(validaEnquadrar(await chama('enquadrar', mensagemEnquadrar(dados), ESQUEMA_ENQUADRAR, simulaEnquadrar)));
+      let enq0 = await enquadra();
+      if (!combinacaoConfere(enq0)) {
+        registros.enquadrar_recusada = registros.enquadrar;
+        enq0 = await enquadra();
+        if (!combinacaoConfere(enq0)) throw new Error('enquadrar: porta.combinacao fora da regra da spec 02, 3.1, também na segunda chamada');
+      }
+      const enq = normalizaEnquadramento(enq0);
       const anteriores = await ref.collection('analise').get();
       const versao = `v${anteriores.size + 1}`;
       const lead = await graduaAnalise(ref, p, enq, versao);

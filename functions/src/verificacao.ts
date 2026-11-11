@@ -4,7 +4,7 @@
 // when it is not in the company data collected (empresa_digital and empresa_registro). Residential addresses
 // are not checked: the site text and the registry address are not stored, so there is nothing to tell a
 // company address from a personal one.
-import { SECOES_MODELO, type Coleta, type SecaoModelo } from './sintese.js';
+import { EQUIVALENTES_ROTULO, ROTULOS, SECOES_MODELO, type Coleta, type SecaoModelo } from './sintese.js';
 import { secaoDoMetodo, type RegraChecklist, type RegrasMetodo } from './metodoRegras.js';
 
 // Issue of the verification (spec 01 v0.11, verificacao): from the reviewer, trecho is the literal excerpt
@@ -18,6 +18,8 @@ export interface Pendencia {
   trecho: string;
   correcaoSugerida: string | null;
   regra?: string;
+  // Name of the checklist rule (spec 02 v0.18 and v0.19, 4.2); null for mechanical and reading issues.
+  regraNome?: string | null;
   local?: string;
 }
 
@@ -369,52 +371,91 @@ export const avisosDoEnquadramento = (detalhe: any): string[] =>
   (Array.isArray(detalhe?.escopo?.itensRemovidos) ? detalhe.escopo.itensRemovidos : [])
     .map((i: any) => `item_removido_por_origem: ${String(i?.origem ?? 'sem origem')} – ${String(i?.pedidoOuDor ?? '').slice(0, 200)}`);
 
-// Section labels (spec 02 v0.15, 3.3 and 4.1, rule bloco_sem_rotulo). A label opens the paragraph in bold,
-// with a capital initial and the full stop inside the bold ("**Atividade.** Texto"), with no word limit.
+// Section labels (spec 02 v0.17, 3.3 and 4.1). A label opens the paragraph in bold, with the full stop inside
+// the bold ("**Atividade.** Texto"), with no word limit.
 export const paragrafos = (corpo: string): string[] => corpo.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
-const ROTULO_NO_FORMATO = /^\*\*\p{Lu}[^*\n]*\.\*\*(?:\s|$)/u;
+const ROTULO_NO_FORMATO = /^\*\*([^*\n]+)\.\*\*(?:\s|$)/u;
 const NEGRITO_INICIAL = /^\*\*([^*\n]+)\*\*([.:]?)/u;
 export const rotuloNoFormato = (p: string): boolean => ROTULO_NO_FORMATO.test(p);
-// A bold label out of the format: "**Rótulo:**", "**Rótulo**." or "**Rótulo**:", or "**rótulo.**". Bold
-// without punctuation ("**Hipóteses de alavanca** (…") is not a label and is not checked.
+// A bold label out of the format: "**Rótulo:**", "**Rótulo**." or "**Rótulo**:". Bold without punctuation
+// ("**Hipóteses de alavanca** (…") is not a label and is not checked.
 export function rotuloForaDoFormato(p: string): boolean {
   if (rotuloNoFormato(p)) return false;
   const m = NEGRITO_INICIAL.exec(p);
   if (!m) return false;
   const [, dentro, depois] = m;
-  return dentro.trimEnd().endsWith(':') || depois !== '' || dentro.trimEnd().endsWith('.');
+  return dentro.trimEnd().endsWith(':') || depois !== '';
+}
+// The name of the label that opens a paragraph, in the format or bold out of it; null when there is none.
+export function nomeDoRotulo(p: string): string | null {
+  const f = ROTULO_NO_FORMATO.exec(p);
+  if (f) return f[1].trim();
+  if (!rotuloForaDoFormato(p)) return null;
+  return (NEGRITO_INICIAL.exec(p)?.[1] ?? '').trim().replace(/[.:]$/, '').trim();
 }
 export interface FalhaDeRotulo { indice: number; caso: 'sem_rotulo' | 'fora_do_formato'; paragrafo: string }
-// (a) s2 to s7: the first paragraph opens with a label in the format; any other opening fails, "Rótulo:"
-// included. (b) The following paragraphs of s2 to s7 and all of s1: the label is optional; only a bold label
-// out of the format fails.
-export function falhasDeRotulo(secao: string, corpo: string): FalhaDeRotulo[] {
+// bloco_sem_rotulo (spec 02 v0.17, 4.1): (a) in s1 to s7, the first paragraph opens with a label in the format;
+// any other opening fails, "Rótulo:" included. (b) In the following paragraphs only a bold label out of the
+// format fails.
+export function falhasDeRotulo(_secao: string, corpo: string): FalhaDeRotulo[] {
   const r: FalhaDeRotulo[] = [];
   paragrafos(corpo).forEach((p, i) => {
-    if (secao !== 's1' && i === 0) {
+    if (i === 0) {
       if (!rotuloNoFormato(p)) r.push({ indice: i, caso: rotuloForaDoFormato(p) ? 'fora_do_formato' : 'sem_rotulo', paragrafo: p });
     } else if (rotuloForaDoFormato(p)) r.push({ indice: i, caso: 'fora_do_formato', paragrafo: p });
   });
   return r;
 }
+
+// rotulo_fora_da_lista (spec 02 v0.17, 4.1): the labels of a section are exactly the list of 3.3 – none out of
+// the list, none repeated, none missing, all in order. Case and spaces are ignored; "Signatária" counts as
+// "Signatário". Returns the description of the failure, or null when the labels match.
+const normaRotulo = (r: string) => {
+  const t = r.replace(/\s+/g, ' ').trim();
+  return (EQUIVALENTES_ROTULO[t] ?? t).toLocaleLowerCase('pt-BR').replace(/\s+/g, '');
+};
+export function rotulosForaDaLista(secao: SecaoModelo, corpo: string): string | null {
+  const lista = ROTULOS[secao];
+  const esperados = lista.map(normaRotulo);
+  const achados = paragrafos(corpo).map(nomeDoRotulo).filter((x): x is string => x !== null);
+  const normais = achados.map(normaRotulo);
+  if (normais.length === esperados.length && normais.every((x, i) => x === esperados[i])) return null;
+  const partes: string[] = [];
+  const fora = achados.filter((_, i) => !esperados.includes(normais[i]));
+  const repetidos = lista.filter((_, i) => normais.filter((x) => x === esperados[i]).length > 1);
+  const faltando = lista.filter((_, i) => !normais.includes(esperados[i]));
+  if (fora.length) partes.push(`fora da lista: ${fora.join(', ')}`);
+  if (repetidos.length) partes.push(`repetidos: ${repetidos.join(', ')}`);
+  if (faltando.length) partes.push(`faltando: ${faltando.join(', ')}`);
+  const naLista = normais.filter((x) => esperados.includes(x));
+  const ordenados = [...naLista].sort((a, b) => esperados.indexOf(a) - esperados.indexOf(b));
+  if (naLista.some((x, i) => x !== ordenados[i])) partes.push('fora da ordem da lista');
+  return `rótulos de ${secao} – ${partes.join('; ')}. Lista: ${lista.join(', ')}`;
+}
 // Opening of the paragraph without source links, so the repair finds it and the label insertion falls inside it.
 export const inicioDoParagrafo = (p: string): string => p.replace(/(\[F:[a-z_]+:\d+\])\([^)]*\)/g, '$1').slice(0, 80);
 
-// cnpj_a_confirmar (spec 02 v0.16, 4.1): an unconfirmed CNPJ needs "não confirmado" or "a confirmar" in s2;
-// when neither is there, the code appends "CNPJ a confirmar." as the last paragraph of s2 (a continuation
-// paragraph, so bloco_sem_rotulo does not apply), with no repair and no issue. Returns the new body, or null
-// when nothing changes (CNPJ confirmed, s2 empty or already saying it).
+// cnpj_a_confirmar (spec 02 v0.16 and v0.17, 4.1): an unconfirmed CNPJ needs "não confirmado" or "a confirmar"
+// in s2; when neither is there, the code inserts "CNPJ a confirmar." as the last paragraph of the Cadastro
+// subsection (a continuation paragraph, with no label), with no repair and no issue. Without a Cadastro
+// subsection, the paragraph goes to the end of s2, and rotulo_fora_da_lista reports the missing label. Returns
+// the new body, or null when nothing changes (CNPJ confirmed, s2 empty or already saying it).
 export const CNPJ_AVISADO = /n[ãa]o confirmado|a confirmar/i;
 export function comCnpjAConfirmar(s2: { corpo?: string; vazia?: boolean } | undefined, cnpjConfirmado: boolean): string | null {
   if (cnpjConfirmado || !s2 || s2.vazia || CNPJ_AVISADO.test(s2.corpo ?? '')) return null;
-  return `${(s2.corpo ?? '').trimEnd()}\n\nCNPJ a confirmar.`;
+  const ps = paragrafos(s2.corpo ?? '');
+  const cadastro = ps.findIndex((p) => normaRotulo(nomeDoRotulo(p) ?? '') === normaRotulo('Cadastro'));
+  if (cadastro < 0) return [...ps, 'CNPJ a confirmar.'].join('\n\n');
+  let fim = cadastro + 1;
+  while (fim < ps.length && nomeDoRotulo(ps[fim]) === null) fim++;
+  return [...ps.slice(0, fim), 'CNPJ a confirmar.', ...ps.slice(fim)].join('\n\n');
 }
 
 // The code checks of spec 02 v0.12, 4.1, in its order. Each failure is {tipo: "mecanica", regra, secao,
 // trecho, correcaoSugerida: null, local}.
 export function checagens(a: AnaliseVerificada, coleta: Coleta, metodo?: RegrasMetodo): Pendencia[] {
   const p: Pendencia[] = [];
-  const add = (f: Pick<Folha, 'secao' | 'local'>, regra: string, trecho: string) => p.push({ tipo: 'mecanica', secao: f.secao, trecho, correcaoSugerida: null, regra, local: f.local });
+  const add = (f: Pick<Folha, 'secao' | 'local'>, regra: string, trecho: string) => p.push({ tipo: 'mecanica', secao: f.secao, trecho, correcaoSugerida: null, regra, regraNome: null, local: f.local });
   const folhas = folhasDaAnalise(a);
   const corpos = folhas.filter((f) => f.local.startsWith('secoes.'));
   const rascunho = folhas.filter((f) => f.secao === 'rascunhoResposta');
@@ -432,6 +473,8 @@ export function checagens(a: AnaliseVerificada, coleta: Coleta, metodo?: RegrasM
     const s = a.secoes[f.secao];
     if (s && !s.vazia && palavras(f.texto) < 40) add(f, 'secao_curta', `seção não vazia com ${palavras(f.texto)} palavras (mínimo 40)`);
     if (s && !s.vazia) for (const x of falhasDeRotulo(f.secao, f.texto)) add(f, 'bloco_sem_rotulo', inicioDoParagrafo(x.paragrafo));
+    const fora = s && !s.vazia ? rotulosForaDaLista(f.secao as SecaoModelo, f.texto) : null;
+    if (fora) add(f, 'rotulo_fora_da_lista', fora);
   }
   if (!a.cnpjConfirmado && !a.secoes.s2?.vazia && !CNPJ_AVISADO.test(a.secoes.s2?.corpo ?? '')) add({ secao: 's2', local: 'secoes.s2.corpo' }, 'cnpj_a_confirmar', 'CNPJ não confirmado e a seção 2 não diz "não confirmado" nem "a confirmar"');
   for (const f of folhas) {
@@ -488,7 +531,7 @@ export function checagens(a: AnaliseVerificada, coleta: Coleta, metodo?: RegrasM
 }
 
 // Rules whose failures go to the repair call (spec 02 v0.12, 4.1; bloco_sem_rotulo since v0.14); the others become issues directly.
-export const REGRAS_DE_REPARO = ['marca_sem_destino', 'rascunho_longo', 'rascunho_preco', 'rascunho_sem_nome', 'rascunho_horario_concreto', 'termo_vetado', 'grau_sem_nome', 'sigla', 'ordem_datas', 'bloco_sem_rotulo'] as const;
+export const REGRAS_DE_REPARO = ['marca_sem_destino', 'rascunho_longo', 'rascunho_preco', 'rascunho_sem_nome', 'rascunho_horario_concreto', 'termo_vetado', 'grau_sem_nome', 'sigla', 'ordem_datas', 'bloco_sem_rotulo', 'rotulo_fora_da_lista'] as const;
 export const vaiAoReparo = (x: Pendencia) => (REGRAS_DE_REPARO as readonly string[]).includes(x.regra ?? '');
 
 // Stage that wrote the field of an issue.
@@ -577,29 +620,31 @@ export function mensagemRevisor(a: { secoes: Record<string, { corpo: string }>; 
   ].join('\n');
 }
 
-export interface ItemChecklist { regra: string; resultado: (typeof RESULTADOS_CHECKLIST)[number]; secao: string | null; trecho: string | null; correcaoSugerida: string | null }
+export interface ItemChecklist { regra: string; regraNome: string | null; resultado: (typeof RESULTADOS_CHECKLIST)[number]; secao: string | null; trecho: string | null; correcaoSugerida: string | null }
 const corta = (s: unknown, n = 1000) => (typeof s === 'string' ? s.slice(0, n) : null);
 
 // Checks the reviewer output and converts it: each "violado" item of the checklist becomes an issue
 // {tipo, regra, secao, trecho, correcaoSugerida} – tipo "estrutura" for secao-s1 to secao-s7, "escopo" for the
 // others; the whole checklist is kept for verificacao.checklist. The rule id is kept without any text after ":".
-export function validaRevisor(v: unknown): { checklist: ItemChecklist[]; pendencias: Pendencia[] } {
+// regraNome comes from the checklist built by the code (nomes: id → name), never from the reviewer.
+export function validaRevisor(v: unknown, nomes: Record<string, string> = {}): { checklist: ItemChecklist[]; pendencias: Pendencia[] } {
   const c = v as { checklist?: unknown; pendencias?: unknown };
   if (!c || !Array.isArray(c.checklist) || !Array.isArray(c.pendencias)) throw new Error('revisor: output does not match the schema');
   const checklist = c.checklist.map((x: any) => {
     if (!x || typeof x.regra !== 'string' || !(RESULTADOS_CHECKLIST as readonly unknown[]).includes(x.resultado)) throw new Error('revisor: output does not match the schema');
-    return { regra: x.regra.split(':')[0].trim().slice(0, 60), resultado: x.resultado, secao: corta(x.secao, 40), trecho: corta(x.trecho), correcaoSugerida: corta(x.correcaoSugerida) } as ItemChecklist;
+    const regra = x.regra.split(':')[0].trim().slice(0, 60);
+    return { regra, regraNome: nomes[regra] ?? null, resultado: x.resultado, secao: corta(x.secao, 40), trecho: corta(x.trecho), correcaoSugerida: corta(x.correcaoSugerida) } as ItemChecklist;
   });
   const leitura = c.pendencias.map((x: any) => {
     if (!x || !(TIPOS_REVISOR as readonly unknown[]).includes(x.tipo) || !(SECOES_REVISOR as readonly unknown[]).includes(x.secao) || typeof x.trecho !== 'string' || typeof x.correcaoSugerida !== 'string') {
       throw new Error('revisor: output does not match the schema');
     }
-    return { tipo: x.tipo, secao: x.secao, trecho: x.trecho.slice(0, 1000), correcaoSugerida: x.correcaoSugerida.slice(0, 1000) } as Pendencia;
+    return { tipo: x.tipo, regraNome: null, secao: x.secao, trecho: x.trecho.slice(0, 1000), correcaoSugerida: x.correcaoSugerida.slice(0, 1000) } as Pendencia;
   });
   const escopo = checklist.filter((x) => x.resultado === 'violado').map((x) => {
     const estrutura = x.regra.startsWith('secao-');
     return {
-      tipo: estrutura ? 'estrutura' : 'escopo', regra: x.regra,
+      tipo: estrutura ? 'estrutura' : 'escopo', regra: x.regra, regraNome: x.regraNome,
       secao: x.secao ?? (estrutura ? x.regra.slice('secao-'.length) : 'enquadramento'), trecho: x.trecho ?? '', correcaoSugerida: x.correcaoSugerida,
     };
   });

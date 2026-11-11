@@ -1,4 +1,4 @@
-// Section labels (spec 02 v0.15, 3.3, 3.4 and 4.1, rule bloco_sem_rotulo). The cases come from the corrected
+// Section labels (spec 02 v0.15 and v0.17, 3.3, 3.4 and 4.1, rule bloco_sem_rotulo). The cases come from the corrected
 // versions of round R1e of phase B2 (test/fixtures/rotulo-r1e.json: Capal v14, design A, and v16, design C;
 // each paragraph cut to its first 100 characters, which is all the rule reads).
 import { test } from 'node:test';
@@ -13,19 +13,20 @@ const r1e = JSON.parse(readFileSync(new URL('./fixtures/rotulo-r1e.json', import
 const casos = (secao, ...ps) => falhasDeRotulo(secao, ps.join('\n\n')).map((x) => [x.indice, x.caso]);
 const continuacao = 'O nome informado não consta dos quadros societários consultados.';
 
-test('label format: bold, capital initial, full stop inside the bold, no word limit', () => {
+test('label format: bold, full stop inside the bold, no word limit; case is not checked since v0.17', () => {
   assert.ok(rotuloNoFormato('**Atividade.** Cooperativa agroindustrial do Paraná'));
   assert.ok(rotuloNoFormato('**Estrutura de tecnologia observada.** Não foi encontrado executivo'));
   assert.ok(rotuloNoFormato('**Outras cooperativas e o que divulgam sobre IA.** Texto'));
   assert.ok(rotuloNoFormato('**Objetivo.**'));
-  for (const p of ['Atividade: cooperativa', '**Atividade:** texto', '**Atividade**. texto', '**atividade.** texto', '**Atividade.**texto', 'Atividade. Texto']) {
+  assert.ok(rotuloNoFormato('**atividade.** texto'), 'rotulo_fora_da_lista compares labels without case');
+  for (const p of ['Atividade: cooperativa', '**Atividade:** texto', '**Atividade**. texto', '**Atividade.**texto', 'Atividade. Texto']) {
     assert.equal(rotuloNoFormato(p), false, p);
   }
 });
 
 test('bold label out of the format: the forms of spec 02 v0.15, (b)', () => {
-  for (const p of ['**Rótulo:** texto', '**Rótulo**. texto', '**Rótulo**: texto', '**rótulo.** texto']) assert.ok(rotuloForaDoFormato(p), p);
-  for (const p of ['**Rótulo.** texto', 'Rótulo: texto', '**Hipóteses de alavanca** (sem rotina mapeada)', 'Texto com **negrito** no meio.']) {
+  for (const p of ['**Rótulo:** texto', '**Rótulo**. texto', '**Rótulo**: texto']) assert.ok(rotuloForaDoFormato(p), p);
+  for (const p of ['**Rótulo.** texto', '**rótulo.** texto', 'Rótulo: texto', '**Hipóteses de alavanca** (sem rotina mapeada)', 'Texto com **negrito** no meio.']) {
     assert.equal(rotuloForaDoFormato(p), false, p);
   }
 });
@@ -52,28 +53,28 @@ test('following paragraphs of s2 to s7 (b): only a bold label out of the format 
   assert.deepEqual(casos('s4', abre, 'Ligação com o problema declarado: a mensagem fala em dúvida sobre onde a IA ajuda.'), []);
   assert.deepEqual(casos('s6', abre, '**Hipóteses de alavanca** (sem rotina mapeada, sem arquétipo).'), []);
   assert.deepEqual(casos('s2', abre, '**Afirmações do site não verificadas:** mais de 1.000 vidas atendidas.'), [[1, 'fora_do_formato']]);
-  assert.deepEqual(casos('s2', abre, '**Rótulo**. texto', '**rótulo.** texto', '**Rótulo**: texto'), [[1, 'fora_do_formato'], [2, 'fora_do_formato'], [3, 'fora_do_formato']]);
+  assert.deepEqual(casos('s2', abre, '**Rótulo**. texto', '**rótulo.** texto', '**Rótulo**: texto'), [[1, 'fora_do_formato'], [3, 'fora_do_formato']]);
   assert.deepEqual(casos('s2', abre, '- item de lista', '**Vagas abertas.** Três vagas.'), []);
 });
 
-test('s1: the label is optional; only a bold label out of the format fails', () => {
-  assert.deepEqual(casos('s1', 'A Capal Cooperativa Agroindustrial escreveu pelo formulário.', 'Leitura inicial de aderência: parcial.'), []);
+test('s1: since v0.17 the first paragraph needs a label too, as in s2 to s7', () => {
+  assert.deepEqual(casos('s1', 'A Capal Cooperativa Agroindustrial escreveu pelo formulário.', 'Leitura inicial de aderência: parcial.'), [[0, 'sem_rotulo']]);
   assert.deepEqual(casos('s1', '**Empresa:** Ciser, razão social Cia Industrial H. Carlos Schneider.'), [[0, 'fora_do_formato']]);
   assert.deepEqual(casos('s1', '**Empresa.** Ciser, razão social Cia Industrial H. Carlos Schneider.'), []);
 });
 
-test('R1e: Capal v14 (design A) passes; Capal v16 (design C) fails on the opening of s2 to s7', () => {
+test('R1e: Capal v14 (design A) fails only on s1, unlabeled before v0.17; Capal v16 (design C) fails on every opening', () => {
   const falhas = (v) => Object.entries(r1e[v]).flatMap(([s, ps]) => falhasDeRotulo(s, ps.join('\n\n')).map((x) => `${s}#${x.indice}:${x.caso}`));
-  assert.deepEqual(falhas('v14'), []);
-  assert.deepEqual(falhas('v16'), ['s2#0:sem_rotulo', 's3#0:sem_rotulo', 's4#0:sem_rotulo', 's5#0:sem_rotulo', 's6#0:sem_rotulo', 's7#0:sem_rotulo']);
+  assert.deepEqual(falhas('v14'), ['s1#0:sem_rotulo']);
+  assert.deepEqual(falhas('v16'), ['s1#0:sem_rotulo', 's2#0:sem_rotulo', 's3#0:sem_rotulo', 's4#0:sem_rotulo', 's5#0:sem_rotulo', 's6#0:sem_rotulo', 's7#0:sem_rotulo']);
 });
 
 test('checagens: bloco_sem_rotulo per section, with the opening of the paragraph, sent to the repair', () => {
   const secoes = Object.fromEntries(Object.entries(r1e.v16).map(([s, ps]) => [s, { corpo: ps.join('\n\n'), vazia: false }]));
   secoes.s5 = { corpo: '', vazia: true };
   const p = checagens({ secoes, rascunhoResposta: { assunto: 'a', corpo: 'Olá' }, lang: 'pt-BR', cnpjConfirmado: true }, {}).filter((x) => x.regra === 'bloco_sem_rotulo');
-  assert.deepEqual(p.map((x) => x.secao), ['s2', 's3', 's4', 's6', 's7'], 'empty s5 is not checked');
-  assert.equal(p[0].trecho, r1e.v16.s2[0].slice(0, 80));
+  assert.deepEqual(p.map((x) => x.secao), ['s1', 's2', 's3', 's4', 's6', 's7'], 'empty s5 is not checked');
+  assert.equal(p[1].trecho, r1e.v16.s2[0].slice(0, 80));
   assert.ok(p.every((x) => x.tipo === 'mecanica' && vaiAoReparo(x)));
 });
 
@@ -84,8 +85,9 @@ test('the excerpt drops source links before cutting, so the repair finds it in t
 });
 
 test('prompts: montar_analise carries the label sentence; reparar covers the block without label', () => {
-  assert.match(instrucaoMontar('A0 (nula)'), /De s2 a s7, cada subseção começa com um rótulo curto em negrito, com inicial maiúscula e terminado em ponto dentro do negrito, seguido do texto na mesma linha \("\*\*Atividade\.\*\* Texto…"\); os parágrafos seguintes da mesma subseção não levam rótulo\. Na s1 o rótulo é opcional\./);
-  assert.match(INSTRUCAO_REPARAR, /bloco sem rótulo → no primeiro parágrafo da subseção, acrescente um rótulo curto em negrito[\s\S]*acrescente um rótulo antes dele\./);
+  assert.match(instrucaoMontar('A0 (nula)'), /Cada subseção começa com um rótulo em negrito, terminado em ponto dentro do negrito, seguido do texto na mesma linha \("\*\*Atividade\.\*\* Texto…"\); os parágrafos seguintes da mesma subseção não levam rótulo\. Use só os rótulos da lista da seção, nesta ordem, cada um uma vez e todos eles;/);
+  assert.match(INSTRUCAO_REPARAR, /bloco sem rótulo → no primeiro parágrafo da subseção, acrescente um rótulo curto em negrito[\s\S]*acrescente um rótulo antes dele;/);
+  assert.match(INSTRUCAO_REPARAR, /rótulo fora da lista, repetido, fora de ordem ou faltando → use os rótulos da lista da seção, na ordem, movendo o texto para a subseção certa sem reescrevê-lo, e acrescente as subseções que faltarem com uma linha de "não encontrado"\./);
 });
 
 test('repair: the guidance depends on the case, and adding the label at the opening is accepted', () => {
@@ -105,9 +107,9 @@ test('repair: the guidance depends on the case, and adding the label at the open
   assert.equal(r.aceito, true, r.motivo);
 });
 
-test('simulated analysis opens s2 to s7 with a label', () => {
+test('simulated analysis opens s1 to s7 with a label', () => {
   const m = simulaMontar(false);
-  for (const s of ['s2', 's3', 's4', 's5', 's6', 's7']) assert.ok(rotuloNoFormato(m[s].corpo), s);
+  for (const s of ['s1', 's2', 's3', 's4', 's5', 's6', 's7']) assert.ok(rotuloNoFormato(m[s].corpo), s);
 });
 
 test('report: repair calls rejected by limiarReparo, apart from other rejections', () => {

@@ -1,7 +1,7 @@
 // What the code checks read from the published method (spec 02 v0.12, 4.1): the vetoed terms of
 // glossario.md Part C, the names of the adherence grades in escopo-limites.md section 6 and the text of a
 // method section cited by a [M:arquivo:seção] mark. Pure functions: no Firebase imports.
-import { PROPOSITOS, SECOES_MODELO, TITULOS } from './sintese.js';
+import { LISTAS_ROTULOS, PROPOSITOS, SECOES_MODELO, TITULOS } from './sintese.js';
 
 export interface TermoVetado { vetado: string; preferido: string }
 
@@ -43,19 +43,33 @@ export const regrasDoMetodo = (arquivos: Record<string, string>): RegrasMetodo =
 // section 5 (limite-1 to limite-6), the items of section 4 in order (orienta-1 to orienta-6), the rule on the
 // knowledge assistant (section 5) and the rule against reshaping a request (section 7, item 3); and one item per
 // section, secao-s1 to secao-s7, with its purpose (spec 02 v0.13, 3.3).
-export interface RegraChecklist { regra: string; texto: string }
+// Each item carries regraNome (spec 02 v0.18 and v0.19, 4.2), written by the code and never by the reviewer.
+export interface RegraChecklist { regra: string; nome: string; texto: string }
+
+// Only the first letter becomes lowercase; the rest stays as in the file, which keeps acronyms (IA).
+const inicialMinuscula = (t: string) => t.charAt(0).toLocaleLowerCase('pt-BR') + t.slice(1);
+// Name of a limit: up to the first colon or the first en dash, or the whole sentence without the final period.
+export const nomeDoLimite = (t: string) => inicialMinuscula(t.split(/:|\s–\s/)[0].trim().replace(/\.$/, ''));
+// Name of an "orienta" item: the part before the colon.
+export const nomeDoOrienta = (t: string) => inicialMinuscula(t.split(':')[0].trim());
+
 export function checklistDoRevisor(escopoLimites: string): RegraChecklist[] {
   const secao = (n: number) => escopoLimites.split(/^(?=## )/m).find((b) => b.startsWith(`## ${n}.`)) ?? '';
   const s5 = secao(5);
-  const limites = [...s5.matchAll(/^(\d)\.\s+(.+)$/gm)].map((m) => ({ regra: `limite-${m[1]}`, texto: m[2].trim() }));
-  const orienta = [...secao(4).matchAll(/^-\s+(.+)$/gm)].map((m, i) => ({ regra: `orienta-${i + 1}`, texto: m[1].trim() }));
+  const limites = [...s5.matchAll(/^(\d)\.\s+(.+)$/gm)].map((m) => ({ regra: `limite-${m[1]}`, nome: `limite ${m[1]} – ${nomeDoLimite(m[2].trim())}`, texto: m[2].trim() }));
+  const orienta = [...secao(4).matchAll(/^-\s+(.+)$/gm)].map((m, i) => ({ regra: `orienta-${i + 1}`, nome: `orienta ${i + 1} – ${nomeDoOrienta(m[1].trim())}`, texto: m[1].trim() }));
   const assistente = s5.split('\n').find((l) => /assistente de conhecimento/i.test(l))?.trim();
   const reformular = secao(7).split('\n').find((l) => /^3\.\s/.test(l))?.replace(/^3\.\s+/, '').trim();
   return [
     ...limites,
     ...orienta,
-    ...(assistente ? [{ regra: 'assistente-conhecimento', texto: assistente }] : []),
-    ...(reformular ? [{ regra: 'nao-reformular', texto: reformular }] : []),
-    ...SECOES_MODELO.map((s) => ({ regra: `secao-${s}`, texto: `o conteúdo de ${s} (${TITULOS[s]}) corresponde ao propósito da seção: ${PROPOSITOS[s]}` })),
+    ...(assistente ? [{ regra: 'assistente-conhecimento', nome: 'assistente de conhecimento interno', texto: assistente }] : []),
+    ...(reformular ? [{ regra: 'nao-reformular', nome: 'não reformular o pedido', texto: reformular }] : []),
+    // Spec 02 v0.17, 4.2: purpose and label list of the section, copied from 3.3.
+    ...SECOES_MODELO.map((s) => ({
+      regra: `secao-${s}`,
+      nome: `${s} – ${TITULOS[s]}`,
+      texto: `o conteúdo de ${s} (${TITULOS[s]}) corresponde ao propósito da seção e cada subseção traz o conteúdo do seu rótulo. Propósito: ${PROPOSITOS[s]} Rótulos, nesta ordem: ${LISTAS_ROTULOS[s]}`,
+    })),
   ];
 }
