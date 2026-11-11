@@ -19,9 +19,12 @@ const JANELAS = [
   // Retest of design C after spec 02 v0.16 (GAT Logística and Elite 90 Pro, three rounds per design, repair in
   // Sonnet 5.5; commit f406a14).
   { rodada: 'RT', de: '2026-11-10T21:47:00Z', ate: '2026-11-10T22:38:00Z' },
+  // Round 1 with correction again, after spec 02 v0.17 to v0.19 (fixed labels, porta.combinacao, regraNome;
+  // commit 0e01ece); repair in the model of the stage that wrote the text.
+  { rodada: 'R1g', de: '2026-11-11T19:24:00Z', ate: '2026-11-11T19:36:00Z' },
 ];
 // Latest round with correction: the default of the comparison page and the round of the correction measures.
-export const RODADA_CORRECAO = 'RT';
+export const RODADA_CORRECAO = 'R1g';
 
 export const ROTULO_RODADA = {
   automatica: 'automática',
@@ -31,6 +34,7 @@ export const ROTULO_RODADA = {
   R1e: 'rodada 1 com correção, spec 02 v0.13',
   R1f: 'rodada 1 com correção, spec 02 v0.15',
   RT: 'reteste do desenho C, spec 02 v0.16',
+  R1g: 'rodada 1 com correção, spec 02 v0.19',
   anterior: 'antes da B2',
 };
 
