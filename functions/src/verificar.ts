@@ -24,7 +24,7 @@ import { avisoAnalise } from './email.js';
 import { mesDe } from './qualificar.js';
 import { ETAPAS_COLETA, coletaDe, fontesDisponiveis, portaParaExibir, rotuloDestino, rotuloQuadrante, secaoS0 } from './sintese.js';
 import {
-  comCnpjAConfirmar, esquemaRevisor, avisosDaColeta, avisosDoEnquadramento, checagens, mensagemRevisor, simulaRevisor, validaRevisor, vaiAoReparo, type AnaliseVerificada,
+  comCnpjAConfirmar, esquemaRevisor, METODO_CORRECAO, METODO_REVISOR, avisosDaColeta, avisosDoEnquadramento, checagens, mensagemRevisor, simulaRevisor, validaRevisor, vaiAoReparo, type AnaliseVerificada,
   type EtapaTexto, type ItemChecklist, type Pendencia,
 } from './verificacao.js';
 import { checklistDoRevisor, regrasDoMetodo } from './metodoRegras.js';
@@ -169,7 +169,7 @@ export const verificar = onDocumentCreated(
           usoRevisor = usoChamada(precos, modeloRevisor, esforco, null, 0);
           await cobra(usoRevisor);
         } else {
-          const metodoRevisor = await leMetodo({ 'glossario.md': 'tudo', 'escopo-limites.md': [1, 4, 5, 6, 7] });
+          const metodoRevisor = await leMetodo(METODO_REVISOR);
           const inicio = Date.now();
           const r = await chamaClaude({
             chave: CLAUDE_API_KEY.value(), modelo: modeloRevisor, metodo: metodoRevisor.blocos.map((b) => ({ nome: b.nome, texto: b.texto })),
@@ -224,7 +224,7 @@ export const verificar = onDocumentCreated(
             await cobra(uso);
           } else {
             if (!modelo) throw new Error('config/pipeline.modelos.corrigir is empty');
-            const metodoCorrecao = await leMetodo({ 'glossario.md': 'tudo', 'escopo-limites.md': 'tudo' });
+            const metodoCorrecao = await leMetodo(METODO_CORRECAO);
             const r = await chamaClaude({
               chave: CLAUDE_API_KEY.value(), modelo, metodo: metodoCorrecao.blocos.map((b) => ({ nome: b.nome, texto: b.texto })),
               usuario: mensagemCorrigir(analise, fontesDisponiveis(coleta), paraCorrigir), maxTokens: 64_000, timeoutMs: 300_000,

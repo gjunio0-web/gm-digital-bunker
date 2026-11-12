@@ -85,6 +85,11 @@ export function medidasDaRodada(base, correcao, lead, eventosReparo = []) {
     checklistRotulosVariaveis: (ver.checklist ?? []).filter((c) => String(c.regra ?? '').includes(':')).length,
     corrigidas: tratamentos.filter((t) => t.tratamento === 'corrigida').length,
     mantidas: tratamentos.filter((t) => t.tratamento === 'mantida').length,
+    // Issues located in the enquadramento, kept by the code without going to the correction (spec 02 v0.16, 4.3).
+    mantidasEnquadramento: (correcao?.correcao?.pendencias ?? []).filter((p) => p.secao === 'enquadramento').length,
+    // Cost of the reviewer and of the correction, to measure what the v0.20 inputs add (spec 02 v0.20).
+    usdRevisor: soma(cs.filter(([k]) => k === 'revisor').map(([, c]) => c.usdEstimado)),
+    usdCorrigir: soma(cs.filter(([k]) => k === 'corrigir').map(([, c]) => c.usdEstimado)),
     correcaoFalhou: avisos.filter((a) => a.startsWith('correcao_falhou')).length,
     temCorrecao: !!correcao,
     estadoFinal: (correcao ?? base).verificacao?.status ?? null,
@@ -205,6 +210,11 @@ export function relatorio(fichas, geradoEm = new Date().toISOString()) {
     const custoSem = media(rd.filter((r) => r.rodada === 'R1').map((r) => r.m.usd));
     L.push(`- Custo médio por ficha: ${usd(custoCorr)} com correção; ${usd(custoSem)} na rodada sem correção`);
     L.push(`- Duração média da síntese: ${seg(media(rd.map((r) => r.m.duracaoSintese)))}; da rodada com correção, total: ${seg(media(comCorr.map((r) => r.m.duracaoTotal)))}`);
+    // Per round with correction: average cost of the reviewer and of the correction, and issues kept in the
+    // enquadramento (requested by Gon on 12/11/2026 for the round after spec 02 v0.20).
+    const comCorrecao = rodadasB2.filter((rod) => rd.some((r) => r.rodada === rod && r.m.temCorrecao));
+    L.push(`- Custo médio por ficha do revisor / da correção: ${comCorrecao.map((rod) => { const x = rd.filter((r) => r.rodada === rod); return `${ROTULO_RODADA[rod]} ${usd(media(x.map((r) => r.m.usdRevisor)))} / ${usd(media(x.filter((r) => r.m.temCorrecao).map((r) => r.m.usdCorrigir)))}`; }).join('; ')}`);
+    L.push(`- Pendências mantidas no enquadramento (regra da spec 02 v0.16; antes dela, iam à correção): ${comCorrecao.map((rod) => { const x = rd.filter((r) => r.rodada === rod); return `${ROTULO_RODADA[rod]} ${soma(x.map((r) => r.m.mantidasEnquadramento))} em ${x.filter((r) => r.m.mantidasEnquadramento > 0).length} de ${x.length} análises`; }).join('; ')}`);
     L.push('');
   }
 
