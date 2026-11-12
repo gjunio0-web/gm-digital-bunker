@@ -83,7 +83,7 @@ Premissa, não limite: "Promessas sem lastro" – ganhos são medidos ou declara
 
 Em análise, fora das contagens do estudo: configuração assistida de SaaS contratado e migração de planilhas para SaaS contratado – execução técnica em software de mercado assinado pelo cliente; a incorporação depende de mais análise.
 
-Não induzir clientes a desenvolver assistente de conhecimento interno próprio nem mencioná-lo na oferta; se o pedido surgir, é avaliado caso a caso.
+Não induzir clientes a desenvolver assistente de conhecimento interno próprio (para consulta da equipe da empresa) nem mencioná-lo na oferta; se o pedido surgir, é avaliado caso a caso. Essa regra não se aplica ao assistente de IA para os usuários da plataforma, previsto no Projeto (seção 3).
 
 ## 6. Escala de aderência (dossiê, seção 08) – para graduar o enquadramento
 
