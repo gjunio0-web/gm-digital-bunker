@@ -26,9 +26,13 @@ const JANELAS = [
   // reviewer and of the correction; commit 98c59eb). A first try at 15:54 failed on a Cloud Shell credential
   // error before any synthesis.
   { rodada: 'R1h', de: '2026-11-12T16:06:00Z', ate: '2026-11-12T16:17:00Z' },
+  // Round 1 with correction after spec 02 v0.21 (name in the greeting, tie-break rule for the technology
+  // structure, assistant rule in escopo-limites.md; commit 445b067, method version 445b067). Two tries at 18:16
+  // and 18:19 failed on a Cloud Shell credential error before any synthesis.
+  { rodada: 'R1i', de: '2026-11-12T18:25:00Z', ate: '2026-11-12T18:36:00Z' },
 ];
 // Latest round with correction: the default of the comparison page and the round of the correction measures.
-export const RODADA_CORRECAO = 'R1h';
+export const RODADA_CORRECAO = 'R1i';
 
 export const ROTULO_RODADA = {
   automatica: 'automática',
@@ -40,6 +44,7 @@ export const ROTULO_RODADA = {
   RT: 'reteste do desenho C, spec 02 v0.16',
   R1g: 'rodada 1 com correção, spec 02 v0.19',
   R1h: 'rodada 1 com correção, spec 02 v0.20',
+  R1i: 'rodada 1 com correção, spec 02 v0.21',
   anterior: 'antes da B2',
 };
 
