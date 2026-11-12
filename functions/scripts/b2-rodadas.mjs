@@ -22,9 +22,13 @@ const JANELAS = [
   // Round 1 with correction again, after spec 02 v0.17 to v0.19 (fixed labels, porta.combinacao, regraNome;
   // commit 0e01ece); repair in the model of the stage that wrote the text.
   { rodada: 'R1g', de: '2026-11-11T19:24:00Z', ate: '2026-11-11T19:36:00Z' },
+  // Round 1 with correction after spec 02 v0.20 (number exceptions, reviewer sentence, method files of the
+  // reviewer and of the correction; commit 98c59eb). A first try at 15:54 failed on a Cloud Shell credential
+  // error before any synthesis.
+  { rodada: 'R1h', de: '2026-11-12T16:06:00Z', ate: '2026-11-12T16:17:00Z' },
 ];
 // Latest round with correction: the default of the comparison page and the round of the correction measures.
-export const RODADA_CORRECAO = 'R1g';
+export const RODADA_CORRECAO = 'R1h';
 
 export const ROTULO_RODADA = {
   automatica: 'automática',
@@ -35,6 +39,7 @@ export const ROTULO_RODADA = {
   R1f: 'rodada 1 com correção, spec 02 v0.15',
   RT: 'reteste do desenho C, spec 02 v0.16',
   R1g: 'rodada 1 com correção, spec 02 v0.19',
+  R1h: 'rodada 1 com correção, spec 02 v0.20',
   anterior: 'antes da B2',
 };
 
