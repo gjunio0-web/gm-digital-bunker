@@ -7,7 +7,7 @@ import {
   ESQUEMA_CONVERSA, ESQUEMA_MONTAR, SECOES_MODELO, enquadramentoDoModelo, linkaMarcas, validaConversa, validaMontar, type Coleta, type Enquadramento,
 } from './sintese.js';
 import { semLinks, type VersaoTextos } from './reparo.js';
-import { TIPOS_DE_CORRECAO, type Pendencia } from './verificacao.js';
+import { bloqueia, TIPOS_DE_CORRECAO, type Pendencia } from './verificacao.js';
 
 // Literal text of spec 02 v0.23, 4.3 (the treatment sem_alteracao since v0.23).
 export const INSTRUCAO_CORRIGIR =
@@ -124,9 +124,15 @@ export const comTratamento = (pendencias: Pendencia[], tratamentos: TratamentoDa
   pendencias.map((x, i) => ({ ...x, tratamento: tratamentos[i]?.tratamento ?? 'mantida', razao: tratamentos[i]?.razao ?? null }));
 
 // Final state of a correction version: ready only when every carried issue was corrected or needed no change
-// (sem_alteracao, since spec 02 v0.23) and the code checks of vN+1 left nothing (spec 02 v0.12, 4.3).
+// (sem_alteracao, since spec 02 v0.23) and the code checks of vN+1 left nothing besides numero_sem_fonte, which
+// is a warning since spec 02 v0.24 (spec 02 v0.12, 4.3).
 export const prontaAposCorrecao = (mecanicas: Pendencia[], carregadas: { tratamento: string }[]) =>
-  mecanicas.length === 0 && carregadas.every((x) => RESOLVIDA(x.tratamento));
+  mecanicas.filter(bloqueia).length === 0 && carregadas.every((x) => RESOLVIDA(x.tratamento));
+
+// Open issues counted in the analysis e-mail: not corrected, not sem_alteracao and not a warning rule
+// (spec 01 v0.23, section 8, decision 3).
+export const pendenciasEmAberto = (todas: (Pendencia & { tratamento?: string | null })[]) =>
+  todas.filter((x) => !RESOLVIDA(x.tratamento ?? '') && bloqueia(x));
 
 // Emulator stand-in: marks each listed excerpt as inference and reports every issue as corrected.
 export function simulaCorrecao(entrada: ReturnType<typeof analiseParaCorrecao>, pendencias: Pendencia[]): unknown {

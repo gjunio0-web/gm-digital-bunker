@@ -595,6 +595,12 @@ export function checagens(a: AnaliseVerificada, coleta: Coleta, metodo?: RegrasM
 export const REGRAS_DE_REPARO = ['marca_sem_destino', 'rascunho_longo', 'rascunho_preco', 'rascunho_sem_nome', 'rascunho_horario_concreto', 'termo_vetado', 'grau_sem_nome', 'sigla', 'sigla_extenso_errado', 'ordem_datas', 'bloco_sem_rotulo', 'rotulo_fora_da_lista'] as const;
 export const vaiAoReparo = (x: Pendencia) => (REGRAS_DE_REPARO as readonly string[]).includes(x.regra ?? '');
 
+// Mechanical rules that are a warning: still recorded as issues, but they do not block analise_pronta nor
+// count as open issues in the analysis e-mail (spec 02 v0.24, 4.1 to 4.3; spec 01 v0.23, section 8, decision 3).
+export const REGRAS_DE_AVISO = ['numero_sem_fonte'] as const;
+export const ehAviso = (x: Pendencia) => x.tipo === 'mecanica' && (REGRAS_DE_AVISO as readonly string[]).includes(x.regra ?? '');
+export const bloqueia = (x: Pendencia) => !ehAviso(x);
+
 // Stage that wrote the field of an issue.
 export function etapaDoLocal(local: string): EtapaTexto {
   if (local.startsWith('enquadramento')) return 'enquadrar';

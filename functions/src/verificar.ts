@@ -24,12 +24,12 @@ import { avisoAnalise } from './email.js';
 import { mesDe } from './qualificar.js';
 import { ETAPAS_COLETA, coletaDe, fontesDisponiveis, portaParaExibir, rotuloDestino, rotuloQuadrante, secaoS0 } from './sintese.js';
 import {
-  comCnpjAConfirmar, esquemaRevisor, METODO_CORRECAO, METODO_REVISOR, avisosDaColeta, avisosDoEnquadramento, checagens, mensagemRevisor, simulaRevisor, validaRevisor, vaiAoReparo, type AnaliseVerificada,
+  comCnpjAConfirmar, esquemaRevisor, METODO_CORRECAO, METODO_REVISOR, avisosDaColeta, avisosDoEnquadramento, bloqueia, checagens, mensagemRevisor, simulaRevisor, validaRevisor, vaiAoReparo, type AnaliseVerificada,
   type EtapaTexto, type ItemChecklist, type Pendencia,
 } from './verificacao.js';
 import { checklistDoRevisor, regrasDoMetodo } from './metodoRegras.js';
 import {
-  analiseParaCorrecao, comMantidasDoEnquadramento, comTratamento, ehDoEnquadramento, mantidaPeloCodigo, mensagemCorrigir, prontaAposCorrecao, RESOLVIDA,
+  analiseParaCorrecao, comMantidasDoEnquadramento, comTratamento, ehDoEnquadramento, mantidaPeloCodigo, mensagemCorrigir, pendenciasEmAberto, prontaAposCorrecao,
   simulaCorrecao, validaCorrecao, vaiACorrecao, versaoCorrigida,
   type TratamentoDado,
 } from './correcao.js';
@@ -197,7 +197,8 @@ export const verificar = onDocumentCreated(
       const corrigivel = revisa && p.correcaoAtiva && ia && f.estado === 'sintetizando' && f.analiseAtual === versao;
       if (corrigivel) for (let i = 0; i < pendencias.length; i++) if (ehDoEnquadramento(pendencias[i])) pendencias[i] = mantidaPeloCodigo(pendencias[i]);
       const todas: Pendencia[] = [...pendencias, ...carregadas];
-      const status = ehCorrecao ? (prontaAposCorrecao(pendencias, carregadas) ? 'pronta' : 'com_pendencias') : todas.length ? 'com_pendencias' : 'pronta';
+      // numero_sem_fonte is a warning: recorded, but it does not block analise_pronta (spec 02 v0.24, 4.2 and 4.3).
+      const status = ehCorrecao ? (prontaAposCorrecao(pendencias, carregadas) ? 'pronta' : 'com_pendencias') : todas.some(bloqueia) ? 'com_pendencias' : 'pronta';
       const agora = Timestamp.now();
       // Final state only for the current AI version of a ficha still in "sintetizando".
       const fechaSeNaoCorrigir = ia && f.estado === 'sintetizando' && f.analiseAtual === versao;
@@ -399,7 +400,7 @@ export const verificar = onDocumentCreated(
           const l = g.lead;
           const base = URL_BASE_POR_PROJETO[projeto()];
           await avisoAnalise(noEmulador() ? '' : SMTP2GO_API_KEY.value(), {
-            fichaId: id, empresa: g.original?.empresa ?? '', versao, pronta: status === 'pronta', pendencias: (ehCorrecao ? todas.filter((x: any) => !RESOLVIDA(x.tratamento)) : todas).length,
+            fichaId: id, empresa: g.original?.empresa ?? '', versao, pronta: status === 'pronta', pendencias: pendenciasEmAberto(todas).length,
             quadrante: rotuloQuadrante(l.quadrante), destino: rotuloDestino(l.destino), grau: l.grau, pontos: l.pontos,
             confianca: l.modificadores?.confianca, confiancaMotivo: l.modificadores?.confiancaMotivo ?? '',
             prazoEm: l.acao?.prazoEm ? (l.acao.prazoEm as Timestamp).toDate() : null,
