@@ -85,6 +85,7 @@ export function medidasDaRodada(base, correcao, lead, eventosReparo = []) {
     checklistRotulosVariaveis: (ver.checklist ?? []).filter((c) => String(c.regra ?? '').includes(':')).length,
     corrigidas: tratamentos.filter((t) => t.tratamento === 'corrigida').length,
     mantidas: tratamentos.filter((t) => t.tratamento === 'mantida').length,
+    semAlteracao: tratamentos.filter((t) => t.tratamento === 'sem_alteracao').length,
     // Issues located in the enquadramento, kept by the code without going to the correction (spec 02 v0.16, 4.3).
     mantidasEnquadramento: (correcao?.correcao?.pendencias ?? []).filter((p) => p.secao === 'enquadramento').length,
     // Cost of the reviewer and of the correction, to measure what the v0.20 inputs add (spec 02 v0.20).
@@ -147,11 +148,11 @@ export function relatorio(fichas, geradoEm = new Date().toISOString()) {
       L.push(`| ${ROTULO_RODADA[r.rodada]} | ${r.desenho} | ${m.versoes} | ${m.pontos ?? '–'} | ${m.grau ?? '–'} | ${m.quadrante ?? '–'} | ${m.destino ?? '–'} | ${m.tecnologia ?? '–'} | ${m.escopo ?? '–'} (${m.escopoDeclarado ?? '–'}) | ${m.porta ?? '–'} | ${m.direcao ?? '–'} (${m.confianca ?? '–'}) | ${lista(m.riscos)} | ${m.removidos} | ${m.estadoFinal ?? '–'} |`);
     }
     L.push('');
-    L.push('| Rodada | Desenho | Mecânicas antes do reparo | Depois | Reparos aceitos / rejeitados | Revisor (por tipo) | Checklist violado | Corrigidas / mantidas | Correção recusada | Custo | Duração da síntese / total |');
+    L.push('| Rodada | Desenho | Mecânicas antes do reparo | Depois | Reparos aceitos / rejeitados | Revisor (por tipo) | Checklist violado | Corrigidas / sem alteração / mantidas | Correção recusada | Custo | Duração da síntese / total |');
     L.push('|---|---|---|---|---|---|---|---|---|---|---|');
     for (const r of doF) {
       const m = r.m;
-      L.push(`| ${ROTULO_RODADA[r.rodada]} | ${r.desenho} | ${lista(m.antes)} | ${lista(m.depois)} | ${m.reparosAceitos} / ${m.reparosRejeitados} | ${lista(m.revisor)} | ${lista(m.checklistViolado)} | ${m.temCorrecao ? `${m.corrigidas} / ${m.mantidas}` : '–'} | ${m.correcaoFalhou} | ${usd(m.usd)} | ${seg(m.duracaoSintese)} / ${seg(m.duracaoTotal)} |`);
+      L.push(`| ${ROTULO_RODADA[r.rodada]} | ${r.desenho} | ${lista(m.antes)} | ${lista(m.depois)} | ${m.reparosAceitos} / ${m.reparosRejeitados} | ${lista(m.revisor)} | ${lista(m.checklistViolado)} | ${m.temCorrecao ? `${m.corrigidas} / ${m.semAlteracao} / ${m.mantidas}` : '–'} | ${m.correcaoFalhou} | ${usd(m.usd)} | ${seg(m.duracaoSintese)} / ${seg(m.duracaoTotal)} |`);
     }
     L.push('');
     L.push('Chamadas (modelo, esforço, cache lido / gravado, duração, custo):', '');
@@ -205,7 +206,7 @@ export function relatorio(fichas, geradoEm = new Date().toISOString()) {
     L.push(`- Checklist violado por regra: ${lista(totObj((m) => m.checklistViolado))}`);
     const cr = comCorr.map((r) => r.m.chamadasReparo ?? { total: 0, rejeitadasLimiar: 0, rejeitadasOutras: 0 });
     L.push(`- Chamadas de reparo na ${ROTULO_RODADA[RODADA_CORRECAO]}: ${soma(cr.map((c) => c.total))}; rejeitadas pelo limiarReparo: ${soma(cr.map((c) => c.rejeitadasLimiar))}; rejeitadas por outro motivo: ${soma(cr.map((c) => c.rejeitadasOutras))}`);
-    L.push(`- Rodada com correção: corrigidas ${soma(comCorr.map((r) => r.m.corrigidas))}, mantidas ${soma(comCorr.map((r) => r.m.mantidas))}, correções recusadas ${soma(comCorr.map((r) => r.m.correcaoFalhou))}; estado final pronta em ${comCorr.filter((r) => r.m.estadoFinal === 'pronta').length} de ${comCorr.length}`);
+    L.push(`- Rodada com correção: corrigidas ${soma(comCorr.map((r) => r.m.corrigidas))}, sem alteração ${soma(comCorr.map((r) => r.m.semAlteracao))}, mantidas ${soma(comCorr.map((r) => r.m.mantidas))}, correções recusadas ${soma(comCorr.map((r) => r.m.correcaoFalhou))}; estado final pronta em ${comCorr.filter((r) => r.m.estadoFinal === 'pronta').length} de ${comCorr.length}`);
     const custoCorr = media(comCorr.map((r) => r.m.usd));
     const custoSem = media(rd.filter((r) => r.rodada === 'R1').map((r) => r.m.usd));
     L.push(`- Custo médio por ficha: ${usd(custoCorr)} com correção; ${usd(custoSem)} na rodada sem correção`);

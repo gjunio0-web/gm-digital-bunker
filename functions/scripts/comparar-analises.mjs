@@ -276,7 +276,7 @@ const perguntas = (v) => {
 };
 const itemPend = (p) => '<li><span class="tag' + (p.tipo === 'escopo' ? ' escopo' : '') + '">' + esc(p.tipo) + (p.regra ? ' · ' + esc(p.regra) : '') + '</span>' +
   (p.tratamento ? '<span class="tag">' + esc(p.tratamento) + '</span>' : '') + '<span class="contagem">' + esc(p.secao) + '</span><br>' + esc(p.trecho ?? p.texto ?? '') +
-  (p.correcaoSugerida ? '<br><span class="contagem">correção sugerida: ' + esc(p.correcaoSugerida) + '</span>' : '') + (p.razao ? '<br><span class="contagem">mantida porque: ' + esc(p.razao) + '</span>' : '') + '</li>';
+  (p.correcaoSugerida ? '<br><span class="contagem">correção sugerida: ' + esc(p.correcaoSugerida) + '</span>' : '') + (p.razao ? '<br><span class="contagem">' + (p.tratamento === 'sem_alteracao' ? 'sem alteração porque: ' : 'mantida porque: ') + esc(p.razao) + '</span>' : '') + '</li>';
 // Scope and reading issues first; mechanical ones collapsed below (alterações, seção 7, item 7).
 const pendencias = (v) => {
   const ps = v.verificacao?.pendencias ?? [];

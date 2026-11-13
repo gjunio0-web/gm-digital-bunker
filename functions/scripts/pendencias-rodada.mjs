@@ -21,7 +21,7 @@ db.settings({ preferRest: true });
 
 const curto = (t, n = 400) => String(t ?? '–').replace(/\s+/g, ' ').slice(0, n);
 const L = [`# Pendências da ${ROTULO_RODADA[rodada]}`, '', `Gerado em ${new Date().toISOString()} a partir de ${projeto}. Uso interno.`, ''];
-const totais = { mantidas: {}, estrutura: { corrigida: 0, mantida: 0 }, mecanicas: {} };
+const totais = { mantidas: {}, semAlteracao: {}, estrutura: { corrigida: 0, mantida: 0 }, mecanicas: {} };
 const conta = (o, k) => { o[k] = (o[k] ?? 0) + 1; };
 
 for (const id of FICHAS_B2) {
@@ -46,11 +46,18 @@ for (const id of FICHAS_B2) {
       conta(totais.mantidas, p.secao === 'enquadramento' ? 'enquadramento (não vai à correção)' : p.tipo);
       L.push(`- **${p.tipo}${p.regra ? ` · ${p.regraNome ?? p.regra}` : ''}** – ${p.secao}`, `  - Trecho: ${curto(p.trecho)}`, `  - Sugestão do revisor: ${curto(p.correcaoSugerida)}`, `  - Razão da correção: ${curto(p.t?.razao)}`);
     }
+    // Treatment sem_alteracao since spec 02 v0.23: nothing to change; it does not block analise_pronta.
+    const semAlteracao = comT.filter((p) => p.t?.tratamento === 'sem_alteracao');
+    L.push('', `### Sem alteração (${semAlteracao.length})`, '');
+    for (const p of semAlteracao) {
+      conta(totais.semAlteracao, p.tipo);
+      L.push(`- **${p.tipo}${p.regra ? ` · ${p.regraNome ?? p.regra}` : ''}** – ${p.secao}`, `  - Trecho: ${curto(p.trecho)}`, `  - Sugestão do revisor: ${curto(p.correcaoSugerida)}`, `  - Razão da correção: ${curto(p.t?.razao)}`);
+    }
     const estrutura = comT.filter((p) => p.tipo === 'estrutura');
     L.push('', `### Estrutura – secao-s1 a secao-s7 (${estrutura.length})`, '');
     for (const p of estrutura) {
       conta(totais.estrutura, p.t?.tratamento ?? 'sem tratamento');
-      L.push(`- **${p.regraNome ?? p.regra}** – ${p.t?.tratamento ?? 'sem tratamento'}`, `  - Trecho: ${curto(p.trecho)}`, `  - Sugestão do revisor: ${curto(p.correcaoSugerida)}`, ...(p.t?.tratamento === 'mantida' ? [`  - Razão da correção: ${curto(p.t?.razao)}`] : []));
+      L.push(`- **${p.regraNome ?? p.regra}** – ${p.t?.tratamento ?? 'sem tratamento'}`, `  - Trecho: ${curto(p.trecho)}`, `  - Sugestão do revisor: ${curto(p.correcaoSugerida)}`, ...(p.t?.tratamento === 'mantida' || p.t?.tratamento === 'sem_alteracao' ? [`  - Razão da correção: ${curto(p.t?.razao)}`] : []));
     }
     const mec = (v.verificacao?.pendencias ?? []).filter((p) => p.tipo === 'mecanica');
     L.push('', `### Mecânicas que ficaram em ${v.id} (${mec.length})`, '');
@@ -62,7 +69,7 @@ for (const id of FICHAS_B2) {
   }
 }
 const lista = (o) => Object.entries(o).map(([k, n]) => `${k} ${n}`).join(', ') || 'nenhuma';
-L.splice(4, 0, '## Totais', '', `- Mantidas por tipo: ${lista(totais.mantidas)}`, `- Estrutura por tratamento: ${lista(totais.estrutura)}`, `- Mecânicas que ficaram: ${lista(totais.mecanicas)}`, '');
+L.splice(4, 0, '## Totais', '', `- Mantidas por tipo: ${lista(totais.mantidas)}`, `- Sem alteração por tipo: ${lista(totais.semAlteracao)}`, `- Estrutura por tratamento: ${lista(totais.estrutura)}`, `- Mecânicas que ficaram: ${lista(totais.mecanicas)}`, '');
 writeFileSync(saida, L.join('\n'));
 console.log(`${saida}: ${Math.round(L.join('\n').length / 1024)} KB`);
 process.exit(0);

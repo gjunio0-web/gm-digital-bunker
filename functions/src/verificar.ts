@@ -29,7 +29,7 @@ import {
 } from './verificacao.js';
 import { checklistDoRevisor, regrasDoMetodo } from './metodoRegras.js';
 import {
-  analiseParaCorrecao, comMantidasDoEnquadramento, comTratamento, ehDoEnquadramento, mantidaPeloCodigo, mensagemCorrigir, prontaAposCorrecao,
+  analiseParaCorrecao, comMantidasDoEnquadramento, comTratamento, ehDoEnquadramento, mantidaPeloCodigo, mensagemCorrigir, prontaAposCorrecao, RESOLVIDA,
   simulaCorrecao, validaCorrecao, vaiACorrecao, versaoCorrigida,
   type TratamentoDado,
 } from './correcao.js';
@@ -355,6 +355,7 @@ export const verificar = onDocumentCreated(
             detalhe: {
               versaoBase: versao, versao: correcao!.versao,
               corrigidas: correcao!.tratamentos.filter((t) => t.tratamento === 'corrigida').length,
+              semAlteracao: correcao!.tratamentos.filter((t) => t.tratamento === 'sem_alteracao').length,
               mantidas: correcao!.tratamentos.filter((t) => t.tratamento === 'mantida').length,
             },
           });
@@ -380,7 +381,7 @@ export const verificar = onDocumentCreated(
                     ...(Object.keys(violadas).length ? { checklistViolado: inc(violadas) } : {}),
                     ...(ehCorrecao ? {
                       versoesCorrecao: FieldValue.increment(1),
-                      tratamentos: inc({ corrigida: carregadas.filter((x) => x.tratamento === 'corrigida').length, mantida: carregadas.filter((x) => x.tratamento === 'mantida').length }),
+                      tratamentos: inc({ corrigida: carregadas.filter((x) => x.tratamento === 'corrigida').length, sem_alteracao: carregadas.filter((x) => x.tratamento === 'sem_alteracao').length, mantida: carregadas.filter((x) => x.tratamento === 'mantida').length }),
                     } : {}),
                   },
                 },
@@ -398,7 +399,7 @@ export const verificar = onDocumentCreated(
           const l = g.lead;
           const base = URL_BASE_POR_PROJETO[projeto()];
           await avisoAnalise(noEmulador() ? '' : SMTP2GO_API_KEY.value(), {
-            fichaId: id, empresa: g.original?.empresa ?? '', versao, pronta: status === 'pronta', pendencias: (ehCorrecao ? todas.filter((x: any) => x.tratamento !== 'corrigida') : todas).length,
+            fichaId: id, empresa: g.original?.empresa ?? '', versao, pronta: status === 'pronta', pendencias: (ehCorrecao ? todas.filter((x: any) => !RESOLVIDA(x.tratamento)) : todas).length,
             quadrante: rotuloQuadrante(l.quadrante), destino: rotuloDestino(l.destino), grau: l.grau, pontos: l.pontos,
             confianca: l.modificadores?.confianca, confiancaMotivo: l.modificadores?.confiancaMotivo ?? '',
             prazoEm: l.acao?.prazoEm ? (l.acao.prazoEm as Timestamp).toDate() : null,

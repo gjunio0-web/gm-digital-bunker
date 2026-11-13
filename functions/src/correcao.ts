@@ -9,11 +9,14 @@ import {
 import { semLinks, type VersaoTextos } from './reparo.js';
 import { TIPOS_DE_CORRECAO, type Pendencia } from './verificacao.js';
 
-// Literal text of spec 02 v0.12, 4.3.
+// Literal text of spec 02 v0.23, 4.3 (the treatment sem_alteracao since v0.23).
 export const INSTRUCAO_CORRIGIR =
-  'Corrija a análise nos trechos apontados em <pendencias>, aplicando a correção sugerida ou outra equivalente que respeite escopo-limites.md e glossario.md. Para cada pendência, informe `tratamento`: `corrigida`, com o novo trecho; ou `mantida`, com a razão em uma frase, quando a correção sugerida estiver errada ou exigir dado que não está na análise. Não acrescente fatos nem fontes; se a correção pedir fonte que não existe, reescreva como inferência ou "não encontrado". Não altere trechos sem pendência. Devolva a análise completa e a lista de tratamentos.';
+  'Corrija a análise nos trechos apontados em <pendencias>, aplicando a correção sugerida ou outra equivalente que respeite escopo-limites.md e glossario.md. Para cada pendência, informe `tratamento`: `corrigida`, com o novo trecho; `sem_alteracao`, com a razão em uma frase, quando o trecho já atende à correção sugerida ou quando a sugestão contraria escopo-limites.md, glossario.md ou portas-materiais.md, de modo que o trecho pode ficar como está; ou `mantida`, com a razão em uma frase, quando a correção exigir dado que não está na análise ou não puder ser feita. Na dúvida entre `sem_alteracao` e `mantida`, use `mantida`. Não acrescente fatos nem fontes; se a correção pedir fonte que não existe, reescreva como inferência ou "não encontrado". Não altere trechos sem pendência. Devolva a análise completa e a lista de tratamentos.';
 
-export const TRATAMENTOS = ['corrigida', 'mantida'] as const;
+// sem_alteracao: nothing to change, the excerpt already meets the suggestion or the suggestion contradicts the
+// method files; it does not block analise_pronta (spec 02 v0.23, 4.3).
+export const TRATAMENTOS = ['corrigida', 'sem_alteracao', 'mantida'] as const;
+export const RESOLVIDA = (t: string) => t === 'corrigida' || t === 'sem_alteracao';
 export type Tratamento = (typeof TRATAMENTOS)[number];
 
 const conversa = ESQUEMA_CONVERSA.properties as Record<string, object>;
@@ -120,10 +123,10 @@ export function versaoCorrigida(base: VersaoTextos, c: ReturnType<typeof validaC
 export const comTratamento = (pendencias: Pendencia[], tratamentos: TratamentoDado[]) =>
   pendencias.map((x, i) => ({ ...x, tratamento: tratamentos[i]?.tratamento ?? 'mantida', razao: tratamentos[i]?.razao ?? null }));
 
-// Final state of a correction version: ready only when every carried issue was corrected and the code checks of
-// vN+1 left nothing (spec 02 v0.12, 4.3).
+// Final state of a correction version: ready only when every carried issue was corrected or needed no change
+// (sem_alteracao, since spec 02 v0.23) and the code checks of vN+1 left nothing (spec 02 v0.12, 4.3).
 export const prontaAposCorrecao = (mecanicas: Pendencia[], carregadas: { tratamento: string }[]) =>
-  mecanicas.length === 0 && carregadas.every((x) => x.tratamento === 'corrigida');
+  mecanicas.length === 0 && carregadas.every((x) => RESOLVIDA(x.tratamento));
 
 // Emulator stand-in: marks each listed excerpt as inference and reports every issue as corrected.
 export function simulaCorrecao(entrada: ReturnType<typeof analiseParaCorrecao>, pendencias: Pendencia[]): unknown {

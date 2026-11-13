@@ -58,7 +58,8 @@ test('relatorio: measures of a round, the per-design block and the mechanical cr
   assert.ok(r.md.includes('| rodada 1 com correção | A | v3 → v4 | 70 | A |'));
   // Before the repair: sent sigla and termo_vetado, plus secao_curta (no repair); after: secao_curta and sigla.
   assert.ok(r.md.includes('| secao_curta 1, sigla 1, termo_vetado 1 | secao_curta 1, sigla 1 | 1 / 1 |'));
-  assert.ok(r.md.includes('| 1 / 1 | 0 | US$ 0.7600 |'));
+  // Corrected / no change (sem_alteracao, spec 02 v0.23) / kept.
+  assert.ok(r.md.includes('| 1 / 0 / 1 | 0 | US$ 0.7600 |'));
   // Design A: points 75 and 70 (range 5); design C: 77 and 77 (range 0) – (a) holds; scope 1 and 1 – (b) holds.
   assert.ok(r.md.includes('| Capal | 5 / 0 | atende | 1–1 / 1, 1 | atende |'));
   assert.ok(r.md.includes('**Resultado: critério atendido.**'));

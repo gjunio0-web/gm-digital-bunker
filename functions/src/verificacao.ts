@@ -136,11 +136,16 @@ const SEM_NUMERO: RegExp[] = [
   // Numbered norms and number/year pairs before the bare years, which would split them ((e), Gon, 7/11/2026;
   // CNAE and art., spec 02 v0.12).
   /(?<![\p{L}])(?:Lei|PLP?|PEC|RDC|Resolução|Decreto|Portaria|Instrução Normativa|IN|MP|Medida Provisória|ISO|NBR|IEC|CNAE|arts?\.)\s*(?:n[º°o.]\s*)?\d[\d.]*(?:[/-]\d+)*(?::\d{4})?/gu,
+  // A norm acronym in parentheses after its long form, before the number ("Organização Internacional de
+  // Normalização (ISO) 9001"; spec 02 v0.23, 4.1).
+  /\((?:ISO|NBR|IEC)\)\s*\d[\d.]*(?:[/-]\d+)*(?::\d{4})?/g,
   /\b\d+\/\d{4}\b/g,
   /\b\d{4}-\d{2}(?:-\d{2})?\b/g,
   new RegExp(`\\b\\d{1,2}\\s+de\\s+(?:${MESES})\\b`, 'gi'),
   /\b(?:19|20)\d{2}\b/g,
   /(?<![\p{L}])(?:últim[oa]s|próxim[oa]s)\s+\d+\s+(?:dias|semanas|meses|anos)(?![\p{L}])/giu,
+  // The length of a time window ("janela de 12 meses"; spec 02 v0.23, 4.1).
+  /(?<![\p{L}])janela\s+de\s+\d+\s+(?:dias|semanas|meses|anos)(?![\p{L}])/giu,
   new RegExp(`(?<![\\p{L}])(?:limites?|seç(?:ão|ões)|portas?|vers(?:ão|ões)|capítulos?|cap\\.|itens|item|etapas?|partes?)\\s*${NUM}(?:\\s*(?:,|e|a)\\s*${NUM})*`, 'giu'),
   // Software versions with three or more parts after a name ("WordPress 5.6.23"); a group of three digits
   // after the first dot is a thousands separator, not a version.
@@ -150,6 +155,9 @@ const SEM_NUMERO: RegExp[] = [
   // numbered hypotheses, questions, criteria and options, "em N meses", draft placeholders.
   /(?<![\p{L}\p{N}])(?=[\p{L}\p{N}]*\p{L})(?=[\p{L}\p{N}]*\p{N})[\p{L}\p{N}]+(?![\p{L}\p{N}])/gu,
   /\([^()]*(?<![\p{L}])(?:livro|cap\.?|capítulos?|seç(?:ão|ões))(?![\p{L}])[^()]*\)/giu,
+  // A book section right after the word "livro", with a comma or in parentheses ("livro, 5.3", "livro (8.5)";
+  // spec 02 v0.23, 4.1).
+  new RegExp(`(?<![\\p{L}])livro,?\\s*\\(?${NUM}\\)?`, 'giu'),
   new RegExp(`(?<![\\p{L}])(?:hipóteses?|perguntas?|critérios?|opç(?:ão|ões))(?:\\s+de\\s+\\p{L}+)?\\s+${NUM}(?:\\s*(?:,|e|a)\\s*${NUM})*`, 'giu'),
   /(?<![\p{L}])(?:em|nos|nas)\s+\d+\s+(?:dias|semanas|meses|anos)(?![\p{L}])/giu,
   // Quantities set by the spec itself ("até 120 palavras").
@@ -236,6 +244,52 @@ export function siglasSemExtenso(textoAnalise: string): string[] {
     const m = primeiraSigla(semUrls(textoAnalise), s);
     return m !== null && semExtenso(textoAnalise, m, s);
   });
+}
+
+// Official long forms of the acronyms that have one in Portuguese (spec 02 v0.23, 4.1). A sequence of words next
+// to the acronym whose initials spell it is a long form; when it differs from the official one, it is wrong
+// ("Código Nacional de Atividade Econômica (CNAE)").
+export const EXTENSOS_OFICIAIS: { sigla: string; oficial: string; aceita?: RegExp }[] = [
+  { sigla: 'CNPJ', oficial: 'Cadastro Nacional da Pessoa Jurídica' },
+  { sigla: 'CNAE', oficial: 'Classificação Nacional de Atividades Econômicas' },
+  { sigla: 'LGPD', oficial: 'Lei Geral de Proteção de Dados Pessoais', aceita: /^Lei Geral de Proteção de Dados(?: Pessoais)?$/i },
+  { sigla: 'PIB', oficial: 'Produto Interno Bruto' },
+  { sigla: 'IBGE', oficial: 'Instituto Brasileiro de Geografia e Estatística' },
+  { sigla: 'ANVISA', oficial: 'Agência Nacional de Vigilância Sanitária' },
+  { sigla: 'ANTT', oficial: 'Agência Nacional de Transportes Terrestres' },
+  { sigla: 'ANPD', oficial: 'Autoridade Nacional de Proteção de Dados' },
+  { sigla: 'RDC', oficial: 'Resolução da Diretoria Colegiada' },
+  { sigla: 'SAC', oficial: 'Serviço de Atendimento ao Consumidor' },
+  { sigla: 'NF-e', oficial: 'Nota Fiscal eletrônica' },
+  { sigla: 'CNC', oficial: 'Controle Numérico Computadorizado' },
+];
+const PALAVRAS_MENORES = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'a', 'o', 'ao']);
+const iniciais = (ws: string[]) => ws.filter((w) => !PALAVRAS_MENORES.has(w.toLowerCase())).map((w) => w[0]).join('').toUpperCase();
+export interface ExtensoErrado { sigla: string; escrito: string; oficial: string; indice: number }
+export function siglasComExtensoErrado(texto: string): ExtensoErrado[] {
+  const r: ExtensoErrado[] = [];
+  for (const { sigla, oficial, aceita } of EXTENSOS_OFICIAIS) {
+    const e = sigla;
+    const alvo = sigla.replace('-', '').toUpperCase();
+    const candidatos = [
+      ...[...texto.matchAll(new RegExp(`((?:[\\p{L}\\p{N}-]+ ){1,9}?)\\(\\s*${e}\\s*[,)]`, 'gu'))].map((m) => ({ c: m[1], i: m.index! })),
+      ...[...texto.matchAll(new RegExp(`(?<![\\p{L}\\p{N}-])${e}s?\\s*\\(([^(),]{3,90})`, 'gu'))].map((m) => ({ c: m[1], i: m.index! })),
+      ...[...texto.matchAll(new RegExp(`\\(([^()]{3,90}?),\\s*${e}\\)`, 'gu'))].map((m) => ({ c: m[1], i: m.index! })),
+    ];
+    for (const { c, i } of candidatos) {
+      const ws = c.match(/[\p{L}\p{N}-]+/gu) ?? [];
+      let trecho: string | null = null;
+      for (let a = 0; a < ws.length; a++) {
+        if (PALAVRAS_MENORES.has(ws[a].toLowerCase())) continue;
+        for (let b = a + 1; b <= ws.length; b++) if (iniciais(ws.slice(a, b)) === alvo) trecho = ws.slice(a, b).join(' ');
+      }
+      if (trecho && !(aceita ?? new RegExp(`^${oficial}$`, 'i')).test(trecho)) {
+        const k = texto.indexOf(trecho, Math.max(0, i - 1));
+        r.push({ sigla, escrito: trecho, oficial, indice: k >= 0 ? k : i });
+      }
+    }
+  }
+  return r;
 }
 
 // URLs and Markdown link targets blanked with spaces of the same length, so indexes still match the text
@@ -507,6 +561,8 @@ export function checagens(a: AnaliseVerificada, coleta: Coleta, metodo?: RegrasM
       }
     }
   }
+  // Wrong long forms, at every occurrence (spec 02 v0.23, 4.1).
+  for (const f of folhas) for (const e of siglasComExtensoErrado(f.texto)) add(f, 'sigla_extenso_errado', contexto(f.texto, e.indice, e.escrito.length));
   for (const f of folhas) {
     for (const c of cpfs(f.texto)) add(f, 'dados_pessoais', c);
     for (const tel of telefonesFora(f.texto, digitos)) add(f, 'dados_pessoais', tel);
@@ -536,7 +592,7 @@ export function checagens(a: AnaliseVerificada, coleta: Coleta, metodo?: RegrasM
 }
 
 // Rules whose failures go to the repair call (spec 02 v0.12, 4.1; bloco_sem_rotulo since v0.14); the others become issues directly.
-export const REGRAS_DE_REPARO = ['marca_sem_destino', 'rascunho_longo', 'rascunho_preco', 'rascunho_sem_nome', 'rascunho_horario_concreto', 'termo_vetado', 'grau_sem_nome', 'sigla', 'ordem_datas', 'bloco_sem_rotulo', 'rotulo_fora_da_lista'] as const;
+export const REGRAS_DE_REPARO = ['marca_sem_destino', 'rascunho_longo', 'rascunho_preco', 'rascunho_sem_nome', 'rascunho_horario_concreto', 'termo_vetado', 'grau_sem_nome', 'sigla', 'sigla_extenso_errado', 'ordem_datas', 'bloco_sem_rotulo', 'rotulo_fora_da_lista'] as const;
 export const vaiAoReparo = (x: Pendencia) => (REGRAS_DE_REPARO as readonly string[]).includes(x.regra ?? '');
 
 // Stage that wrote the field of an issue.

@@ -8,12 +8,12 @@ import {
   ESQUEMA_CONVERSA, ESQUEMA_ENQUADRAR, ESQUEMA_MONTAR, ROTULOS, SECOES_MODELO, enquadramentoDoModelo, enquadramentoGravado, linkaMarcas, normalizaEnquadramento,
   validaConversa, validaEnquadrar, validaMontar, type Coleta, type Enquadramento, type SecaoModelo,
 } from './sintese.js';
-import { CAMPOS_TEXTO_ENQUADRAR, etapaDoLocal, type EtapaTexto, type Pendencia } from './verificacao.js';
+import { CAMPOS_TEXTO_ENQUADRAR, etapaDoLocal, siglasComExtensoErrado, type EtapaTexto, type Pendencia } from './verificacao.js';
 import type { RegrasMetodo } from './metodoRegras.js';
 
-// Literal text of spec 02 v0.12, 3.4.
+// Literal text of spec 02 v0.23, 3.4 (forma por extenso errada since v0.23).
 export const INSTRUCAO_REPARAR =
-  'Corrija apenas os trechos listados em <reparos>, cada um pela regra indicada: marca de fonte para índice inexistente → substitua pela marca correta se o fato vier de outra fonte listada em <fontes-disponiveis>, senão troque a marca por [inferência] ou reescreva como "não encontrado"; horário concreto no rascunho → marcador literal; nome ausente → saudação com o nome; termo vetado → termo preferido indicado; grau sem nome → acrescente o nome; sigla sem extenso → acrescente a forma por extenso na primeira ocorrência; ordem de datas invertida → corrija a relação; bloco sem rótulo → no primeiro parágrafo da subseção, acrescente um rótulo curto em negrito, com inicial maiúscula e ponto dentro do negrito, que nomeie o assunto, ou corrija o formato do rótulo existente (inclusive "Rótulo:" para "**Rótulo.**"); se o trecho antes dos dois-pontos for uma frase e não um rótulo, mantenha o texto e acrescente um rótulo antes dele; rótulo fora da lista, repetido, fora de ordem ou faltando → use os rótulos da lista da seção, na ordem, movendo o texto para a subseção certa sem reescrevê-lo, e acrescente as subseções que faltarem com uma linha de "não encontrado". Não altere nenhum outro trecho, não acrescente conteúdo e não mude a estrutura. Devolva o JSON completo da etapa.';
+  'Corrija apenas os trechos listados em <reparos>, cada um pela regra indicada: marca de fonte para índice inexistente → substitua pela marca correta se o fato vier de outra fonte listada em <fontes-disponiveis>, senão troque a marca por [inferência] ou reescreva como "não encontrado"; horário concreto no rascunho → marcador literal; nome ausente → saudação com o nome; termo vetado → termo preferido indicado; grau sem nome → acrescente o nome; sigla sem extenso → acrescente a forma por extenso na primeira ocorrência; forma por extenso errada → troque pela forma oficial indicada (o item de reparo traz a orientação exata, por exemplo: troque "Código Nacional de Atividade Econômica" pela forma oficial "Classificação Nacional de Atividades Econômicas", com a sigla CNAE entre parênteses); ordem de datas invertida → corrija a relação; bloco sem rótulo → no primeiro parágrafo da subseção, acrescente um rótulo curto em negrito, com inicial maiúscula e ponto dentro do negrito, que nomeie o assunto, ou corrija o formato do rótulo existente (inclusive "Rótulo:" para "**Rótulo.**"); se o trecho antes dos dois-pontos for uma frase e não um rótulo, mantenha o texto e acrescente um rótulo antes dele; rótulo fora da lista, repetido, fora de ordem ou faltando → use os rótulos da lista da seção, na ordem, movendo o texto para a subseção certa sem reescrevê-lo, e acrescente as subseções que faltarem com uma linha de "não encontrado". Não altere nenhum outro trecho, não acrescente conteúdo e não mude a estrutura. Devolva o JSON completo da etapa.';
 
 export const ESQUEMA_DA_ETAPA: Record<EtapaTexto, object> = { enquadrar: ESQUEMA_ENQUADRAR, preparar_conversa: ESQUEMA_CONVERSA, montar_analise: ESQUEMA_MONTAR };
 export const MAX_TOKENS_REPARO: Record<EtapaTexto, number> = { enquadrar: 32_000, preparar_conversa: 32_000, montar_analise: 48_000 };
@@ -190,6 +190,10 @@ function orientacao(x: Pendencia, metodo: RegrasMetodo | undefined, nome: string
     }
     case 'grau_sem_nome': return `acrescente o nome do grau ao lado do identificador, na forma "A3 (alta)"; os nomes são: ${graus(metodo)}`;
     case 'sigla': return 'acrescente a forma por extenso na primeira ocorrência, com a sigla entre parênteses';
+    case 'sigla_extenso_errado': {
+      const e = siglasComExtensoErrado(x.trecho)[0];
+      return e ? `troque "${e.escrito}" pela forma oficial "${e.oficial}", com a sigla ${e.sigla} entre parênteses` : 'troque a forma por extenso pela forma oficial da sigla';
+    }
     case 'rotulo_fora_da_lista': return `use os rótulos da lista da seção, nesta ordem, cada um uma vez e todos eles (${(ROTULOS[x.secao as SecaoModelo] ?? []).map((r) => `**${r}.**`).join(', ')}); mova o texto para a subseção certa sem reescrevê-lo e acrescente as subseções que faltarem com uma linha de "não encontrado"`;
     case 'bloco_sem_rotulo': return x.trecho.startsWith('**')
       ? 'corrija o formato do rótulo para "**Rótulo.**": negrito, inicial maiúscula e ponto dentro do negrito; não altere o resto do parágrafo'
