@@ -33,9 +33,13 @@ const JANELAS = [
   // Round 1 with correction after spec 02 v0.22 (definitions of the technology categories in enquadrar; commit
   // dc7c455, method version 445b067).
   { rodada: 'R1j', de: '2026-11-12T20:36:00Z', ate: '2026-11-12T20:52:00Z' },
+  // Round 1 with correction after spec 02 v0.23 (number exceptions, official long forms of acronyms,
+  // sem_alteracao treatment; commit 7914c02 on verificar, method version 445b067). Deploys from 2026-11-13 00:52
+  // to 16:55 failed because a billing spend cap had paused Cloud Run Functions.
+  { rodada: 'R1k', de: '2026-11-13T17:18:00Z', ate: '2026-11-13T17:29:00Z' },
 ];
 // Latest round with correction: the default of the comparison page and the round of the correction measures.
-export const RODADA_CORRECAO = 'R1j';
+export const RODADA_CORRECAO = 'R1k';
 
 export const ROTULO_RODADA = {
   automatica: 'automática',
@@ -49,6 +53,7 @@ export const ROTULO_RODADA = {
   R1h: 'rodada 1 com correção, spec 02 v0.20',
   R1i: 'rodada 1 com correção, spec 02 v0.21',
   R1j: 'rodada 1 com correção, spec 02 v0.22',
+  R1k: 'rodada 1 com correção, spec 02 v0.23',
   anterior: 'antes da B2',
 };
 
