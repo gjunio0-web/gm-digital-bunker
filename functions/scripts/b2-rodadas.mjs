@@ -37,9 +37,12 @@ const JANELAS = [
   // sem_alteracao treatment; commit 7914c02 on verificar, method version 445b067). Deploys from 2026-11-13 00:52
   // to 16:55 failed because a billing spend cap had paused Cloud Run Functions.
   { rodada: 'R1k', de: '2026-11-13T17:18:00Z', ate: '2026-11-13T17:29:00Z' },
+  // Last round of phase B2, design A only, after spec 02 v0.24 (numero_sem_fonte as a warning) and v0.25 (coherent
+  // correction, no internal terms in the draft); commit f253505 on verificar and sintetizar.
+  { rodada: 'R1l', de: '2026-11-13T20:10:00Z', ate: '2026-11-13T20:15:00Z' },
 ];
 // Latest round with correction: the default of the comparison page and the round of the correction measures.
-export const RODADA_CORRECAO = 'R1k';
+export const RODADA_CORRECAO = 'R1l';
 
 export const ROTULO_RODADA = {
   automatica: 'automática',
@@ -54,6 +57,7 @@ export const ROTULO_RODADA = {
   R1i: 'rodada 1 com correção, spec 02 v0.21',
   R1j: 'rodada 1 com correção, spec 02 v0.22',
   R1k: 'rodada 1 com correção, spec 02 v0.23',
+  R1l: 'rodada final, só desenho A, spec 02 v0.25',
   anterior: 'antes da B2',
 };
 
