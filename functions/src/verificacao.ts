@@ -207,7 +207,9 @@ export const SIGLAS = [
 ] as const;
 const primeiraSigla = (texto: string, s: string) => new RegExp(`(?<![\\p{L}\\p{N}-])${s}s?(?![\\p{L}\\p{N}-])`, 'u').exec(texto);
 // The acronym is explained when it sits inside a parenthesis ("(Total Addressable Market, TAM)") or is
-// followed by one ("CNPJ (Cadastro …)") – (f), authorized by Gon on 7/11/2026.
+// followed by one ("CNPJ (Cadastro …)") – (f), authorized by Gon on 7/11/2026. Closing quotes and bold markers may
+// sit between the acronym and the parenthesis ("'Analista de TI' (Analista de Tecnologia da Informação)"), so the
+// long form in the same sentence is accepted as spec 02 v0.16, 4.1 requires (GAT Logística, R1l; Gon, 13/11/2026).
 function dentroDeParentese(texto: string, i: number): boolean {
   const linha = texto.slice(texto.lastIndexOf('\n', i) + 1, i);
   let abertos = 0;
@@ -215,7 +217,7 @@ function dentroDeParentese(texto: string, i: number): boolean {
   return abertos > 0;
 }
 const explicadaAli = (texto: string, i: number, n: number) =>
-  dentroDeParentese(texto, i) || texto.slice(i + n).trimStart().startsWith('(');
+  dentroDeParentese(texto, i) || /^['"”’»*]*\s*\(/.test(texto.slice(i + n));
 // Sentence around a position: bounded by a blank line or by a full stop, question or exclamation mark followed
 // by a space, except the full stop of a bold label ("**TAM.** Mercado total endereçável (TAM)" is one
 // sentence – spec 02 v0.16, 4.1).

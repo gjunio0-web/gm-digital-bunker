@@ -9,7 +9,7 @@
   "scripts": {
     "textos": "node scripts/textos.mjs",
     "build": "npm run textos && tsc -p tsconfig.json",
-    "test": "npm run build && node --test test/validacao.test.mjs test/textos.test.mjs test/pipeline.test.mjs test/qualificacao.test.mjs test/metodo.test.mjs test/coleta.test.mjs test/graduacao.test.mjs test/sintese.test.mjs test/portoes.test.mjs test/enquadramento.test.mjs test/correcao.test.mjs test/rede.test.mjs test/endurecimento.test.mjs test/correcao-formato.test.mjs test/b2.test.mjs test/rotulo.test.mjs test/v016.test.mjs test/v017.test.mjs test/v020.test.mjs test/v021.test.mjs test/v022.test.mjs test/v023.test.mjs test/v024.test.mjs test/v025.test.mjs",
+    "test": "npm run build && node --test test/validacao.test.mjs test/textos.test.mjs test/pipeline.test.mjs test/qualificacao.test.mjs test/metodo.test.mjs test/coleta.test.mjs test/graduacao.test.mjs test/sintese.test.mjs test/portoes.test.mjs test/enquadramento.test.mjs test/correcao.test.mjs test/rede.test.mjs test/endurecimento.test.mjs test/correcao-formato.test.mjs test/b2.test.mjs test/rotulo.test.mjs test/v016.test.mjs test/v017.test.mjs test/v020.test.mjs test/v021.test.mjs test/v022.test.mjs test/v023.test.mjs test/v024.test.mjs test/v025.test.mjs test/sigla-aspas.test.mjs",
     "test:emulador": "node --test test/emulador.test.mjs",
     "emulador": "npm run build && firebase emulators:exec --project gmdb-qualidade --only functions,firestore,storage \"npm run test:emulador\"",
     "seed": "npm run build && node lib/seed.js",
