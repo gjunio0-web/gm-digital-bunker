@@ -20,6 +20,9 @@ export interface DadosFicha {
   coleta: Record<string, Obj>; // coleta/{etapa}
 }
 
+/** What the dossier needs: the ficha and its analysis versions. */
+export type DadosDossie = Pick<DadosFicha, 'id' | 'f' | 'analises'>;
+
 export const esc = (s: unknown) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 const isDate = (x: unknown): x is Date => x instanceof Date && !isNaN(x.getTime());
@@ -72,7 +75,7 @@ export function versaoDesc(a: Analise): string {
 }
 
 // ---------- Findings of the verification ----------
-const ehAviso = (p: Obj) => p.tipo === 'mecanica' && p.regra === 'numero_sem_fonte';
+export const ehAviso = (p: Obj) => p.tipo === 'mecanica' && p.regra === 'numero_sem_fonte';
 const ordemPend = (p: Obj) => (ehAviso(p) ? 3 : p.tipo === 'escopo' ? 0 : p.tipo === 'estrutura' ? 1 : 2);
 function pendenciasHTML(a: Analise): string {
   const ps: Obj[] = (a.d.verificacao?.pendencias ?? []).slice().sort((x: Obj, y: Obj) => ordemPend(x) - ordemPend(y));
@@ -195,7 +198,7 @@ function avaliacaoHTML(d: DadosFicha, a: Analise | null): string {
 }
 
 // ---------- Qualification (spec 05 §5.4; spec 04, section 7) ----------
-function combinacaoTxt(a: Analise | null): string | null {
+export function combinacaoTxt(a: Analise | null): string | null {
   const e = a?.d.enquadramento;
   if (!e || e.portaProvavel !== 'combinacao') return null;
   return e.portaCombinacao || e.detalhe?.porta?.combinacao || 'Combinação (não detalhada)';

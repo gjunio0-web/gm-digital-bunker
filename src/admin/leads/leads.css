@@ -181,7 +181,7 @@
 .adm .dsec{padding-block:var(--space-6); border-top:1px solid var(--line)}
 .adm .dsec:first-of-type{border-top:0; padding-top:0}
 .adm .dsec .eb3{margin:0 0 var(--space-2); font:500 12px/1.4 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
-.adm .dsec h3{margin:0 0 var(--space-4)}
+.adm .dsec h3{margin:0 0 var(--space-4); font:700 1.3166rem/1.6 var(--font-sans); color:var(--ink-body)}
 .adm .dsec p,.adm .dsec li{font:400 17px/1.6 var(--font-sans); color:var(--ink-body)}
 .adm .dsec p{margin:0 0 var(--space-3)}
 .adm .dsec ul,.adm .dsec ol{margin:0 0 var(--space-3); padding-left:1.2em}
@@ -192,6 +192,9 @@
 .adm .dkv dd{margin:0; font:400 16px/1.5 var(--font-sans); color:var(--ink-body); min-width:0; overflow-wrap:anywhere}
 .adm .fref{font:500 11px/1 var(--font-mono); vertical-align:super; margin-left:2px; color:var(--accent); text-decoration:none}
 .adm .inf{font:500 11px/1 var(--font-mono); letter-spacing:.04em; color:var(--muted); margin-left:4px; white-space:nowrap}
+.adm .met{font:500 11px/1 var(--font-mono); letter-spacing:.04em; color:var(--muted); margin-left:4px; white-space:nowrap}
+.adm .dsec h4.dsub{margin:var(--space-4) 0 var(--space-2); font:500 12px/1.4 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.adm .dsec a:not(.fref){text-decoration:underline; text-underline-offset:3px}
 .adm .hip{font:500 11px/1 var(--font-mono); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); border:1px solid var(--line-strong); border-radius:var(--radius-sm); padding:2px 6px; margin-right:6px}
 .adm .flag{text-decoration:underline; text-decoration-color:var(--ink); text-decoration-thickness:2px; text-underline-offset:4px; color:var(--ink)}
 .adm .flagnote{display:block; margin-top:4px; font:500 11px/1.4 var(--font-mono); letter-spacing:.06em; text-transform:uppercase; color:var(--ink)}

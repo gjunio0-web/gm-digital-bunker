@@ -2,7 +2,7 @@
 // its events and its collection stages, all in real time, so a stage that finishes or a new version appears
 // without reloading. Read-only; the client never writes (spec 01).
 import { collection, doc, onSnapshot, orderBy, query, Timestamp, type Firestore } from 'firebase/firestore';
-import type { Analise, DadosFicha, Evento } from './detalhe';
+import type { Analise, DadosDossie, DadosFicha, Evento } from './detalhe';
 
 /** Firestore timestamps to Date, recursively (the detail's pure functions only see Date). */
 export function semTimestamps<T>(v: T): T {
@@ -48,6 +48,31 @@ export function ouvirFicha(db: Firestore, id: string, aoMudar: (d: DadosFicha | 
     }, erro),
     onSnapshot(collection(ref, 'coleta'), (s) => {
       coleta = Object.fromEntries(s.docs.map((x) => [x.id, semTimestamps(x.data())]));
+      emitir();
+    }, erro),
+  ];
+  return () => { ativo = false; pares.forEach((p) => p()); };
+}
+
+/**
+ * Listens to fichas/{id} and its analise subcollection only (the dossier reads no events and no collection
+ * stages: the s8 list comes from the s8 text). Calls aoMudar with null when the ficha does not exist.
+ */
+export function ouvirDossie(db: Firestore, id: string, aoMudar: (d: DadosDossie | null) => void, aoErrar: (e: Error) => void): () => void {
+  const ref = doc(db, 'fichas', id);
+  let f: Record<string, any> | null | undefined;
+  let analises: Analise[] | undefined;
+  let ativo = true;
+  const emitir = () => {
+    if (!ativo || f === undefined) return;
+    if (f === null) { aoMudar(null); return; }
+    if (analises) aoMudar({ id, f, analises });
+  };
+  const erro = (e: Error) => { if (ativo) aoErrar(e); };
+  const pares = [
+    onSnapshot(ref, (s) => { f = s.exists() ? semTimestamps(s.data()) : null; emitir(); }, erro),
+    onSnapshot(collection(ref, 'analise'), (s) => {
+      analises = s.docs.map((x) => ({ id: x.id, num: numVersao(x.id), d: semTimestamps(x.data()) })).sort((a, b) => b.num - a.num);
       emitir();
     }, erro),
   ];

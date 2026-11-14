@@ -1,9 +1,10 @@
 // Leads module (spec 05, §5). The list at /admin/leads (map, method window, filters, ordering) and the
 // read-only detail at /admin/leads/{fichaId}, both read in real time from Firestore. The dossier
-// (/admin/leads/{fichaId}/dossie) is a placeholder until phase 4; the actions arrive in phase 5.
+// (/admin/leads/{fichaId}/dossie) reads the current analysis; the actions arrive in phase 5.
 import { collection, getCountFromServer, query, where, type Firestore } from 'firebase/firestore';
 import type { ModuloContexto } from '../registro';
 import { ouvirFichas, versaoPesos } from './dados';
+import { renderDossie } from './dossie';
 import { renderFicha } from './ficha';
 import { desenhar, ligarControles, montarLista, type EstadoLista } from './lista';
 import type { FichaVM } from './regras';
@@ -29,6 +30,7 @@ const esc = (s: string) =>
 export function render(alvo: HTMLElement, caminho: string, ctx: ModuloContexto): void | (() => void) {
   const partes = caminho.replace(/^\/admin\/leads\/?/, '').split('/').filter(Boolean);
   if (partes.length === 1) return renderFicha(alvo, decodeURIComponent(partes[0]), ctx.db);
+  if (partes.length === 2 && partes[1] === 'dossie') return renderDossie(alvo, decodeURIComponent(partes[0]), ctx.db);
   if (partes.length) return emConstrucao(alvo, partes);
 
   montarLista(alvo);
