@@ -2,6 +2,12 @@
   command = "npm run build"
   publish = "dist"
 
+# Secrets scanning: the Firebase web API key of gmdb-qualidade (src/config.ts, also in the built /admin page)
+# is public by design – it only identifies the project to the browser; data access is enforced by Firebase
+# Auth and the Firestore rules. Only this value is exempted; smart detection stays on for everything else.
+[build.environment]
+  SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES = "AIzaSyAKGjUHAjPXpJphfrmc9JhUJzh7jkicyWo"
+
 # Hashed build assets: the file name changes with the content, so they can be cached for a year.
 # (public/ files keep fixed names and are deliberately not covered.)
 [[headers]]
