@@ -1,0 +1,403 @@
+/* Admin hub, Leads module (spec 05 §5; guide v1.2): CSS ported from maquete-admin-hub.html (published version 32),
+   scoped under .adm so the public site keeps its own classes. Mock-up names map to the site tokens:
+   --font-* to --sans/--serif/--mono, --header-height to --header-h. Edit here, not in the mock-up. */
+.adm { --font-sans: var(--sans); --font-serif: var(--serif); --font-mono: var(--mono); --header-height: var(--header-h); --touch-target: 44px; --focus: var(--accent); }
+/* ---- Lista de leads ---- */
+.adm .toolbar{display:flex; flex-wrap:wrap; gap:var(--space-3); margin-bottom:var(--space-6)}
+.adm .toolbar .field{flex:1 1 180px; min-width:0}
+.adm .toolbar input,.adm .toolbar select{min-height:48px}
+/* One column template, declared once and shared by header and rows, so labels and data stay aligned */
+.adm .ltable{--cols:minmax(0,1fr) 150px 92px 210px; margin:0 0 var(--space-4)}
+.adm .leads{list-style:none; margin:0; padding:0}
+.adm .row{display:grid; grid-template-columns:var(--cols); column-gap:var(--space-4); align-items:center;
+  width:100%; text-align:left; padding:var(--space-4) var(--space-2);
+  background:none; border:0; border-bottom:1px solid var(--line); cursor:pointer; color:inherit; font:inherit;
+  transition:background-color var(--dur-fast) var(--ease-out)}
+.adm .cwho{display:flex; flex-direction:column; gap:2px; min-width:0}
+.adm .row:hover{background:var(--surface)}
+.adm .row .who{font:600 18px/1.3 var(--font-sans); color:var(--ink); min-width:0; overflow-wrap:anywhere}
+.adm .row .who .co{font-weight:400; color:var(--ink-body)}
+.adm .row .meta{font:400 13px/1.5 var(--font-mono); color:var(--muted)}
+.adm .calor{display:flex; align-items:center; gap:var(--space-2); justify-self:end}
+.adm .calor .sc{display:flex; flex-direction:column; align-items:flex-end; gap:2px}
+/* Heat mark (Design System, Cor de dado): 4px bar beside the score; score and band stay in ink tokens */
+.adm .mk{width:4px; height:34px; border-radius:var(--radius-sm); flex:0 0 auto}
+.adm .mk.h1{background:var(--heat-1)} .adm .mk.h2{background:var(--heat-2)} .adm .mk.h3{background:var(--heat-3)}
+.adm .mk.h4{background:var(--heat-4)} .adm .mk.h5{background:var(--heat-5)}
+.adm .mk.none{background:transparent; border:1px dashed var(--line-strong)}
+.adm .calor b{font:500 18px/1.2 var(--font-mono); font-variant-numeric:tabular-nums; color:var(--ink)}
+.adm .calor span{font:500 11px/1.4 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.adm .chip{display:inline-flex; align-items:center; gap:8px;
+  font:400 13px/1.5 var(--font-mono); color:var(--ink-body);
+  border:1px solid var(--line-strong); border-radius:var(--radius-sm); padding:5px 10px; white-space:nowrap}
+.adm .chip.err{border:2px solid var(--ink); color:var(--ink)}
+.adm .chip .q{color:var(--ink); font-weight:500}
+.adm .tags{justify-self:end; display:flex; flex-direction:column; align-items:flex-end; gap:var(--space-1)}
+/* Per-dimension profile (D/I/A/V): four micro bars, ink tones only */
+.adm .perfil{display:grid; grid-template-columns:auto 72px; column-gap:6px; row-gap:3px; align-items:center}
+.adm .perfil em{font:500 10px/1 var(--font-mono); font-style:normal; color:var(--muted)}
+.adm .perfil .t{height:4px; border-radius:var(--radius-sm); background:var(--line); overflow:hidden}
+.adm .perfil .t i{display:block; height:100%; background:var(--ink-body)}
+@media (max-width:639px){
+  .adm .ltable{display:block}
+  .adm .row{grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"cwho calor" "tags tags"; row-gap:var(--space-2)}
+  .adm .cwho{grid-area:cwho}
+  .adm .perfil{display:none}
+  .adm .calor{grid-area:calor}
+  .adm .tags{grid-area:tags; justify-self:start; flex-direction:row; flex-wrap:wrap; align-items:center}
+}
+/* Portfolio map (fit x intent); single accent element: the hottest lead */
+.adm .mapa{margin-bottom:var(--space-6)}
+.adm .mapa .sub{margin:0 0 var(--space-4); font:400 13px/1.5 var(--font-mono); color:var(--muted)}
+.adm .matwrap{overflow-x:auto}
+.adm .mat{display:block; width:100%; max-width:420px; height:auto; margin:0 auto}
+.adm .mat text{font-family:var(--font-mono); fill:var(--muted)}
+/* Heat composition bars (detail view) */
+.adm .hbars{display:grid; grid-template-columns:auto 1fr auto; column-gap:var(--space-4); row-gap:var(--space-4); align-items:center}
+.adm .hbars .lb{font:400 14px/1.3 var(--font-sans); color:var(--ink-body); white-space:nowrap}
+.adm .hbars .lb small{display:block; font:400 11px/1.3 var(--font-mono); color:var(--muted)}
+.adm .hbars .t{height:8px; border-radius:var(--radius-sm); background:var(--line); overflow:hidden; min-width:0}
+.adm .hbars .t i{display:block; height:100%; border-radius:var(--radius-sm); background:var(--ink)}
+.adm .hbars .v{font:500 14px/1.2 var(--font-mono); font-variant-numeric:tabular-nums; color:var(--ink)}
+/* Column header: one asc/desc sort control beside each column label */
+.adm .lhead{display:grid; grid-template-columns:var(--cols); column-gap:var(--space-4); align-items:center;
+  padding:var(--space-3) var(--space-2); border-bottom:1px solid var(--line-strong)}
+.adm .lh-who{min-width:0}
+.adm .lh-perfil{display:flex; align-items:center; gap:8px}
+.adm .lh-calor{justify-self:end}
+.adm .lh-tags{justify-self:end; display:flex; align-items:center; gap:var(--space-4)}
+.adm .lhl{font:500 12px/1.4 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.adm .sortb{display:inline-flex; align-items:center; gap:4px; min-height:28px; background:none; border:0; padding:2px; cursor:pointer;
+  font:500 12px/1.4 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
+  transition:color var(--dur-fast) var(--ease-out)}
+.adm .sortb:hover{color:var(--ink)}
+.adm .sortb[aria-pressed="true"]{color:var(--ink)}
+.adm .sortb .ar{color:var(--line-strong)}
+.adm .sortb[aria-pressed="true"] .ar{color:var(--ink)}
+@media (max-width:639px){.adm .lhead{display:flex; flex-wrap:wrap; gap:var(--space-2) var(--space-4)} .adm .lhead .lh-perfil{display:none}}
+/* Admin action bar (acaoAdmin): only the actions valid for the current state */
+.adm .actbar{display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-3); padding:var(--space-4); margin-bottom:var(--space-6);
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md)}
+.adm .actbar .grp{display:flex; align-items:center; gap:var(--space-2)}
+.adm .actbar select{min-height:44px; padding:0 var(--space-3); background:var(--bg); border:1px solid var(--line-strong);
+  border-radius:var(--radius-md); color:var(--ink); font:400 15px/1.3 var(--font-sans)}
+.adm .actbar .sep{width:1px; align-self:stretch; background:var(--line)}
+.adm .actbar .chk{display:inline-flex; align-items:center; gap:6px; font:400 14px/1.3 var(--font-sans); color:var(--ink-body)}
+.adm .actbar .confirm{font:400 14px/1.4 var(--font-sans); color:var(--ink)}
+.adm .actbar select,.adm .ver select{max-width:100%; min-width:0}
+/* Selection field (spec/05 §5.9): mono label inside, value in sans 17px, 1.5px chevron; list opens in place with hairline rows; choice marked by a 2px ink rule */
+.adm .pk{flex:1 1 260px; min-width:0}
+.adm .pick{display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:2px 12px; width:100%; min-height:56px; padding:8px 14px;
+  background:var(--surface); border:1px solid var(--line-strong); border-radius:var(--radius-sm); color:var(--ink); text-align:left; cursor:pointer; font:inherit;
+  transition:border-color var(--dur-fast) var(--ease-out)}
+.adm .actbar .pick{background:var(--bg)}
+.adm .pick:hover{border-color:var(--ink)}
+.adm .pick[aria-expanded="true"]{border-color:var(--ink); border-radius:var(--radius-sm) var(--radius-sm) 0 0}
+.adm .pick .pk-lb{grid-column:1; font:500 11px/1.4 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.adm .pick .pk-val{grid-column:1; font:600 17px/1.3 var(--font-sans); color:var(--ink); overflow-wrap:anywhere}
+.adm .pick svg{grid-column:2; grid-row:1 / span 2; width:20px; height:20px; color:var(--muted); transition:transform var(--dur-base) var(--ease-in-out)}
+.adm .pick[aria-expanded="true"] svg{transform:rotate(180deg); color:var(--ink)}
+.adm .pk-drop{overflow:hidden}
+.adm .pk-opts{list-style:none; margin:0; padding:0; border:1px solid var(--ink); border-top:0; border-radius:0 0 var(--radius-sm) var(--radius-sm); background:var(--surface)}
+.adm .pk-opt{position:relative; display:grid; grid-template-columns:minmax(0,1fr) 20px; gap:2px 12px; align-items:center; width:100%; min-height:48px; padding:10px 14px 10px 16px;
+  background:none; border:0; border-bottom:1px solid var(--line); text-align:left; cursor:pointer; color:inherit; font:inherit}
+.adm .pk-opts li:last-child .pk-opt{border-bottom:0}
+.adm .pk-opt:hover{background:var(--bg)}
+.adm .pk-opt .pk-n{font:600 16px/1.3 var(--font-sans); color:var(--ink)}
+.adm .pk-opt .pk-d{grid-column:1; font:400 14px/1.45 var(--font-sans); color:var(--muted)}
+.adm .pk-opt .pk-ck{grid-column:2; grid-row:1 / span 2; width:20px; height:20px; color:var(--ink); opacity:0}
+.adm .pk-opt[aria-checked="true"]::before{content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--ink)}
+.adm .pk-opt[aria-checked="true"] .pk-ck{opacity:1}
+.adm .actbar .grp{align-items:flex-start}
+.adm .ver .pk{flex:0 1 340px}
+.adm .actbar .grp .pk + .btn{min-height:56px; white-space:nowrap}
+.adm .actbar .grp .pk{min-width:200px}
+.adm .ptable th,.adm .ptable td{overflow-wrap:anywhere}
+@media (max-width:359px){
+  .adm .brand{font-size:17px}
+  .adm header.site .end{gap:var(--space-2)}
+  .adm .ptable{table-layout:fixed}
+  .adm .ptable td:first-child{white-space:normal}
+}
+@media (max-width:639px){
+  .adm .actbar{flex-direction:column; align-items:stretch}
+  .adm .actbar .sep{display:none}
+  .adm .actbar > .btn{width:100%}
+  .adm .actbar .grp{flex-wrap:wrap; width:100%}
+  .adm .actbar .grp .pk{flex:1 1 100%}
+  .adm .actbar .grp .btn{flex:1 1 100%}
+  .adm .ver .pk{flex:1 1 100%}
+}
+.adm .ver{display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-3); margin:0 0 var(--space-6); font:400 13px/1.5 var(--font-mono); color:var(--muted)}
+.adm .ver select{min-height:36px; padding:0 var(--space-2); background:var(--bg); border:1px solid var(--line-strong); border-radius:var(--radius-sm); color:var(--ink); font:400 13px var(--font-mono)}
+/* Verification findings: scope findings first, 2px ink border, no new color */
+.adm .pend{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:var(--space-3)}
+.adm .pend li{border:1px solid var(--line-strong); border-radius:var(--radius-sm); padding:var(--space-3) var(--space-4)}
+.adm .pend li.esc{border:2px solid var(--ink)}
+.adm .pend li.aviso{border-color:var(--line)}
+.adm .pend .pt{font:500 11px/1.4 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 4px}
+.adm .pend li.esc .pt{color:var(--ink)}
+.adm .pend .tr{margin:0; font:400 15px/1.5 var(--font-sans); color:var(--ink)}
+.adm .pend .cs{margin:4px 0 0; font:400 14px/1.5 var(--font-sans); color:var(--ink-body)}
+.adm .editor{margin-top:var(--space-4); padding-top:var(--space-4); border-top:1px solid var(--line); display:flex; flex-direction:column; gap:var(--space-3)}
+.adm .editor textarea{width:100%; min-height:140px; padding:var(--space-3); background:var(--bg); border:1px solid var(--line-strong);
+  border-radius:var(--radius-md); color:var(--ink); font:400 15px/1.5 var(--font-sans); resize:vertical}
+.adm .ptable{width:100%; border-collapse:collapse; font:400 14px/1.4 var(--font-sans)}
+.adm .ptable th,.adm .ptable td{text-align:left; padding:6px 8px 6px 0; border-bottom:1px solid var(--line); vertical-align:top}
+.adm .ptable th{font:500 11px/1.4 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.adm .ptable td{color:var(--ink-body)}
+.adm .ptable td:first-child{color:var(--ink); white-space:nowrap}
+/* Format accordion (Design System accordion): hairline rows, '+' rotates 45° into '×', height+opacity in dur-base ease-in-out */
+.adm .facc{margin-top:var(--space-4); border-top:1px solid var(--line)}
+.adm .facc details{border-bottom:1px solid var(--line)}
+.adm .facc summary{display:flex; align-items:center; justify-content:space-between; gap:var(--space-4); min-height:var(--touch-target);
+  padding:var(--space-3) 0; cursor:pointer; list-style:none; color:var(--ink); font:600 16px/1.3 var(--font-sans)}
+.adm .facc summary::-webkit-details-marker{display:none}
+.adm .facc summary:hover .pl{color:var(--ink)}
+.adm .facc summary small{display:block; font:500 11px/1.4 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-top:2px}
+.adm .facc .pl{flex:0 0 auto; width:20px; height:20px; position:relative; color:var(--muted); transition:transform var(--dur-base) var(--ease-in-out), color var(--dur-fast) var(--ease-out)}
+.adm .facc .pl::before,.adm .facc .pl::after{content:""; position:absolute; left:50%; top:50%; background:currentColor; transform:translate(-50%,-50%)}
+.adm .facc .pl::before{width:14px; height:1.5px}
+.adm .facc .pl::after{width:1.5px; height:14px}
+.adm .facc details[open] .pl{transform:rotate(45deg)}
+.adm .facc .body{overflow:hidden}
+.adm .facc .body > div{padding:0 0 var(--space-4)}
+.adm .facc .body p{margin:0; font:400 15px/1.6 var(--font-sans); color:var(--ink-body)}
+.adm .facc .draft{white-space:pre-line}
+/* Dossier: reading layout limited to container-text, numbered source markers, scope finding underlined in ink */
+.adm .dos{display:grid; grid-template-columns:1fr; gap:var(--space-8); padding-bottom:var(--space-16)}
+@media (min-width:1024px){.adm .dos{grid-template-columns:200px minmax(0,1fr)}}
+.adm .dindex{align-self:start}
+@media (min-width:1024px){.adm .dindex{position:sticky; top:calc(var(--header-height) + var(--space-6) + env(safe-area-inset-top,0px))}}
+.adm .dindex ol{list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:var(--space-2) var(--space-4)}
+@media (min-width:1024px){.adm .dindex ol{flex-direction:column; gap:var(--space-2)}}
+.adm .dindex a{font:400 13px/1.5 var(--font-mono); color:var(--ink-body)}
+.adm .dindex a:hover{color:var(--accent)}
+.adm .dindex a span{color:var(--muted); margin-right:6px}
+.adm .dbody{max-width:var(--container-text); min-width:0}
+.adm .dbanner{border:2px solid var(--ink); border-radius:var(--radius-md); padding:var(--space-4); margin-bottom:var(--space-8);
+  font:400 15px/1.5 var(--font-sans); color:var(--ink)}
+.adm .dbanner a{text-decoration:underline}
+.adm .dsec{padding-block:var(--space-6); border-top:1px solid var(--line)}
+.adm .dsec:first-of-type{border-top:0; padding-top:0}
+.adm .dsec .eb3{margin:0 0 var(--space-2); font:500 12px/1.4 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.adm .dsec h3{margin:0 0 var(--space-4)}
+.adm .dsec p,.adm .dsec li{font:400 17px/1.6 var(--font-sans); color:var(--ink-body)}
+.adm .dsec p{margin:0 0 var(--space-3)}
+.adm .dsec ul,.adm .dsec ol{margin:0 0 var(--space-3); padding-left:1.2em}
+.adm .dsec li{margin-bottom:var(--space-2)}
+.adm .dsec strong{color:var(--ink); font-weight:600}
+.adm .dkv{display:grid; grid-template-columns:auto 1fr; gap:var(--space-2) var(--space-6); margin:0}
+.adm .dkv dt{font:500 12px/1.6 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); padding-top:3px}
+.adm .dkv dd{margin:0; font:400 16px/1.5 var(--font-sans); color:var(--ink-body); min-width:0; overflow-wrap:anywhere}
+.adm .fref{font:500 11px/1 var(--font-mono); vertical-align:super; margin-left:2px; color:var(--accent); text-decoration:none}
+.adm .inf{font:500 11px/1 var(--font-mono); letter-spacing:.04em; color:var(--muted); margin-left:4px; white-space:nowrap}
+.adm .hip{font:500 11px/1 var(--font-mono); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); border:1px solid var(--line-strong); border-radius:var(--radius-sm); padding:2px 6px; margin-right:6px}
+.adm .flag{text-decoration:underline; text-decoration-color:var(--ink); text-decoration-thickness:2px; text-underline-offset:4px; color:var(--ink)}
+.adm .flagnote{display:block; margin-top:4px; font:500 11px/1.4 var(--font-mono); letter-spacing:.06em; text-transform:uppercase; color:var(--ink)}
+.adm .flag.av{text-decoration-style:dotted; text-decoration-color:var(--muted); text-decoration-thickness:1px; color:inherit}
+.adm .flagnote.av{color:var(--muted)}
+.adm .dsec .fontes{list-style:none; padding-left:0}
+.adm .fontes li{display:grid; grid-template-columns:2.5rem 1fr; gap:var(--space-2); font:400 14px/1.5 var(--font-sans)}
+.adm .fontes li b{font:500 13px/1.5 var(--font-mono); color:var(--muted)}
+.adm .fontes li span small{display:block; font:400 12px/1.4 var(--font-mono); color:var(--muted); overflow-wrap:anywhere}
+.adm .dact{display:flex; flex-wrap:wrap; gap:var(--space-3); margin-top:var(--space-4)}
+/* Phone and tablet: bottom bar back to the section index (Design System mobile action bar; fades by opacity in dur-base) */
+.adm .dbar{display:none}
+@media (max-width:1023px){
+  .adm .dbar{display:block; position:fixed; left:0; right:0; bottom:0; z-index:8; background:var(--bg); border-top:1px solid var(--line);
+    padding:var(--space-3) max(var(--space-4), env(safe-area-inset-right,0px)) calc(var(--space-3) + env(safe-area-inset-bottom,0px)) max(var(--space-4), env(safe-area-inset-left,0px));
+    opacity:0; pointer-events:none; transition:opacity var(--dur-base) var(--ease-out)}
+  .adm .dbar.on{opacity:1; pointer-events:auto}
+  .adm .dbar .btn{width:100%; min-height:48px}
+  .adm #dossie .dbody{padding-bottom:calc(48px + var(--space-12))}
+}
+@media print{
+  .adm header.site,.adm .dbar,.adm footer.site,.adm .view:not(#dossie),.adm .crumb,.adm .dact,.adm .dindex,body.adm::before{display:none !important}
+  .adm #dossie{display:block !important}
+  .adm .dos{grid-template-columns:1fr}
+  body.adm{background:#fff; color:#111418}
+}
+/* Portfolio map accordion: open on load, hideable */
+.adm .mapa summary{display:flex; align-items:center; justify-content:space-between; gap:var(--space-4); cursor:pointer; list-style:none}
+.adm .mapa summary::-webkit-details-marker{display:none}
+.adm .mapa summary h3{margin:0}
+.adm .mapa .tgl{font:600 16px/1.25 var(--font-sans); color:var(--accent); white-space:nowrap}
+.adm .mapa summary:hover .tgl{color:var(--accent-hover)}
+.adm .mapa details[open] .t-closed{display:none}
+.adm .mapa details:not([open]) .t-open{display:none}
+.adm .mapa details[open] summary{margin-bottom:var(--space-4)}
+.adm .list-note{font:400 13px/1.5 var(--font-mono); color:var(--muted); margin:0 0 var(--space-16)}
+
+/* ---- Detalhe ---- */
+.adm .detail{display:grid; grid-template-columns:1fr; gap:var(--space-6); padding-bottom:var(--space-16)}
+@media (min-width:1024px){.adm .detail{grid-template-columns:3fr 2fr}}
+.adm .panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); padding:var(--space-6); min-width:0}
+.adm .panel h3{margin:0 0 var(--space-4); font:600 24px/1.3 var(--font-serif); font-variation-settings:'opsz' 24; color:var(--ink)}
+.adm .kv{display:grid; grid-template-columns:auto 1fr; column-gap:var(--space-6); row-gap:var(--space-2); margin:0}
+.adm .kv dt{font:500 12px/1.6 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); padding-top:3px}
+.adm .kv dd{margin:0; font:400 17px/1.5 var(--font-sans); color:var(--ink-body); min-width:0; overflow-wrap:anywhere}
+.adm .msg{margin:var(--space-4) 0 0; padding-top:var(--space-4); border-top:1px solid var(--line); font:400 17px/1.6 var(--font-sans); color:var(--ink-body)}
+.adm .inline-field{display:flex; flex-wrap:wrap; gap:var(--space-3)}
+.adm .inline-field input{flex:1 1 220px; min-width:0; min-height:48px; padding:0 var(--space-4); background:var(--bg);
+  border:1px solid var(--line-strong); border-radius:var(--radius-md); color:var(--ink); font:400 17px/1.4 var(--font-sans)}
+.adm .help{margin:var(--space-2) 0 0; font:400 13px/1.5 var(--font-sans); color:var(--muted)}
+.adm .steps{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:var(--space-3)}
+.adm .steps li{display:flex; align-items:baseline; gap:var(--space-3); font:400 13px/1.5 var(--font-mono); color:var(--ink-body)}
+.adm .steps .t{color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap}
+.adm .actions{display:flex; flex-wrap:wrap; gap:var(--space-3)}
+.adm .gen{margin-top:var(--space-4); padding-top:var(--space-4); border-top:1px solid var(--line)}
+.adm .gen .eb2{margin:0 0 var(--space-2); font:500 12px/1.4 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.adm .gen p{margin:0; font:400 15px/1.6 var(--font-sans); color:var(--ink-body)}
+.adm .gen .draft{white-space:pre-line}
+.adm .copyrow{display:flex; justify-content:flex-end; margin-top:var(--space-3)}
+
+/* ---- Rodapé ---- */
+.adm footer.site{border-top:1px solid var(--line)}
+.adm footer.site .in{display:flex; flex-wrap:wrap; gap:var(--space-4); justify-content:space-between;
+  padding-block:var(--space-6) calc(var(--space-6) + env(safe-area-inset-bottom,0px)); font:400 13px/1.5 var(--font-mono); color:var(--muted)}
+.adm .skip{position:absolute; left:var(--space-4); top:-60px; z-index:20; background:var(--surface-raised); color:var(--ink);
+  padding:8px 12px; border-radius:var(--radius-sm); font:600 14px var(--font-sans)}
+.adm .skip:focus{top:calc(8px + env(safe-area-inset-top,0px))}
+.adm .vh{position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%)}
+/* ---- Qualification by spec/04 v0.4 (quadrant, destination, grade, confidence, deadline) ---- */
+.adm .ltable{--cols:minmax(0,1fr) 150px 112px 200px}
+.adm .perfil{grid-template-columns:10px 96px; justify-content:start}
+.adm .qquad{display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--space-2) var(--space-4); padding:0 0 var(--space-4); margin:0 0 var(--space-4); border-bottom:1px solid var(--line)}
+.adm .qquad .qn{font:600 24px/1.2 var(--font-serif); color:var(--ink)}
+.adm .qquad .qd{font:600 15px/1.4 var(--font-sans); color:var(--ink)}
+.adm .qquad .qm{flex-basis:100%; font:400 12px/1.4 var(--font-mono); color:var(--muted)}
+.adm .aq{margin-top:var(--space-4); padding-top:var(--space-4); border-top:1px solid var(--line)}
+.adm .aq .aqt{font:500 11px/1.4 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 var(--space-2)}
+.adm .aq table{width:100%; border-collapse:collapse}
+.adm .aq th,.adm .aq td{padding:var(--space-2) 0; border-bottom:1px solid var(--line); vertical-align:top; text-align:left}
+.adm .aq th{font:400 14px/1.4 var(--font-sans); color:var(--ink-body); padding-right:var(--space-4)}
+.adm .aq th small{display:block; font:400 12px/1.4 var(--font-mono); color:var(--muted); margin-top:2px}
+.adm .aq td{font:500 14px/1.4 var(--font-mono); color:var(--ink); white-space:nowrap; text-align:right}
+.adm .aq .tot th,.adm .aq .tot td{border-bottom:0; font-weight:600; color:var(--ink)}
+.adm .perfil .t.na,.adm .hbars .t.na{background:none; border-top:1px dashed var(--line-strong); height:0; align-self:center}
+.adm .hbars .v.na{font:500 11px/1.4 var(--font-mono); letter-spacing:.04em; color:var(--muted); white-space:nowrap}
+.adm .grade .sc b{font:500 18px/1.2 var(--font-mono); font-variant-numeric:tabular-nums; color:var(--ink)}
+.adm .grade .sc span{font:500 11px/1.4 var(--font-mono); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); white-space:nowrap}
+.adm .chip.warn{border:2px solid var(--ink); color:var(--ink)}
+.adm .est{font:500 11px/1.4 var(--font-mono); letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+.adm .qhead{display:flex; align-items:baseline; gap:var(--space-4); flex-wrap:wrap; margin-bottom:var(--space-4)}
+.adm .qhead .g{font:600 40px/1 var(--font-serif); font-variation-settings:'opsz' 48; color:var(--ink)}
+.adm .qhead .p{font:500 18px/1.2 var(--font-mono); color:var(--ink)}
+.adm .qhead .c{font:400 14px/1.4 var(--font-sans); color:var(--ink-body)}
+.adm .qwarn{border:2px solid var(--ink); border-radius:var(--radius-sm); padding:var(--space-3) var(--space-4); margin:0 0 var(--space-4); font:400 15px/1.5 var(--font-sans); color:var(--ink)}
+.adm .qwhy{margin:var(--space-2) 0 0; font:400 13px/1.5 var(--font-mono); color:var(--muted)}
+.adm .qact{margin-top:var(--space-4); padding-top:var(--space-4); border-top:1px solid var(--line)}
+.adm .qact dl{display:grid; grid-template-columns:auto 1fr; gap:var(--space-2) var(--space-4); margin:0}
+.adm .qact dt{font:500 12px/1.6 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.adm .qact dd{margin:0; font:400 15px/1.5 var(--font-sans); color:var(--ink-body)}
+.adm .empty{font:400 15px/1.5 var(--font-sans); color:var(--muted); margin:0}
+.adm .btn[disabled]{opacity:.6; cursor:not-allowed}
+.adm .toast{font:400 13px/1.5 var(--font-mono); color:var(--ink); margin:var(--space-2) 0 0}
+
+/* Map method content (spec/05 §5.8): blocks, formulas and nature tags used inside the method modal */
+.adm .metodo{margin-top:var(--space-6)}
+.adm .metodo summary small{text-transform:none; letter-spacing:0; font:400 13px/1.4 var(--font-sans); color:var(--muted)}
+.adm .mx{display:flex; flex-direction:column; gap:var(--space-3); max-width:52rem}
+.adm .mx h4{margin:var(--space-4) 0 0; font:600 18px/1.3 var(--font-serif); color:var(--ink)}
+.adm .mx p,.adm .mx li{margin:0; font:400 15px/1.6 var(--font-sans); color:var(--ink-body)}
+.adm .mx .mxn{font-size:14px}
+.adm .mx .def{padding-left:var(--space-3); border-left:2px solid var(--line-strong)}
+.adm .mx-key{padding:var(--space-3) var(--space-4); border:1px solid var(--line); border-radius:var(--radius-sm); font-size:14px!important}
+.adm .mxl{margin:0; padding-left:1.1em; display:flex; flex-direction:column; gap:var(--space-2)}
+.adm .fx{margin:0; padding:var(--space-3) var(--space-4); background:var(--bg); border:1px solid var(--line); border-radius:var(--radius-sm);
+  font:400 13px/1.7 var(--font-mono); color:var(--ink); overflow-x:auto; white-space:pre}
+.adm .nat{display:inline-block; margin:0 2px; padding:0 6px; font:500 10px/1.7 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; border-radius:var(--radius-sm); vertical-align:1px; white-space:nowrap}
+.adm .nat.c{border:1px solid var(--line-strong); color:var(--muted)}
+.adm .nat.a{border:1px dashed var(--line-strong); color:var(--ink-body)}
+.adm .nat.ia{border:2px solid var(--ink); color:var(--ink)}
+.adm .mx .tw{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius-sm)}
+.adm .mt{border-collapse:collapse; width:100%; min-width:620px; font:400 14px/1.5 var(--font-sans)}
+.adm .mt th,.adm .mt td{text-align:left; vertical-align:top; padding:var(--space-2) var(--space-3); border-bottom:1px solid var(--line)}
+.adm .mt tr:last-child th,.adm .mt tr:last-child td{border-bottom:0}
+.adm .mt thead th{font:500 11px/1.4 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); background:var(--bg)}
+.adm .mt tbody th{font-weight:600; color:var(--ink); white-space:nowrap}
+.adm .mt td{color:var(--ink-body)}
+.adm .mt .q{display:block; margin-top:4px; font:400 12px/1.4 var(--font-mono); color:var(--muted)}
+.adm .mx code{font:400 13px var(--font-mono); color:var(--ink)}
+.adm .mt .mt-u{display:none}
+@media (max-width:639px){
+  /* Porte table restacked: one block per step, nothing hidden sideways */
+  .adm .mx .tw{overflow:visible; border:0; border-radius:0}
+  .adm .mx .mt{min-width:0; display:block}
+  .adm .mt thead{display:none}
+  .adm .mt tbody{display:flex; flex-direction:column; gap:var(--space-2)}
+  .adm .mt tr{display:flex; flex-direction:column; gap:var(--space-2); padding:var(--space-3) var(--space-4); border:1px solid var(--line); border-radius:var(--radius-sm)}
+  .adm .mt tbody th,.adm .mt td{display:block; padding:0; border:0!important}
+  .adm .mt tbody th{font:500 15px/1.3 var(--font-mono); color:var(--ink)}
+  .adm .mt .mt-u{display:inline; font:400 12px var(--font-mono); color:var(--muted)}
+  .adm .mt td::before{content:attr(data-label); display:block; margin-bottom:2px; font:500 11px/1.4 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+}
+
+.adm .mx-key{display:flex; flex-direction:column; gap:var(--space-2)}
+.adm .mx-key ul{margin:0; padding-left:1.1em; display:flex; flex-direction:column; gap:var(--space-1)}
+.adm .mx-key li{font-size:14px!important}
+.adm .var{display:flex; flex-direction:column; gap:var(--space-2); padding:var(--space-4); border:1px solid var(--line); border-radius:var(--radius-sm)}
+.adm .var h5{margin:0; display:flex; justify-content:space-between; align-items:baseline; gap:var(--space-3); font:600 16px/1.3 var(--font-sans); color:var(--ink)}
+.adm .var h5 span{font:500 12px/1.4 var(--font-mono); color:var(--muted); white-space:nowrap}
+.adm .var .q{display:block; margin-top:4px; font:400 12px/1.4 var(--font-mono); color:var(--muted)}
+.adm .vals{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:max-content minmax(0,1fr); gap:var(--space-1) var(--space-3)}
+.adm .vals li{display:contents; font:400 15px/1.5 var(--font-sans)!important; color:var(--ink-body)}
+.adm .vals li b{font:500 14px/1.6 var(--font-mono); color:var(--ink); font-variant-numeric:tabular-nums}
+.adm .vals li.full span{grid-column:1 / -1; color:var(--muted)}
+.adm .mt td:first-child,.adm .mt tbody th{font-variant-numeric:tabular-nums}
+.adm .mt{min-width:560px}
+
+
+/* Method modal (spec/05 §5.8): native dialog, Design System dialog pattern; full screen below 640px; sections as accordions */
+.adm .mlegend{margin:0; display:flex; flex-wrap:wrap; gap:var(--space-2) var(--space-4); padding:var(--space-3) var(--space-4); border:1px solid var(--line); border-radius:var(--radius-sm); font:400 13px/1.5 var(--font-sans); color:var(--muted)}
+.adm .mlegend > span{display:inline-flex; align-items:baseline; gap:6px}
+.adm .mtrig{display:flex; justify-content:flex-end; margin-top:var(--space-4)}
+.adm .mdlg{padding:0; border:1px solid var(--line); border-radius:var(--radius-md); background:var(--surface-raised); color:var(--ink-body);
+  box-shadow:var(--shadow-overlay); width:min(52rem, calc(100vw - 32px)); max-height:min(88vh, 900px); overflow:hidden}
+.adm .mdlg::backdrop{background:color-mix(in srgb, var(--bg) 78%, transparent)}
+.adm .mdlg[open]{display:flex; animation:mdlgIn var(--dur-base) var(--ease-out)}
+.adm .mdlg[open]::backdrop{animation:mdlgFade var(--dur-base) var(--ease-out)}
+@keyframes mdlgIn{from{opacity:0; transform:translateY(8px) scale(.98)} to{opacity:1; transform:none}}
+@keyframes mdlgFade{from{opacity:0} to{opacity:1}}
+.adm .mdlg-in{display:flex; flex-direction:column; width:100%; min-height:0}
+.adm .mdlg-hd{display:flex; align-items:flex-start; justify-content:space-between; gap:var(--space-4); padding:var(--space-6); border-bottom:1px solid var(--line)}
+.adm .mdlg-hd h2{margin:var(--space-1) 0 0; font:600 28px/1.2 var(--font-serif); font-variation-settings:'opsz' 36; color:var(--ink)}
+.adm .mdlg-bd{overflow-y:auto; padding:var(--space-6); display:flex; flex-direction:column; gap:var(--space-4); scrollbar-width:thin; scrollbar-color:var(--line-strong) transparent}
+.adm .mfacc{margin-top:var(--space-2)}
+.adm .mfacc summary{font:600 17px/1.3 var(--font-serif)}
+.adm .mfacc .body > .mx{padding:var(--space-2) 0 var(--space-6)}
+.adm .mfacc .body > .mx > p:first-child,.adm .mfacc .body > .mx > .def:first-child{margin-top:0}
+@media (max-width:639px){
+  .adm .mdlg{width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; margin:0; border:0; border-radius:0}
+  .adm .mdlg-hd{padding:calc(var(--space-4) + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) var(--space-4) max(16px,env(safe-area-inset-left,0px))}
+  .adm .mdlg-hd h2{font-size:22px}
+  .adm .mdlg .fx{font-size:11.5px; padding:var(--space-3); white-space:pre-wrap}
+  .adm .mdlg-bd{padding:var(--space-4) max(16px,env(safe-area-inset-right,0px)) calc(var(--space-8) + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+}
+@media (prefers-reduced-motion:reduce){.adm .mdlg[open],.adm .mdlg[open]::backdrop{animation:none}}
+
+/* Dossier section list on phones and tablets (spec/05 v1.10, §5.6) */
+/* Drawer handle and drag-down to close (spec/05 v1.11); slides in from the bottom edge (spec/05 v1.12) */
+.adm .secp .grab{display:flex; justify-content:center; padding:var(--space-2) 0 0; touch-action:none; cursor:grab}
+.adm .secp .grab i{display:block; width:36px; height:4px; border-radius:var(--radius-full); background:var(--line-strong)}
+.adm .secp .sh{touch-action:none}
+.adm .secp.drag{transition:none}
+.adm .secp-veil{position:fixed; inset:0; z-index:20; background:color-mix(in srgb, var(--bg) 78%, transparent); opacity:0; pointer-events:none; transition:opacity var(--dur-base) var(--ease-out)}
+.adm .secp-veil.on{opacity:1; pointer-events:auto; transition-duration:var(--dur-slow)}
+.adm .secp{position:fixed; left:0; right:0; z-index:21; background:var(--surface-raised); border:1px solid var(--line); box-shadow:var(--shadow-overlay); max-height:72vh; overflow-y:auto;
+  visibility:hidden; pointer-events:none; transition:transform var(--dur-base) var(--ease-out), visibility 0s linear var(--dur-base)}
+.adm .secp.on{visibility:visible; pointer-events:auto; transform:none; transition:transform var(--dur-slow) var(--ease-out), visibility 0s}
+.adm .secp .sh{display:flex; justify-content:space-between; align-items:center; padding:var(--space-3) var(--space-4); border-bottom:1px solid var(--line)}
+.adm .secp .sh p{margin:0; font:500 12px/1.4 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.adm .secp ul{list-style:none; margin:0; padding:0}
+.adm .secp li button{position:relative; display:flex; align-items:baseline; gap:var(--space-3); width:100%; min-height:48px; padding:10px var(--space-4); background:none; border:0; border-bottom:1px solid var(--line); text-align:left; cursor:pointer; color:var(--ink); font:600 16px/1.3 var(--font-sans)}
+.adm .secp li:last-child button{border-bottom:0}
+.adm .secp li button span{font:500 12px/1.4 var(--font-mono); color:var(--muted); min-width:2em}
+.adm .secp li button small{margin-left:auto; font:400 12px/1.4 var(--font-mono); color:var(--muted)}
+.adm .secp li button[aria-current="true"]::before{content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--ink)}
+.adm #secBtn{display:none}
+@media (max-width:1023px){ body.adm.dos-on #secBtn{display:inline-flex} }
+.adm .secp{bottom:0; border-radius:var(--radius-md) var(--radius-md) 0 0; padding-bottom:env(safe-area-inset-bottom,0px); transform:translateY(100%)}
+/* The row is a link to the ficha (real route, can open in a new tab); it keeps the text colours of its parts. */
+.adm a.row, .adm a.row:hover { color: inherit; text-decoration: none; }

@@ -4,6 +4,8 @@
 // no secret; FIREBASE_WEB holds the public web-app configuration of the environment, or null.
 import '../styles/global.css';
 import '../admin/admin.css';
+import '../admin/leads/leads.css';
+import JanelaMetodo from '../admin/leads/JanelaMetodo.astro';
 import { FIREBASE_WEB } from '../config';
 import fonteTitulo from '../../node_modules/@fontsource-variable/source-serif-4/files/source-serif-4-latin-opsz-normal.woff2?url';
 import fonteTexto from '../../node_modules/@fontsource/source-sans-3/files/source-sans-3-latin-400-normal.woff2?url';
@@ -85,6 +87,9 @@ import fonteTexto from '../../node_modules/@fontsource/source-sans-3/files/sourc
     <!-- Module views render here (src/admin/registro.ts) -->
     <section class="view" id="rota" hidden></section>
   </main>
+
+  <!-- Leads: method window, opened from the portfolio map (spec 05 §5.8) -->
+  <JanelaMetodo />
 
   <footer class="site">
     <div class="wrap in">

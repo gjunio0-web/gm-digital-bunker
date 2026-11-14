@@ -1,0 +1,142 @@
+---
+// Method window "Como o mapa é calculado" (spec 05 §5.8). Static text copied from maquete-admin-hub.html,
+// published version 32, aligned to spec 04 v0.15 and to qualification weights version "2" (VERSAO_TEXTO in
+// src/admin/leads/index.ts). A change to the weights or rules means reviewing this text with Gon.
+---
+<dialog class="mdlg" id="metodoDlg" aria-labelledby="mdlg-t">
+  <div class="mdlg-in">
+    <header class="mdlg-hd">
+      <div><p class="eyebrow mut">Mapa da carteira</p><h2 id="mdlg-t">Como o mapa é calculado</h2></div>
+      <button class="btn icon" type="button" id="closeMetodo" aria-label="Fechar"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </header>
+    <div class="mdlg-bd">
+      <!-- Shown by the Leads module when config/pipeline.pesosQualificacao.versao differs from VERSAO_TEXTO (approved by Gon, 2026-11-14) -->
+      <p class="qwarn" id="metodoVersao" hidden></p>
+      <p class="mlegend"><span><span class="nat c">Regra</span> regra fixa</span><span><span class="nat a">Fonte externa</span> consulta automática a serviço de fora</span><span><span class="nat ia">IA</span> categoria escolhida por modelo de inteligência artificial; a regra converte em pontos</span></p>
+      <div class="facc mfacc"><details><summary><span>Dois momentos de cálculo: triagem e análise</span><span class="pl" aria-hidden="true"></span></summary><div class="body"><div class="mx"><ul class="mxl">
+                  <li><strong>Triagem.</strong> O primeiro cálculo, minutos depois que a ficha chega. Usa o formulário, a consulta à Receita Federal e à base comercial de empresas, a leitura do site e a leitura da mensagem por IA. Dá a toda ficha um quadrante e um grau e decide se ela recebe a análise completa. No mapa: círculo vazado.</li>
+                  <li><strong>Análise.</strong> O processo completo, só para as fichas em Priorizar, Qualificar ou Nutrir: as quatro etapas de coleta que faltam (pessoas, notícias, setor e mercado), somadas às duas da triagem, a síntese por IA e a verificação. Os números da análise substituem os da triagem. No mapa: círculo cheio.</li>
+                </ul></div></div></details><details open><summary><span>1 · O que cada ponto representa</span><span class="pl" aria-hidden="true"></span></summary><div class="body"><div class="mx"><p>Cada ponto é uma ficha. A posição horizontal é a Aderência (de 0 a 30 pontos); a vertical, a Intenção (de 0 a 30). O quadrante sai das duas, com corte em 15, a metade de cada eixo. <span class="nat c">Regra</span></p>
+                <pre class="fx">Priorizar   Aderência ≥ 15  e  Intenção ≥ 15
+Nutrir      Aderência ≥ 15  e  Intenção &lt; 15
+Qualificar  Aderência &lt; 15  e  Intenção ≥ 15
+Declinar    Aderência &lt; 15  e  Intenção &lt; 15</pre></div></div></details><details><summary><span>2 · Aderência (eixo horizontal, até 30)</span><span class="pl" aria-hidden="true"></span></summary><div class="body"><div class="mx"><p class="def"><strong>O que mede:</strong> o quanto a empresa se parece com o cliente que a prática atende – pequena ou média empresa, sem executivo dedicado à tecnologia. Mede a empresa, não o pedido. O terceiro traço do cliente aderente, quem decide ser o dono, um sócio ou um diretor, é medido em Decisão, para não contar duas vezes.</p>
+                <pre class="fx">Aderência = Porte + Tecnologia</pre>
+
+                <div class="var">
+                  <h5>Porte da empresa <span>0 a 18</span></h5>
+                  <p>Origem: o porte que a empresa declara no CNPJ (Cadastro Nacional da Pessoa Jurídica), consultado na Receita Federal, e o número de funcionários estimado pela base comercial Apollo. Na análise, se o Apollo não trouxer estimativa, vale a da etapa Pessoas, que procura o número em fontes públicas. <span class="nat a">Fonte externa</span> <span class="nat c">Regra</span></p>
+                  <p class="mxn">Porte no CNPJ: Microempresa (ME), receita anual até R$ 360 mil; Empresa de Pequeno Porte (EPP), de R$ 360 mil a R$ 4,8 milhões; "Demais", acima de R$ 4,8 milhões (Lei Complementar 123/2006). A receita real não é pública: o número de funcionários serve de aproximação para o teto da faixa.</p>
+                  <div class="tw"><table class="mt">
+                    <thead><tr><th scope="col">Pontos</th><th scope="col">Situação</th><th scope="col">Por quê</th></tr></thead>
+                    <tbody>
+                      <tr><th scope="row"><span class="mt-pts">18</span><span class="mt-u"> pontos</span></th><td data-label="Situação">Porte "Demais" e até 500 funcionários</td><td data-label="Por quê">Receita acima de R$ 4,8 milhões, o piso da média empresa pelo critério do BNDES (Banco Nacional de Desenvolvimento Econômico e Social) citado no escopo da prática; até 500 funcionários aproxima o teto de R$ 300 milhões. É o centro do público-alvo.</td></tr>
+                      <tr><th scope="row"><span class="mt-pts">14</span><span class="mt-u"> pontos</span></th><td data-label="Situação">EPP com sinal de crescimento (na triagem, vagas abertas anunciadas no site; na análise, também notícia de expansão, captação ou lançamento)</td><td data-label="Por quê">O escopo aceita "pequena empresa em crescimento". Fica abaixo do máximo porque a receita é menor, e com ela a capacidade de investir.</td></tr>
+                      <tr><th scope="row"><span class="mt-pts">9</span><span class="mt-u"> pontos</span></th><td data-label="Situação">Porte indeterminado: CNPJ não confirmado, com até 500 funcionários estimados; porte "Demais" sem estimativa de funcionários; demais casos sem porte definido, quando há empresa identificada e a ficha não cabe nas linhas de 6 e de 0</td><td data-label="Por quê">Metade do máximo: sem dado, o critério nem premia nem pune. A falta de dado aparece na confiança baixa.</td></tr>
+                      <tr><th scope="row"><span class="mt-pts">8</span><span class="mt-u"> pontos</span></th><td data-label="Situação">EPP sem sinal de crescimento</td><td data-label="Por quê">Abaixo da faixa e sem sinal de chegar a ela. Um ponto abaixo do indeterminado, porque aqui há evidência de estar fora.</td></tr>
+                      <tr><th scope="row"><span class="mt-pts">6</span><span class="mt-u"> pontos</span></th><td data-label="Situação">501 a 1.000 funcionários, com porte "Demais" ou com CNPJ não confirmado</td><td data-label="Por quê">Fronteira com a grande empresa, onde o escopo diz que a aderência cai.</td></tr>
+                      <tr><th scope="row"><span class="mt-pts">3</span><span class="mt-u"> pontos</span></th><td data-label="Situação">Microempresa</td><td data-label="Por quê">Muito abaixo da faixa; não vale zero porque pode crescer.</td></tr>
+                      <tr><th scope="row"><span class="mt-pts">0</span><span class="mt-u"> pontos</span></th><td data-label="Situação">Mais de 1.000 funcionários, com ou sem CNPJ confirmado, ou nenhuma empresa identificada</td><td data-label="Por quê">Fora do público-alvo.</td></tr>
+                    </tbody>
+                  </table></div>
+                  <p class="mxn"><strong>Mais de 1.000 funcionários</strong> estimados (pelo Apollo ou, na análise, pela etapa Pessoas) levam a 0 em qualquer porte no CNPJ; as demais linhas valem só abaixo desse número.</p>
+                  <p class="mxn"><strong>Porte "Demais" sem estimativa de funcionários:</strong> vale 9, e a confiança da ficha fica baixa, com o aviso "verificar antes de agir: confirmar o número de funcionários". O CNPJ não diz se a empresa está na faixa atendida ou acima dela.</p>
+                  <p class="mxn"><strong>Nenhuma empresa identificada:</strong> quando a IA classifica quem escreveu como pessoa física ou estudante, ou quando não há site lido, nem registro na base comercial Apollo, nem CNPJ confirmado. Fornecedor pontua como qualquer empresa.</p>
+                  <p class="mxn">Os cortes de 500 e 1.000 funcionários e a divisão de 18 pontos para o porte contra 12 para a tecnologia são estimativas de partida, sem dado que as sustente ainda.</p>
+                </div>
+
+                <div class="var">
+                  <h5>Estrutura de tecnologia <span>0 a 12</span></h5>
+                  <p>Origem: a IA lê o site e os dados da base comercial e escolhe uma categoria, citando a evidência. Na triagem, quem escolhe é o modelo Haiku; na análise, o modelo Sonnet, com a coleta completa. <span class="nat ia">IA</span> <span class="nat c">Regra</span></p>
+                  <ul class="vals">
+                    <li><b>12</b> Sem executivo de tecnologia e com sinal de equipe de tecnologia enxuta, terceirizada ou só operacional – o perfil que a prática atende.</li>
+                    <li><b>8</b> Nenhum sinal, nem de executivo nem de equipe.</li>
+                    <li><b>5</b> Equipe de tecnologia própria visível (vagas de desenvolvimento, área de engenharia), sem executivo dedicado.</li>
+                    <li><b>0</b> Diretor de tecnologia identificado (CIO, diretor de informática, ou CTO, diretor de tecnologia).</li>
+                    <li><b>0</b> Nenhuma empresa identificada (mesmo critério do porte).</li>
+                  </ul>
+                </div></div></div></details><details><summary><span>3 · Intenção (eixo vertical, até 30)</span><span class="pl" aria-hidden="true"></span></summary><div class="body"><div class="mx"><p class="def"><strong>O que mede:</strong> o quanto a ficha mostra vontade de resolver algo agora – se a pessoa escreveu, se fala de um problema concreto, se há prazo ou evento por trás, de que página do site veio e se a empresa está em movimento. Mede o pedido e o momento, não a empresa.</p>
+                <pre class="fx">Intenção = Mensagem + Assunto + Gatilho + Página de origem + Notícia</pre>
+
+                <div class="var">
+                  <h5>Mensagem <span>0 ou 8</span></h5>
+                  <p>Origem: formulário. <span class="nat c">Regra</span></p>
+                  <ul class="vals"><li><b>8</b> A ficha tem mensagem.</li><li><b>0</b> Não tem.</li></ul>
+                </div>
+                <div class="var">
+                  <h5>Assunto da mensagem <span>0 a 8</span></h5>
+                  <p>Origem: a IA (modelo Haiku) lê a mensagem e diz se ela fala de um problema, de uma ferramenta, dos dois ou de nenhum. <span class="nat ia">IA</span> <span class="nat c">Regra</span></p>
+                  <ul class="vals"><li><b>8</b> Fala de um problema, ou de um problema e uma ferramenta.</li><li><b>3</b> Fala só de uma ferramenta.</li><li><b>0</b> Nenhum dos dois.</li></ul>
+                </div>
+                <div class="var">
+                  <h5>Gatilho <span>0 ou 6</span></h5>
+                  <p>Origem: a mesma leitura da mensagem pela IA. <span class="nat ia">IA</span> <span class="nat c">Regra</span></p>
+                  <ul class="vals"><li><b>6</b> A mensagem cita um evento, prazo, orçamento ou concorrente.</li><li><b>0</b> Não cita.</li></ul>
+                </div>
+                <div class="var">
+                  <h5>Página de origem <span>0 a 4</span></h5>
+                  <p>Origem: o endereço da página do site de onde a pessoa enviou o formulário. Quanto mais perto de uma oferta concreta, maior a intenção. <span class="nat c">Regra</span></p>
+                  <ul class="vals"><li><b>4</b> Página de um dos três serviços: Conselho de IA, Estratégia e Plataforma Digital com IA, ou Workshop "Quando é Melhor com IA", em português ou em inglês.</li><li><b>3</b> Página de um caso, em português ou em inglês.</li><li><b>1</b> Páginas Método, do livro ou Sobre, em português ou em inglês.</li><li><b>0</b> Qualquer outra página, inclusive a página inicial de Serviços e a de Publicações.</li></ul>
+                </div>
+                <div class="var">
+                  <h5>Notícia recente <span>0 ou 4</span></h5>
+                  <p>Origem: a etapa de coleta de notícias, só na análise; na triagem vale 0. <span class="nat a">Fonte externa</span> <span class="nat ia">IA</span> A IA classifica o tema de cada notícia (expansão, captação, produto e outros).</p>
+                  <ul class="vals"><li><b>4</b> Há notícia dos últimos 12 meses sobre expansão, captação de investimento ou lançamento de produto.</li><li><b>0</b> Não há.</li></ul>
+                </div></div></div></details><details><summary><span>4 · Decisão (até 20; entra só no grau)</span><span class="pl" aria-hidden="true"></span></summary><div class="body"><div class="mx"><p class="def"><strong>O que mede:</strong> o quanto quem escreveu tem poder para decidir a contratação e o quanto é possível confirmar quem a pessoa é.</p>
+                <pre class="fx">Decisão = Cargo + Confirmação do cargo + E-mail corporativo</pre>
+                <div class="var">
+                  <h5>Cargo <span>0 a 12</span></h5>
+                  <p>Origem: o cargo que a pessoa escolhe no formulário, entre sete opções. <span class="nat c">Regra</span></p>
+                  <ul class="vals"><li><b>12</b> Sócio ou proprietário, CEO (diretor-presidente) ou diretor.</li><li><b>4</b> Gerente.</li><li><b>0</b> Especialista, profissional externo à empresa ou outro.</li></ul>
+                </div>
+                <div class="var">
+                  <h5>Confirmação do cargo <span>0 a 4</span></h5>
+                  <p>Origem: o serviço Hunter, que identifica o cargo atual pelo e-mail corporativo; se não encontrar, uma busca na web feita pela IA, cujo resultado vale como inferência. Só na análise; na triagem vale 0. <span class="nat a">Fonte externa</span> <span class="nat ia">IA</span> A IA compara o cargo encontrado com o declarado.</p>
+                  <ul class="vals"><li><b>4</b> O cargo encontrado coincide com o declarado.</li><li><b>2</b> Não foi possível confirmar.</li><li><b>0</b> O cargo encontrado é outro; a divergência vira pergunta para a primeira conversa.</li></ul>
+                </div>
+                <div class="var">
+                  <h5>E-mail corporativo <span>0 ou 4</span></h5>
+                  <p>Origem: o domínio do e-mail informado, comparado a uma lista de provedores gratuitos. <span class="nat c">Regra</span></p>
+                  <ul class="vals"><li><b>4</b> Domínio próprio da empresa.</li><li><b>0</b> Provedor gratuito (Gmail, Outlook e semelhantes).</li></ul>
+                </div></div></div></details><details><summary><span>5 · Clareza da oportunidade (até 20; entra só no grau)</span><span class="pl" aria-hidden="true"></span></summary><div class="body"><div class="mx"><p class="def"><strong>O que mede:</strong> o quanto já se sabe o que oferecer – qual porta de contratação serve, onde a IA ajudaria a empresa e que tipo de ganho ela buscaria (crescer, defender margem ou cumprir uma exigência).</p>
+                <pre class="fx">Clareza = Porta + Hipótese + Direção do potencial</pre>
+                <div class="var">
+                  <h5>Porta <span>0 a 10</span></h5>
+                  <p>Origem: a IA indica a porta de contratação mais coerente com a ficha – Projeto, Conselho, Workshop ou uma combinação – e os sinais que a apontam. Na triagem, pela mensagem e pela página de origem (modelo Haiku); na análise, pelo enquadramento completo (modelo Sonnet). <span class="nat ia">IA</span> <span class="nat c">Regra</span></p>
+                  <ul class="vals"><li><b>10</b> Uma porta, apontada por dois ou mais sinais.</li><li><b>7</b> Combinação de portas.</li><li><b>4</b> Uma porta, apontada por um só sinal.</li><li><b>0</b> Nenhuma porta clara.</li></ul>
+                </div>
+                <div class="var">
+                  <h5>Hipótese de alavanca <span>0 ou 5</span></h5>
+                  <p>Origem: o enquadramento da análise, pela IA. Só na análise; na triagem vale 0. <span class="nat ia">IA</span> <span class="nat c">Regra</span></p>
+                  <ul class="vals"><li><b>5</b> Há ao menos uma hipótese de onde a IA ajudaria a empresa, ligada a um sinal concreto da coleta.</li><li><b>0</b> Não há.</li></ul>
+                </div>
+                <div class="var">
+                  <h5>Direção do potencial <span>0 ou 5</span></h5>
+                  <p>Origem: o enquadramento da análise, pela IA. Só na análise; na triagem vale 0. <span class="nat ia">IA</span> <span class="nat c">Regra</span></p>
+                  <ul class="vals"><li><b>5</b> Ficou definido, com confiança média ou alta, se o ganho seria crescer, defender margem ou cumprir uma exigência.</li><li><b>0</b> Indeterminado, ou definido com confiança baixa.</li></ul>
+                </div></div></div></details><details><summary><span>6 · A letra ao lado do nome: o grau</span><span class="pl" aria-hidden="true"></span></summary><div class="body"><div class="mx"><p>O grau mede a urgência dentro do quadrante e define o prazo de resposta. <span class="nat c">Regra</span></p>
+                <pre class="fx">Pontos = Aderência + Decisão + Intenção + Clareza − Deduções   (0 a 100)
+
+Grau A   70 pontos ou mais    resposta em 2 dias úteis
+Grau B   50 a 69              resposta em 3 dias úteis
+Grau C   30 a 49              resposta em 4 dias úteis
+Grau D   menos de 30          resposta em 5 dias úteis</pre>
+                <p><strong>Como o prazo é contado:</strong> dias úteis, de segunda a sexta, sem os feriados nacionais nem o Carnaval, a Sexta-Feira Santa e o Corpus Christi; feriados estaduais e municipais não entram. O dia em que o prazo começa não conta. Nas fichas sem análise completa, o prazo começa quando a ficha chega; nas analisadas, quando a análise fica pronta.</p>
+                <div class="var">
+                  <h5>Deduções <span>0 a −16</span></h5>
+                  <p>Origem: os riscos do lead apontados pela IA no enquadramento da análise. Só deduzem os que vêm da própria ficha ou da coleta; os levantados apenas como hipótese não deduzem. Só na análise. <span class="nat ia">IA</span> <span class="nat c">Regra</span></p>
+                  <ul class="vals"><li><b>−8</b> Curiosidade sem orçamento.</li><li><b>−8</b> Expectativa de revender a ferramenta.</li><li class="full"><span>Soma limitada a −16. Outros riscos ficam registrados para a leitura do consultor, sem deduzir.</span></li></ul>
+                </div>
+                <div class="var">
+                  <h5>Escopo <span>ajusta o grau</span></h5>
+                  <p>Origem: o enquadramento da análise. A IA confere cada item do pedido contra o que a prática faz e não faz; a regra decide o resultado só pelos itens que vêm da própria ficha, sem contar os levantados como hipótese ou pela coleta. Só na análise. <span class="nat ia">IA</span> <span class="nat c">Regra</span></p>
+                  <ul class="vals"><li><b>Barrado</b> Algum item é algo que a prática não faz. O grau passa a D, quaisquer que sejam os pontos.</li><li><b>Com ressalva</b> Algum item a prática só orienta, ou executa só em parte. O grau fica limitado a B.</li><li><b>Aprovado</b> Sem ajuste.</li></ul>
+                </div>
+                <p class="mxn">Decisão, Clareza, deduções e escopo não mudam a posição no mapa; mudam só o grau.</p></div></div></details><details><summary><span>7 · Marcas do mapa</span><span class="pl" aria-hidden="true"></span></summary><div class="body"><div class="mx"><ul class="mxl">
+                  <li><strong>Círculo cheio:</strong> números da análise.</li>
+                  <li><strong>Círculo vazado:</strong> números da triagem. Notícia, confirmação do cargo, hipótese e direção do potencial ainda valem 0; por isso o ponto pode subir quando a análise termina.</li>
+                  <li><strong>Cobalto:</strong> o primeiro da fila, pela ordem quadrante, depois grau, depois confiança, depois prazo restante. <span class="nat c">Regra</span></li>
+                </ul></div></div></details><details><summary><span>8 · Onde ficam os números</span><span class="pl" aria-hidden="true"></span></summary><div class="body"><div class="mx"><p>O corte de 15, os pontos de cada item e as faixas do grau ficam guardados numa tabela de configuração do sistema, separada do código, para poderem ser ajustados sem programar. Cada ficha registra a versão dos números com que foi calculada. São estimativas de partida: só mudam depois de 30 fichas com desfecho registrado.</p></div></div></details></div>
+    </div>
+  </div>
+</dialog>

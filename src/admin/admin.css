@@ -41,6 +41,8 @@
 .adm .btn.primary:hover { background: var(--accent-hover); color: var(--on-accent); }
 .adm .btn.secondary { border-color: var(--line-strong); }
 .adm .btn.secondary:hover { border-color: var(--ink); color: var(--ink); }
+.adm .btn.text { padding: 0 4px; color: var(--accent); }
+.adm .btn.text:hover { color: var(--accent-hover); }
 .adm .btn.icon { width: 44px; padding: 0; border-color: var(--line-strong); }
 .adm .btn.icon svg { width: 20px; height: 20px; }
 .adm .btn:disabled { opacity: .6; cursor: not-allowed; }
@@ -50,6 +52,7 @@
 .adm .view.on { animation: adm-vin var(--dur-base) var(--ease-out); }
 @keyframes adm-vin { from { opacity: 0; } to { opacity: 1; } }
 .adm .eyebrow { margin: 0; font: 500 12px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.adm .eyebrow.mut { color: var(--muted); }
 
 /* ---- Entrada (sign-in) ---- */
 .adm #entrada .hero { position: relative; isolation: isolate; overflow: visible; background: none; border-bottom: 1px solid var(--line); }
@@ -65,9 +68,9 @@
 .adm .field { display: flex; flex-direction: column; gap: var(--space-2); }
 .adm .field label { font: 600 16px/1.25 var(--sans); color: var(--ink); }
 .adm .field label .opt { font-weight: 400; color: var(--muted); }
-.adm .field input { width: 100%; min-height: 48px; padding: 0 var(--space-4); background: var(--surface);
+.adm .field :is(input, select) { width: 100%; min-height: 48px; padding: 0 var(--space-4); background: var(--surface);
   border: 1px solid var(--line-strong); border-radius: var(--radius-md); color: var(--ink); font: 400 17px/1.4 var(--sans); }
-.adm .field input::placeholder { color: var(--muted); }
+.adm .field :is(input, select)::placeholder { color: var(--muted); }
 .adm .login-meta { margin: 0; font: 400 13px/1.5 var(--mono); color: var(--muted); }
 /* Sign-in error: ink on the card, 2px ink rule – no new colour (the system has no error hue) */
 .adm .login-erro { margin: 0; padding-left: var(--space-3); border-left: 2px solid var(--ink); font: 400 15px/1.5 var(--sans); color: var(--ink); }
