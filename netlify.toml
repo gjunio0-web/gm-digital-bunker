@@ -15,10 +15,29 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     # Content Security Policy, enforced since 2026-10-31: every resource comes from the site itself,
-    # plus the contact form functions (Firebase, one project per environment). Inline scripts and
+    # plus the contact form functions (Firebase, one project per environment) and, for the admin hub
+    # (spec 05), Firebase Auth (identitytoolkit, securetoken) and Firestore. One policy for every page:
+    # a second policy matching /admin/* could be sent alongside this one, and the browser enforces both. Inline scripts and
     # style attributes are still allowed ('unsafe-inline'); tightening them needs per-build hashes.
     # frame-ancestors 'none' keeps the site from being framed; X-Frame-Options covers older browsers.
     # HSTS is not set here: Netlify already sends it on the custom domain (max-age=31536000,
     # no subdomains, no preload), kept as decided on 2026-10-30.
-    Content-Security-Policy = "default-src 'self'; img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://southamerica-east1-gmdb-qualidade.cloudfunctions.net https://southamerica-east1-gmdb-producao.cloudfunctions.net; form-action 'self' https://southamerica-east1-gmdb-qualidade.cloudfunctions.net https://southamerica-east1-gmdb-producao.cloudfunctions.net; base-uri 'self'; object-src 'none'; frame-ancestors 'none'"
+    Content-Security-Policy = "default-src 'self'; img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://southamerica-east1-gmdb-qualidade.cloudfunctions.net https://southamerica-east1-gmdb-producao.cloudfunctions.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com; form-action 'self' https://southamerica-east1-gmdb-qualidade.cloudfunctions.net https://southamerica-east1-gmdb-producao.cloudfunctions.net; base-uri 'self'; object-src 'none'; frame-ancestors 'none'"
     X-Frame-Options = "DENY"
+
+# Admin hub (spec 05, §2): never indexed, and every /admin/* address is served by the shell page,
+# which resolves the route in the browser after sign-in.
+[[headers]]
+  for = "/admin"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+
+[[headers]]
+  for = "/admin/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+
+[[redirects]]
+  from = "/admin/*"
+  to = "/admin.html"
+  status = 200

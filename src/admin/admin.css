@@ -1,0 +1,105 @@
+/* Admin hub shell (spec 05 §3–§4; mock-up maquete-admin-hub.html, header, Entrada and Módulos).
+   Scoped under body.adm so the site's global classes (.btn, .card, .grid, .hero, .lead, .eyebrow)
+   keep their public-site meaning everywhere else. Values come from the Design System tokens. */
+
+.adm { background: var(--bg); color: var(--ink-body); font: 400 18px/1.6 var(--sans); }
+.adm [hidden] { display: none !important; }
+.adm a { color: var(--accent); text-decoration: none; transition: color var(--dur-fast) var(--ease-out); }
+.adm a:hover { color: var(--accent-hover); }
+.adm :is(a, button, input, select, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.adm h2:focus { outline: none; }
+.adm .wrap { max-width: var(--container); margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+@media (min-width: 768px) { .adm .wrap { padding-left: max(var(--space-12), env(safe-area-inset-left, 0px)); padding-right: max(var(--space-12), env(safe-area-inset-right, 0px)); } }
+.adm .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.adm .skip { position: absolute; left: var(--space-4); top: -60px; z-index: 20; background: var(--surface-raised); color: var(--ink);
+  padding: 8px 12px; border-radius: var(--radius-sm); font: 600 14px var(--sans); }
+.adm .skip:focus { top: calc(8px + env(safe-area-inset-top, 0px)); }
+
+/* ---- Header ---- */
+.adm::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.adm header.site { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 9; background: var(--bg); border-bottom: 1px solid var(--line); }
+.adm .hd { display: flex; align-items: center; gap: var(--space-4); height: var(--header-h); }
+.adm .brand { font: 600 20px/1 var(--serif); font-variation-settings: 'opsz' 24; color: var(--ink); white-space: nowrap; }
+.adm .brand:hover { color: var(--ink); }
+.adm .hd .tag { font: 500 12px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 3px 8px; }
+.adm .hd .end { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); }
+/* Phone: drop the 'Administração' tag so brand, theme and 'Sair' fit without horizontal scroll */
+@media (max-width: 479px) { .adm .hd { gap: var(--space-3); } .adm .hd .tag { display: none; } .adm .hd .end { gap: var(--space-2); } }
+@media (max-width: 359px) { .adm .brand { font-size: 17px; } }
+
+/* ---- Buttons ---- */
+.adm .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px;
+  padding: 0 20px; border-radius: var(--radius-md); font: 600 16px/1.25 var(--sans); cursor: pointer;
+  border: 1px solid transparent; background: transparent; color: var(--ink); text-decoration: none;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+.adm .btn.primary { background: var(--accent); color: var(--on-accent); }
+.adm .btn.primary:hover { background: var(--accent-hover); color: var(--on-accent); }
+.adm .btn.secondary { border-color: var(--line-strong); }
+.adm .btn.secondary:hover { border-color: var(--ink); color: var(--ink); }
+.adm .btn.icon { width: 44px; padding: 0; border-color: var(--line-strong); }
+.adm .btn.icon svg { width: 20px; height: 20px; }
+.adm .btn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* ---- Views ---- */
+.adm main { display: block; }
+.adm .view.on { animation: adm-vin var(--dur-base) var(--ease-out); }
+@keyframes adm-vin { from { opacity: 0; } to { opacity: 1; } }
+.adm .eyebrow { margin: 0; font: 500 12px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+
+/* ---- Entrada (sign-in) ---- */
+.adm #entrada .hero { position: relative; isolation: isolate; overflow: visible; background: none; border-bottom: 1px solid var(--line); }
+.adm #entrada .hero .grain { position: absolute; inset: 0; z-index: -1; opacity: var(--grain-opacity); pointer-events: none; }
+.adm #entrada .hero-in { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-8); padding-block: var(--space-16); }
+@media (min-width: 768px) { .adm #entrada .hero-in { padding-block: var(--space-24); } }
+.adm #entrada h2 { margin: var(--space-2) 0 0; font: 600 40px/1.15 var(--serif); font-variation-settings: 'opsz' 48; letter-spacing: -.005em; color: var(--ink); }
+@media (max-width: 600px) { .adm #entrada h2 { font-size: 28px; } }
+.adm #entrada .lead { margin: var(--space-4) 0 0; max-width: var(--container-text); font: 400 21px/1.5 var(--sans); color: var(--ink-body); }
+@media (max-width: 600px) { .adm #entrada .lead { font-size: 19px; } }
+.adm .login-card { width: 100%; max-width: 26rem; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-md); padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); }
+.adm .field { display: flex; flex-direction: column; gap: var(--space-2); }
+.adm .field label { font: 600 16px/1.25 var(--sans); color: var(--ink); }
+.adm .field label .opt { font-weight: 400; color: var(--muted); }
+.adm .field input { width: 100%; min-height: 48px; padding: 0 var(--space-4); background: var(--surface);
+  border: 1px solid var(--line-strong); border-radius: var(--radius-md); color: var(--ink); font: 400 17px/1.4 var(--sans); }
+.adm .field input::placeholder { color: var(--muted); }
+.adm .login-meta { margin: 0; font: 400 13px/1.5 var(--mono); color: var(--muted); }
+/* Sign-in error: ink on the card, 2px ink rule – no new colour (the system has no error hue) */
+.adm .login-erro { margin: 0; padding-left: var(--space-3); border-left: 2px solid var(--ink); font: 400 15px/1.5 var(--sans); color: var(--ink); }
+
+/* ---- Inner view opening ---- */
+.adm .vhead { padding-block: var(--space-12) var(--space-8); }
+.adm .vhead .crumb { display: inline-flex; align-items: center; gap: 6px; font: 600 16px/1.25 var(--sans); margin-bottom: var(--space-4); }
+.adm .vhead h2 { margin: var(--space-2) 0 0; font: 600 40px/1.15 var(--serif); font-variation-settings: 'opsz' 48; letter-spacing: -.005em; color: var(--ink); text-wrap: balance; }
+@media (max-width: 600px) { .adm .vhead h2 { font-size: 28px; } }
+.adm .vhead .lead { margin: var(--space-4) 0 0; max-width: var(--container-text); font: 400 21px/1.5 var(--sans); color: var(--ink-body); }
+@media (max-width: 600px) { .adm .vhead .lead { font-size: 19px; } }
+.adm .vhead .login-meta { margin-top: var(--space-4); }
+
+/* ---- Módulos ---- */
+.adm .grid { display: grid; grid-template-columns: 1fr; gap: var(--space-6); padding-bottom: var(--space-16); }
+@media (min-width: 768px) { .adm .grid { grid-template-columns: 1fr 1fr; } }
+.adm .card { display: flex; flex-direction: column; gap: 0; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-md); padding: var(--space-6); color: inherit; transition: border-color var(--dur-fast) var(--ease-out); }
+.adm a.card:hover { border-color: var(--line-strong); }
+.adm a.card:hover h3 { color: var(--accent); }
+.adm .card .eb { margin: 0 0 var(--space-2); font: 500 12px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.adm .card h3 { margin: 0 0 var(--space-3); font: 600 24px/1.3 var(--serif); font-variation-settings: 'opsz' 24; color: var(--ink); transition: color var(--dur-fast) var(--ease-out); }
+.adm .card .tx { margin: 0 0 var(--space-6); font: 400 15px/1.5 var(--sans); color: var(--ink-body); flex: 1; }
+.adm .card .ft { font: 600 16px/1.25 var(--sans); color: var(--accent); }
+.adm .card.off { opacity: .6; }
+.adm .card.off .ft { color: var(--muted); }
+.adm .status { display: inline-flex; align-items: center; gap: 8px; margin-bottom: var(--space-4); font: 400 13px/1.5 var(--mono); color: var(--muted); }
+.adm .dot { width: 8px; height: 8px; border-radius: var(--radius-full); background: var(--muted); }
+.adm .dot.on { background: var(--accent); }
+.adm .dot.hollow { background: transparent; border: 1.5px solid var(--line-strong); }
+
+/* ---- Footer ---- */
+.adm footer.site { border-top: 1px solid var(--line); }
+.adm footer.site .in { display: flex; flex-wrap: wrap; gap: var(--space-4); justify-content: space-between;
+  padding-block: var(--space-6) calc(var(--space-6) + env(safe-area-inset-bottom, 0px)); font: 400 13px/1.5 var(--mono); color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) { .adm *, .adm *::before, .adm *::after { animation: none !important; transition: none !important; } }

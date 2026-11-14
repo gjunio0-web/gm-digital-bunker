@@ -18,7 +18,8 @@ export default defineConfig({
   integrations: [
     llmsTxt(),
     sitemap({
-      filter: (url) => new URL(url).pathname !== '/404',
+      // The 404 and the admin hub (spec 05, §2) stay out of the sitemap
+      filter: (url) => { const p = new URL(url).pathname; return p !== '/404' && p !== '/admin' && !p.startsWith('/admin/'); },
       serialize(item) {
         const caminho = new URL(item.url).pathname.replace(/\/+$/, '') || '/';
         const id = idPorEndereco.get(caminho);

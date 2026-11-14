@@ -22,3 +22,17 @@ export const LINKEDIN = 'https://www.linkedin.com/in/gjunio0';
 // link to and read from the production Hub; every other build uses the Hub's quality_env deploy, so the
 // quality site shows (and opens) the articles of the quality Hub. Spec 06, §5.1.
 export const HUB = EM_PRODUCAO ? 'https://ai-strat-hub.netlify.app' : 'https://quality-env--ai-strat-hub.netlify.app';
+// Admin hub (spec 05): public Firebase web configuration, one app per environment. These values identify
+// the Firebase project to the browser and are public by design; access is enforced by Firebase Auth and
+// the Firestore rules. The production app does not exist yet, so production builds get null and the hub
+// shows that it is not configured.
+export const FIREBASE_WEB = EM_PRODUCAO
+  ? null
+  : {
+      apiKey: 'AIzaSyAKGjUHAjPXpJphfrmc9JhUJzh7jkicyWo',
+      authDomain: 'gmdb-qualidade.firebaseapp.com',
+      projectId: 'gmdb-qualidade',
+      storageBucket: 'gmdb-qualidade.firebasestorage.app',
+      messagingSenderId: '91928500287',
+      appId: '1:91928500287:web:3a728812d21a1d5177808a',
+    };

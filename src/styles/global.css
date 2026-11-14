@@ -68,9 +68,18 @@
   --radius-md: 4px;
   --header-h: 64px;
   --grain-opacity: 0.06;
+  /* Tokens from the Design System that the admin hub uses (tokens.json); added 2026-11-14 */
+  --radius-full: 9999px;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px;
+  --space-8: 32px; --space-12: 48px; --space-16: 64px; --space-24: 96px;
+  --shadow-overlay: 0 16px 40px rgba(0, 0, 0, 0.55);
+  /* Data colour (Design System › Cor de dado): lead score marks only, never text, fill or action */
+  --heat-1: #ff6a3d; --heat-2: #c95f3e; --heat-3: #8f6b5c; --heat-4: #5f5d5c; --heat-5: #3f444b;
 }
 
 html[data-theme="light"] {
+  --shadow-overlay: 0 16px 40px rgba(17, 20, 24, 0.14);
+  --heat-1: #a82c08; --heat-2: #c9592b; --heat-3: #b98a72; --heat-4: #b4aeaa; --heat-5: #d3d5d9;
   --bg: #f6f6f4;
   --surface: #f1f0fd;
   --surface-raised: #f1f0fd;
