@@ -102,30 +102,62 @@ function mapaHTML(todas: FichaVM[]): string {
     '<text x="236" y="38" font-size="11" letter-spacing=".08em">PRIORIZAR</text><text x="68" y="38" font-size="11" letter-spacing=".08em">QUALIFICAR</text>' +
     '<text x="236" y="352" font-size="11" letter-spacing=".08em">NUTRIR</text><text x="68" y="352" font-size="11" letter-spacing=".08em">DECLINAR</text>' +
     '<text x="230" y="392" font-size="12" text-anchor="middle">ADERÊNCIA →</text><text x="26" y="190" font-size="12" text-anchor="middle" transform="rotate(-90 26 190)">INTENÇÃO →</text>';
+
+  // Label placement (spec 05 v1.15, §5.3): a label covers no other label, no point and no quadrant name.
+  // Points with the same position are spread 12px apart horizontally.
+  type Ponto = { f: FichaVM; x: number; y: number; eu: boolean; txt: string };
   const usados = new Set<string>();
-  const rots: [number, number, number][] = [];
-  const colide = (px: number, py: number, an: string) => {
-    const x0 = an === 'end' ? px - 80 : px, x1 = an === 'end' ? px : px + 80;
-    return rots.some((l) => Math.max(x0, l[0]) < Math.min(x1, l[1]) && Math.abs(l[2] - py) < 14);
-  };
-  for (const f of pts) {
+  const P: Ponto[] = pts.map((f) => {
     const l = f.lead!;
     let x = 60 + pct(l.eixos.a!) * 3.4;
     const y = 360 - pct(l.eixos.i!) * 3.4;
-    const k = `${Math.round(x)}-${Math.round(y)}`;
-    if (usados.has(k)) x += 12;
+    let k = `${Math.round(x)}-${Math.round(y)}`;
+    while (usados.has(k)) { x += 12; k = `${Math.round(x)}-${Math.round(y)}`; }
     usados.add(k);
-    const eu = f === melhor;
-    let anchor = x > 300 ? 'end' : 'start', tx = x > 300 ? x - 12 : x + 12, ty = y + 4;
-    if (colide(tx, ty, anchor)) {
-      const an2 = anchor === 'end' ? 'start' : 'end', tx2 = an2 === 'end' ? x - 12 : x + 12;
-      if (!colide(tx2, ty, an2)) { anchor = an2; tx = tx2; } else { ty += 14; }
+    return { f, x, y, eu: f === melhor, txt: `${f.nome.split(' ')[0]} · ${l.grau}` };
+  });
+  type Caixa = [number, number, number, number];
+  const CW = 7.3; // width of one character of the 12px mono font, in SVG units
+  const caixas: Caixa[] = P.map((p) => [p.x - 9, p.y - 9, p.x + 9, p.y + 9]);
+  for (const [qx, q, qy] of [[236, 'PRIORIZAR', 38], [68, 'QUALIFICAR', 38], [236, 'NUTRIR', 352], [68, 'DECLINAR', 352]] as const) {
+    caixas.push([qx - 2, qy - 11, qx + q.length * 7.6 + 2, qy + 3]);
+  }
+  const livre = (b: Caixa) =>
+    b[0] >= 62 && b[2] <= 438 && b[1] >= 4 && b[3] <= 372 && !caixas.some((o) => b[0] < o[2] && o[0] < b[2] && b[1] < o[3] && o[1] < b[3]);
+  const caixa = (tx: number, ty: number, an: string, w: number): Caixa => {
+    const x0 = an === 'end' ? tx - w : an === 'middle' ? tx - w / 2 : tx;
+    return [x0 - 2, ty - 11, x0 + w + 2, ty + 3];
+  };
+  const CANDIDATOS: [number, number, string][] = [[12, 4, 'start'], [-12, 4, 'end'], [12, -9, 'start'], [12, 17, 'start'], [-12, -9, 'end'], [-12, 17, 'end'], [0, -13, 'middle'], [0, 22, 'middle']];
+  type Lugar = { tx: number; ty: number; an: string; linha: boolean };
+  const lugares: [Ponto, Lugar][] = [];
+  // Queue order, cobalt first: the most important labels get the best positions
+  for (const p of P.slice().sort((a, b) => cmpQuad(a.f, b.f))) {
+    const w = p.txt.length * CW, dir = p.x > 300;
+    let pick: (Lugar & { b: Caixa }) | null = null;
+    for (const [dx, dy, an] of CANDIDATOS) {
+      const b = caixa(p.x + dx, p.y + dy, an, w);
+      if (livre(b)) { pick = { tx: p.x + dx, ty: p.y + dy, an, linha: false, b }; break; }
     }
-    rots.push([anchor === 'end' ? tx - 80 : tx, anchor === 'end' ? tx : tx + 80, ty]);
-    const tri = l.momento === 'triagem';
-    svg += `<circle cx="${x}" cy="${y}" r="${eu ? 6 : 5}" fill="${eu ? 'var(--accent)' : tri ? 'var(--surface)' : 'var(--ink-body)'}"` +
-      (tri && !eu ? ' stroke="var(--ink-body)" stroke-width="1.5"' : '') + '/>' +
-      `<text x="${tx}" y="${ty}" font-size="12" text-anchor="${anchor}"${eu ? ' fill="var(--ink)"' : ''}>${esc(f.nome.split(' ')[0])} · ${l.grau}</text>`;
+    // No free spot next to the point: the label moves out along a 1px line
+    for (let s = 1; s <= 10 && !pick; s++) {
+      for (const sinal of [1, -1]) {
+        const tx = dir ? p.x - 30 : p.x + 30, an = dir ? 'end' : 'start', ty = p.y + 4 + sinal * s * 14, b = caixa(tx, ty, an, w);
+        if (livre(b)) { pick = { tx, ty, an, linha: true, b }; break; }
+      }
+    }
+    if (!pick) pick = { tx: p.x + 12, ty: p.y + 4, an: 'start', linha: false, b: caixa(p.x + 12, p.y + 4, 'start', w) };
+    caixas.push(pick.b);
+    lugares.push([p, pick]);
+  }
+  for (const p of P) {
+    const tri = p.f.lead!.momento === 'triagem';
+    svg += `<circle cx="${p.x}" cy="${p.y}" r="${p.eu ? 6 : 5}" fill="${p.eu ? 'var(--accent)' : tri ? 'var(--surface)' : 'var(--ink-body)'}"` +
+      (tri && !p.eu ? ' stroke="var(--ink-body)" stroke-width="1.5"' : '') + '/>';
+  }
+  for (const [p, k] of lugares) {
+    if (k.linha) svg += `<line x1="${p.x}" y1="${p.y}" x2="${k.an === 'end' ? k.tx + 3 : k.tx - 3}" y2="${k.ty - 4}" stroke="var(--line-strong)" stroke-width="1"/>`;
+    svg += `<text x="${k.tx}" y="${k.ty}" font-size="12" text-anchor="${k.an}"${p.eu ? ' fill="var(--ink)"' : ''}>${esc(p.txt)}</text>`;
   }
   return svg + '</svg>';
 }
