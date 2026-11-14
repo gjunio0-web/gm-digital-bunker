@@ -93,8 +93,17 @@ export function prazoTxt(f: FichaVM, hoje: Date): string {
   if (f.estado === 'arquivada') return 'arquivada';
   if (!f.lead) return 'em análise';
   if (!f.lead.prazoEm) return 'prazo após a análise';
-  const n = diasUteisRestantes(hoje, f.lead.prazoEm);
-  return `até ${dataCurta(f.lead.prazoEm)} · ` + (n >= 0 ? `${n} d.ú.` : `vencido há ${-n} d.ú.`);
+  return `até ${dataCurta(f.lead.prazoEm)} · ${restanteTxt(hoje, f.lead.prazoEm)}`;
+}
+
+/**
+ * "n d.ú." while the deadline day has not passed; once it has, "vencido" and, from the first business day
+ * after it, "vencido há n d.ú." (a deadline on Friday is "vencido" on Saturday, not "0 d.ú.").
+ */
+export function restanteTxt(hoje: Date, prazo: Date): string {
+  if (diaSP(prazo).getTime() >= diaSP(hoje).getTime()) return `${diasUteisRestantes(hoje, prazo)} d.ú.`;
+  const n = -diasUteisRestantes(hoje, prazo);
+  return n > 0 ? `vencido há ${n} d.ú.` : 'vencido';
 }
 
 /** Short retention (spec 04, section 5), the same rule as the pipeline's guardaCurta. */

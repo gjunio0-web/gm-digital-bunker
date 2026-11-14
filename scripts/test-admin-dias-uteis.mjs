@@ -31,6 +31,15 @@ try {
       if (r !== n) { erros++; console.error(`restantes ${r} != ${n} from`, new Date(t).toISOString()); }
     }
   }
+  // Overdue text (spec 05 §5.2, decision of Gon 2026-11-14): deadline Friday 13/11/2026
+  const regras = await carregar('src/admin/leads/regras.ts', 'regras');
+  const prazo = new Date('2026-11-13T23:59:59-03:00');
+  for (const [hoje, esperado] of [['2026-11-13T10:00:00-03:00', '0 d.ú.'], ['2026-11-12T10:00:00-03:00', '1 d.ú.'],
+    ['2026-11-14T10:00:00-03:00', 'vencido'], ['2026-11-15T10:00:00-03:00', 'vencido'], ['2026-11-16T10:00:00-03:00', 'vencido há 1 d.ú.'],
+    ['2026-11-18T10:00:00-03:00', 'vencido há 3 d.ú.']]) {
+    const r = regras.restanteTxt(new Date(hoje), prazo);
+    if (r !== esperado) { erros++; console.error(`restanteTxt ${hoje}: "${r}" != "${esperado}"`); }
+  }
   if (erros) { console.error(`FAIL: ${erros} difference(s)`); process.exit(1); }
   console.log(`ok: ${dias} days compared; remaining business days match the pipeline deadlines for 2026–2027`);
 } finally {
