@@ -1,9 +1,10 @@
-// Leads module (spec 05, §5). Phase 2: the list at /admin/leads (map, method window, filters, ordering),
-// read in real time from Firestore. The detail (/admin/leads/{fichaId}) and the dossier
-// (/admin/leads/{fichaId}/dossie) are placeholders until phases 3 and 4.
+// Leads module (spec 05, §5). The list at /admin/leads (map, method window, filters, ordering) and the
+// read-only detail at /admin/leads/{fichaId}, both read in real time from Firestore. The dossier
+// (/admin/leads/{fichaId}/dossie) is a placeholder until phase 4; the actions arrive in phase 5.
 import { collection, getCountFromServer, query, where, type Firestore } from 'firebase/firestore';
 import type { ModuloContexto } from '../registro';
 import { ouvirFichas, versaoPesos } from './dados';
+import { renderFicha } from './ficha';
 import { desenhar, ligarControles, montarLista, type EstadoLista } from './lista';
 import type { FichaVM } from './regras';
 
@@ -27,6 +28,7 @@ const esc = (s: string) =>
 
 export function render(alvo: HTMLElement, caminho: string, ctx: ModuloContexto): void | (() => void) {
   const partes = caminho.replace(/^\/admin\/leads\/?/, '').split('/').filter(Boolean);
+  if (partes.length === 1) return renderFicha(alvo, decodeURIComponent(partes[0]), ctx.db);
   if (partes.length) return emConstrucao(alvo, partes);
 
   montarLista(alvo);
@@ -110,14 +112,14 @@ function ligarAcordeoes(raiz: HTMLElement) {
   });
 }
 
-/** Phase 1 placeholder for /admin/leads/{fichaId} and /admin/leads/{fichaId}/dossie. */
+/** Placeholder for /admin/leads/{fichaId}/dossie until phase 4. */
 function emConstrucao(alvo: HTMLElement, partes: string[]) {
   const [fichaId, sub] = partes;
   const titulo = sub === 'dossie' ? 'Dossiê' : 'Ficha';
   alvo.innerHTML = `
     <div class="wrap">
       <div class="vhead">
-        <a class="crumb" href="/admin/leads" data-interno>← Leads</a>
+        <a class="crumb" href="${sub === 'dossie' ? `/admin/leads/${encodeURIComponent(decodeURIComponent(fichaId))}` : '/admin/leads'}" data-interno>${sub === 'dossie' ? '← Ficha' : '← Leads'}</a>
         <p class="eyebrow">Módulo · Leads</p>
         <h2 id="t-rota" tabindex="-1">${titulo}</h2>
         <p class="lead">Em construção: esta tela chega nas próximas fases do hub.</p>
