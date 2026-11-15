@@ -68,12 +68,22 @@ function marcasDaSecao(a: Analise, secao: string): Marca[] {
     }))
     .filter((m) => m.texto.trim());
 }
-function bannerHTML(a: Analise, id: string): string {
+/** Banner above the sections; `achadas` is how many open findings were underlined in the text below (spec 05 v1.17). */
+export function bannerHTML(a: Analise, id: string, achadas: number): string {
   const abertas = ((a.d.verificacao?.pendencias ?? []) as Obj[]).filter(emAberto);
-  if (!abertas.length) return '';
+  const n = abertas.length;
+  if (!n) return '';
   const nEsc = abertas.filter((p) => p.tipo === 'escopo').length;
-  return `<p class="dbanner">Esta versão tem ${abertas.length} pendência${abertas.length > 1 ? 's' : ''} da verificação em aberto${nEsc ? `, ${nEsc} de escopo` : ''}. ` +
-    `Os trechos apontados estão sublinhados; as correções sugeridas estão na <a href="/admin/leads/${encodeURIComponent(id)}" data-interno>ficha</a>.</p>`;
+  const ficha = `<a href="/admin/leads/${encodeURIComponent(id)}" data-interno>ficha</a>`;
+  const plural = n > 1;
+  const inicio = `Esta versão tem ${n} pendência${plural ? 's' : ''} da verificação em aberto${nEsc ? `, ${nEsc} de escopo` : ''}. `;
+  const resto = achadas >= n
+    ? `${plural ? 'Os trechos apontados estão sublinhados' : 'O trecho apontado está sublinhado'}; as correções sugeridas estão na ${ficha}.`
+    : (achadas === 0
+        ? `Nenhum trecho está sublinhado no texto abaixo: ${plural ? 'eles estão' : 'ele está'} no rascunho de resposta, no bloco de Enquadramento ou em passagens que o texto não traz iguais.`
+        : `${achadas} de ${n} trechos estão sublinhados no texto abaixo; ${n - achadas === 1 ? 'o outro está' : 'os demais estão'} no rascunho de resposta, no bloco de Enquadramento ou em passagens que o texto não traz iguais.`)
+      + ` Veja ${plural ? 'as pendências' : 'a pendência'} e as correções sugeridas na ${ficha}.`;
+  return `<p class="dbanner">${inicio}${resto}</p>`;
 }
 
 // ---------- Opening ----------
@@ -162,7 +172,8 @@ export function dossieHTML(d: DadosDossie): DossieHTML {
   let total = 0, achadas = 0;
   const sec = (k: string, conteudo: string) => `<section class="dsec" id="d-${k}"><p class="eb3">${k}</p><h3>${esc(TITULO[k])}</h3>${conteudo}</section>`;
   const vazia = (k: string) => `<p class="empty">${esc(secoes[k]?.motivoVazia || 'Seção vazia.')}</p>`;
-  let h = bannerHTML(a, d.id) + sec('s0', s0HTML(d, a));
+  let abertasAchadas = 0;
+  let h = sec('s0', s0HTML(d, a));
   for (const k of ['s1', 's2', 's3', 's4', 's5', 's6', 's7']) {
     const s: Obj | undefined = secoes[k];
     if (!s || s.vazia || !String(s.corpo ?? '').trim()) {
@@ -173,10 +184,11 @@ export function dossieHTML(d: DadosDossie): DossieHTML {
     const r = mdHTML(String(s.corpo), { fontes: mapa, marcas, hipotese: k === 's6' });
     total += marcas.length;
     achadas += r.achadas.filter(Boolean).length;
+    abertasAchadas += r.achadas.filter((x, i) => x && !marcas[i].aviso).length;
     h += sec(k, (k === 's6' ? aderenciaHTML(d.f) : '') + r.html + (k === 's7' ? conversaHTML(a, { fontes: mapa }) : ''));
   }
   h += sec('s8', lista.length ? fontesHTML(lista) : vazia('s8'));
-  return { indice: indiceHTML(), corpo: h, pendencias: { total, achadas } };
+  return { indice: indiceHTML(), corpo: bannerHTML(a, d.id, abertasAchadas) + h, pendencias: { total, achadas } };
 }
 
 // ---------- View ----------

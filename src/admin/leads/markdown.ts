@@ -178,7 +178,7 @@ export function renderBlocos(bs: Bloco[], ctx: Contexto): Saida {
     return /[.:]$/.test(t) ? t : null; // a label ends with a period or colon inside the bold
   };
   let emHip = false;
-  const html = bs.map((b) => {
+  const html = bs.map((b, bi) => {
     if (b.k === 'h') return `<h4 class="dsub">${renderNos(b.ns, ctx, [], 0)}</h4>`;
     const lote = b.k === 'p' ? [b.ns] : b.itens;
     const itens = lote.map((ns) => {
@@ -198,7 +198,8 @@ export function renderBlocos(bs: Bloco[], ctx: Contexto): Saida {
         const rot = b.k === 'p' ? rotuloInicial(ns) : null;
         if (rot !== null) {
           emHip = /^hip[óo]teses de alavanca\.?$/i.test(rot);
-          if (emHip && textoVisivel(ns.slice(1)).trim()) apos = TAG_HIP;
+          const seguidoDeLista = bs[bi + 1]?.k === 'ul' || bs[bi + 1]?.k === 'ol';
+          if (emHip && !seguidoDeLista && textoVisivel(ns.slice(1)).trim()) apos = TAG_HIP;
         } else if (emHip) tag = TAG_HIP;
       }
       return tag + renderNos(ns, ctx, faixas, 0, apos);
