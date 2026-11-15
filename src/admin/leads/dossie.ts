@@ -1,10 +1,13 @@
 // Dossier at /admin/leads/{fichaId}/dossie (spec 05 §5.6; guide v1.4 §5.3). Phase 4a: the reading screen –
-// opening, pendency banner, section index, s0 to s8, marks, "hipótese" tag and underlined findings. The
-// mobile section bar and the PDF come in phase 4b. Pure builders (documents in, HTML out) plus the view.
+// opening, pendency banner, section index, s0 to s8, marks, "hipótese" tag and underlined findings. Phase 4b:
+// the mobile section bar and list (painelSecoes.ts) and "Salvar PDF" (impressao.ts; the signature block and the
+// source addresses below are only visible in print). Pure builders (documents in, HTML out) plus the view.
 import type { Firestore } from 'firebase/firestore';
 import { combinacaoTxt, ehAviso, esc, horaSP, versaoDesc, type Analise, type DadosDossie } from './detalhe';
 import { ouvirDossie } from './dadosFicha';
+import { ligarImpressao, type InfoImpressao } from './impressao';
 import { mdHTML, urlSegura, type Marca } from './markdown';
+import { ligarPainelSecoes } from './painelSecoes';
 import { CARGO, CONF, ESTADO, dataLonga } from './regras';
 import { ETAPA_COLETA, MAX_PORTE, MAX_TECNOLOGIA, PEND_TIPO, PORTA, TECNOLOGIA, porteTxt } from './rotulos';
 
@@ -52,7 +55,8 @@ const fontesHTML = (lista: Fonte[]) =>
   '<ol class="fontes">' + lista.map((x) => {
     const t = x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.titulo)}</a>` : esc(x.titulo);
     const meta = [ETAPA_COLETA[x.etapa] ?? x.etapa, x.tipo, x.data].filter(Boolean).join(' · ');
-    return `<li id="f${x.n}"><b>${x.n}</b><span>${t}${meta ? `<small>${esc(meta)}</small>` : ''}</span></li>`;
+    // The full address is shown only in print (the PDF has no clickable page behind it)
+    return `<li id="f${x.n}"><b>${x.n}</b><span>${t}${meta ? `<small>${esc(meta)}</small>` : ''}${x.url ? `<small class="furl">${esc(x.url)}</small>` : ''}</span></li>`;
   }).join('') + '</ol>';
 
 // ---------- Findings ----------
@@ -155,6 +159,22 @@ function conversaHTML(a: Analise, ctx: { fontes: Map<string, number> }): string 
     (pts ? `<p><strong>Pontos de atenção</strong></p><ul>${pts}</ul>` : '');
 }
 
+// ---------- Print signature (visible only in print) ----------
+/** Closing block of the PDF; the generation date and time (`.pgen`) are filled just before printing. */
+export function assinaturaHTML(a: Analise): string {
+  const criada = a.d.criadaEm;
+  const dataAnalise = isDate(criada) ? ` · ${dataLonga(criada)} ${horaSP(criada)}` : '';
+  return '<div class="psign" aria-hidden="true">' +
+    '<p class="pbrand">GM Digital Bunker™</p>' +
+    '<p class="plema">Estratégia de tecnologia em IA para o mundo real.</p>' +
+    '<dl class="dkv">' +
+    '<dt>Gerado em</dt><dd class="pgen"></dd>' +
+    `<dt>Análise</dt><dd>${esc(a.id + dataAnalise)}</dd>` +
+    `<dt>Método</dt><dd>${esc(metodoTxt(a))}</dd>` +
+    '<dt>Domínio</dt><dd>gmdigitalbunker.com.br</dd></dl>' +
+    '<p class="pnota">Análise preliminar gerada a partir de fontes públicas e dos dados do formulário de contato. Documento de uso interno: não encaminhar ao contato.</p></div>';
+}
+
 // ---------- Body ----------
 export interface DossieHTML { indice: string; corpo: string; pendencias: { total: number; achadas: number } }
 
@@ -188,11 +208,11 @@ export function dossieHTML(d: DadosDossie): DossieHTML {
     h += sec(k, (k === 's6' ? aderenciaHTML(d.f) : '') + r.html + (k === 's7' ? conversaHTML(a, { fontes: mapa }) : ''));
   }
   h += sec('s8', lista.length ? fontesHTML(lista) : vazia('s8'));
-  return { indice: indiceHTML(), corpo: bannerHTML(a, d.id, abertasAchadas) + h, pendencias: { total, achadas } };
+  return { indice: indiceHTML(), corpo: bannerHTML(a, d.id, abertasAchadas) + h + assinaturaHTML(a), pendencias: { total, achadas } };
 }
 
 // ---------- View ----------
-function rolarPara(el: HTMLElement | null, reduz: boolean): void {
+export function rolarPara(el: HTMLElement | null, reduz: boolean): void {
   if (!el) return;
   // window.scrollTo, never scrollIntoView (spec 05 §5.6, scrolling rules)
   const cab = document.querySelector('header.site');
@@ -203,11 +223,13 @@ function rolarPara(el: HTMLElement | null, reduz: boolean): void {
 export function montarDossie(alvo: HTMLElement, id: string): void {
   alvo.innerHTML = `
     <div class="wrap">
+      <div class="pmast" aria-hidden="true"><span class="pbrand">GM Digital Bunker™</span><span class="pmeta">Dossiê de análise preliminar · <span class="pdate"></span> · confidencial · uso interno</span></div>
       <div class="vhead">
         <a class="crumb" href="/admin/leads/${encodeURIComponent(id)}" data-interno>← Ficha</a>
         <p class="eyebrow" id="dEb">Dossiê</p>
         <h2 id="t-rota" tabindex="-1">Carregando o dossiê…</h2>
         <p class="lead" id="dLead"></p>
+        <div class="dact" id="dAct" hidden><button class="btn secondary" type="button" data-act="pdf">Salvar PDF</button></div>
       </div>
       <div class="dos">
         <nav class="dindex" id="dIndice" aria-label="Seções do dossiê" hidden></nav>
@@ -226,10 +248,12 @@ export function desenharDossie(alvo: HTMLElement, d: DadosDossie | null): Dossie
   const corpo = alvo.querySelector<HTMLElement>('#dCorpo')!;
   if (!d) {
     indice.hidden = true;
+    alvo.querySelector<HTMLElement>('#dAct')!.hidden = true;
     corpo.innerHTML = '<p class="empty" style="padding-bottom:var(--space-16)"><a href="/admin/leads" data-interno>Voltar à lista de leads</a></p>';
     return null;
   }
   const r = dossieHTML(d);
+  alvo.querySelector<HTMLElement>('#dAct')!.hidden = !analiseAtual(d);
   indice.innerHTML = r.indice;
   indice.hidden = !r.indice;
   corpo.innerHTML = r.corpo;
@@ -239,6 +263,13 @@ export function desenharDossie(alvo: HTMLElement, d: DadosDossie | null): Dossie
 export function renderDossie(alvo: HTMLElement, id: string, db: Firestore): () => void {
   montarDossie(alvo, id);
   const reduz = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // "Salvar PDF" on the ficha opens this screen with ?imprimir=1: print once the first draw is done, then
+  // drop the flag from the address so that a reload does not print again
+  let pedirImpressao = new URLSearchParams(location.search).get('imprimir') === '1';
+  if (pedirImpressao) history.replaceState(history.state, '', location.pathname);
+  let atual: InfoImpressao | null = null;
+  const imp = ligarImpressao(alvo, () => atual);
+  const painel = ligarPainelSecoes(alvo, (el) => rolarPara(el, reduz));
   // Index links and source marks scroll the window to the target; the address does not change
   const onClick = (e: MouseEvent) => {
     const a = (e.target as Element).closest<HTMLElement>('[data-to]');
@@ -249,11 +280,18 @@ export function renderDossie(alvo: HTMLElement, id: string, db: Firestore): () =
   alvo.addEventListener('click', onClick);
   const parar = ouvirDossie(
     db, id,
-    (d) => { desenharDossie(alvo, d); },
+    (d) => {
+      desenharDossie(alvo, d);
+      const a = d && analiseAtual(d);
+      atual = d && a ? { empresa: String(d.f.original?.empresa || d.f.original?.nome || 'ficha'), versao: a.id } : null;
+      if (pedirImpressao) { pedirImpressao = false; if (atual) void imp.imprimir(); }
+    },
     () => {
+      atual = null;
       alvo.querySelector('#t-rota')!.textContent = 'Dossiê';
+      alvo.querySelector<HTMLElement>('#dAct')!.hidden = true;
       alvo.querySelector('#dCorpo')!.innerHTML = `<p class="empty" style="padding-bottom:var(--space-16)">Não foi possível ler o dossiê da ficha ${esc(id)}. Recarregue a página; se persistir, verifique a sessão.</p>`;
     },
   );
-  return () => { parar(); alvo.removeEventListener('click', onClick); };
+  return () => { parar(); painel(); imp.soltar(); alvo.removeEventListener('click', onClick); };
 }

@@ -7,6 +7,7 @@ import {
   type User,
 } from 'firebase/auth';
 import { getFirestore, doc, getDoc, type Firestore } from 'firebase/firestore';
+import { voltarConsumido } from './historico';
 import { MODULOS, type Modulo } from './registro';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -74,7 +75,7 @@ function iniciar(opcoes: FirebaseOptions) {
     e.preventDefault();
     ir(a.getAttribute('href') || '/admin');
   });
-  addEventListener('popstate', () => { if (auth.currentUser) rotear(db); });
+  addEventListener('popstate', () => { if (voltarConsumido()) return; if (auth.currentUser) rotear(db); });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();

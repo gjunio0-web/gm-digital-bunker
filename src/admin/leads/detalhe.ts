@@ -181,7 +181,9 @@ function avaliacaoHTML(d: DadosFicha, a: Analise | null): string {
   const f = d.f;
   let h = '<div class="panel"><h3>Avaliação preliminar</h3>';
   if (a) {
-    h += `<div class="actions"><a class="btn secondary" href="/admin/leads/${encodeURIComponent(d.id)}/dossie" data-interno>Abrir dossiê completo</a></div>` +
+    h += `<div class="actions"><a class="btn secondary" href="/admin/leads/${encodeURIComponent(d.id)}/dossie" data-interno>Abrir dossiê completo</a>` +
+      // "Salvar PDF" opens the dossier, which prints once drawn (spec 05 v1.18)
+      `<a class="btn secondary" href="/admin/leads/${encodeURIComponent(d.id)}/dossie?imprimir=1" data-interno>Salvar PDF</a></div>` +
       '<div class="facc">' +
       `<details data-k="resumo"><summary><span>Resumo executivo<small>análise ${esc(a.id)} · até 80 palavras</small></span><span class="pl" aria-hidden="true"></span></summary><div class="body"><div><p>${esc(a.d.resumoExecutivo ?? 'Sem resumo nesta versão.')}</p></div></div></details>` +
       `<details data-k="rascunho"><summary><span>Rascunho de resposta<small>análise ${esc(a.id)} · até 120 palavras</small></span><span class="pl" aria-hidden="true"></span></summary><div class="body"><div><p class="draft">${esc(rascunhoTexto(a.d.rascunhoResposta) || 'Sem rascunho nesta versão.')}</p>` +

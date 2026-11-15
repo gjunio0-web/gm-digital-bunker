@@ -213,13 +213,45 @@
     opacity:0; pointer-events:none; transition:opacity var(--dur-base) var(--ease-out)}
   .adm .dbar.on{opacity:1; pointer-events:auto}
   .adm .dbar .btn{width:100%; min-height:48px}
-  .adm #dossie .dbody{padding-bottom:calc(48px + var(--space-12))}
+  .adm .dos .dbody{padding-bottom:calc(48px + var(--space-12))}
 }
+/* Elements that exist only on paper (masthead, signature block, full source addresses) */
+.adm .pmast,.adm .psign,.adm .fontes .furl{display:none}
+@media (prefers-reduced-motion:reduce){ .adm .dbar,.adm .secp,.adm .secp-veil{transition:none !important} }
+/* Print / "Salvar PDF" (spec 05 v1.18, §5.6): A4, the light Design System theme on white paper whatever the screen theme.
+   The running header and footer are page margin boxes written by impressao.ts just before printing. */
 @media print{
-  .adm header.site,.adm .dbar,.adm footer.site,.adm .view:not(#dossie),.adm .crumb,.adm .dact,.adm .dindex,body.adm::before{display:none !important}
-  .adm #dossie{display:block !important}
-  .adm .dos{grid-template-columns:1fr}
-  body.adm{background:#fff; color:#111418}
+  html:root:root, html:root:root[data-theme]{ color-scheme:light; --bg:#fff; --surface:#fff; --surface-raised:#fff; --line:#dadde2; --line-strong:#808792;
+    --ink:#111418; --ink-body:#2b3038; --muted:#5a626e; --accent:#1a56db; --accent-hover:#1544b0 }
+  body.adm.dos-on{ background:#fff; color:#2b3038; font-size:10pt; -webkit-print-color-adjust:exact; print-color-adjust:exact }
+  body.adm.dos-on::before,.adm.dos-on header.site,.adm.dos-on footer.site,.adm.dos-on .dbar,.adm.dos-on .secp,.adm.dos-on .secp-veil,
+  .adm.dos-on .crumb,.adm.dos-on .dact,.adm.dos-on .dindex,.adm.dos-on .skip{display:none !important}
+  .adm.dos-on .wrap{max-width:none; padding-left:0; padding-right:0}
+  .adm.dos-on .dos{display:block; padding-bottom:0}
+  .adm.dos-on .dbody{max-width:none; padding-bottom:0}
+  .adm.dos-on .pmast{display:flex; justify-content:space-between; align-items:baseline; gap:8mm; padding-bottom:3mm; border-bottom:1.5pt solid var(--ink)}
+  .adm .pbrand{font:600 14pt/1 var(--serif); font-variation-settings:'opsz' 24; color:var(--ink); margin:0}
+  .adm .pmeta{font:500 7.5pt/1.4 var(--mono); letter-spacing:.04em; color:var(--muted); text-align:right}
+  .adm.dos-on .vhead{padding-block:7mm 6mm; break-after:avoid}
+  .adm.dos-on .vhead .eyebrow{font-size:8pt}
+  .adm.dos-on .vhead h2{font-size:24pt; margin-top:2mm}
+  .adm.dos-on .vhead .lead{font-size:11.5pt; margin-top:3mm; max-width:none}
+  .adm.dos-on .dbanner{font-size:9.5pt; padding:3.5mm 4mm; margin-bottom:5mm; break-inside:avoid}
+  .adm.dos-on .dsec{padding-block:5mm}
+  .adm.dos-on .dsec p,.adm.dos-on .dsec li{font-size:10pt; line-height:1.55; orphans:3; widows:3}
+  .adm.dos-on .dsec h3{font-size:14pt; margin-bottom:3mm}
+  .adm.dos-on .dsec .eb3,.adm.dos-on .dsec h4.dsub,.adm.dos-on .dkv dt{font-size:7.5pt}
+  .adm.dos-on .dkv dd{font-size:10pt}
+  .adm.dos-on .dsec .eb3,.adm.dos-on .dsec h3,.adm.dos-on .dsec h4.dsub{break-after:avoid}
+  .adm.dos-on .dsec li,.adm.dos-on .dkv > *{break-inside:avoid}
+  .adm.dos-on .fref,.adm.dos-on .inf,.adm.dos-on .met,.adm.dos-on .hip,.adm.dos-on .flagnote{font-size:7pt}
+  .adm.dos-on .fontes li{font-size:8.5pt; break-inside:avoid}
+  .adm.dos-on .fontes li span small{font-size:7.5pt}
+  .adm.dos-on .fontes .furl{display:block; color:var(--accent)}
+  .adm.dos-on .psign{display:block; margin-top:8mm; padding-top:4mm; border-top:1.5pt solid var(--ink); break-inside:avoid}
+  .adm.dos-on .psign .plema{margin:1.5mm 0 4mm; font:400 italic 10pt/1.4 var(--serif); color:var(--ink-body)}
+  .adm.dos-on .psign .pnota{margin:4mm 0 0; font-size:8.5pt; line-height:1.5; color:var(--muted)}
+  .adm.dos-on .psign .dkv dd{font-size:9pt}
 }
 /* Portfolio map accordion: open on load, hideable */
 .adm .mapa summary{display:flex; align-items:center; justify-content:space-between; gap:var(--space-4); cursor:pointer; list-style:none}
