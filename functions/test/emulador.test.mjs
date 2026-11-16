@@ -372,6 +372,9 @@ test('vigiar release: held fichas leave in order of retencao.desde, count in the
   const ficha = (retencao) => ({ estado: 'qualificada', estadoEm: ts('2026-11-19T12:00:00Z'), recebidaEm: ts('2026-11-19T12:00:00Z'), lead: { quadrante: 'priorizar' }, retencao });
   const teto = (desde, libera) => ({ motivo: 'teto_diario', desde: ts(desde), liberacaoPrevista: ts(libera) });
   try {
+    // Fichas held by the earlier tests (autoAnalisar off, daily ceiling) are also in qualificada with retencao and
+    // would be released or postponed here: start from a clean state.
+    for (const d of (await db.collection('fichas').where('estado', '==', 'qualificada').get()).docs) await db.recursiveDelete(d.ref);
     // The ceiling of 2 fits the two oldest; the newest has the first id alphabetically, so the order is not the id order.
     await db.doc('fichas/lib-zeta-antiga').set(ficha(teto('2026-11-19T10:00:00Z', '2026-11-20T03:00:00Z')));
     await db.doc('fichas/lib-meio').set(ficha(teto('2026-11-19T14:00:00Z', '2026-11-20T03:00:00Z')));
