@@ -15,7 +15,6 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 
 const vistas = { carregando: $('carregando'), entrada: $('entrada'), modulos: $('modulos'), rota: $('rota') };
 const sairBtn = $<HTMLButtonElement>('sair');
-const marca = $<HTMLAnchorElement>('brandlink');
 const form = $<HTMLFormElement>('loginform');
 const erroLogin = $<HTMLParagraphElement>('login-erro');
 const entrarBtn = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
@@ -131,7 +130,6 @@ function iniciar(opcoes: FirebaseOptions) {
     form.reset();
     erroLogin.hidden = true;
     sairBtn.hidden = false;
-    marca.setAttribute('href', '/admin');
     rotear(db);
   });
 
