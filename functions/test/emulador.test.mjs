@@ -14,7 +14,8 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { leMetodo } from '../lib/metodo.js';
 import { ARQUIVOS_METODO } from '../lib/metodoArquivos.js';
 import { reivindicaVerificacao } from '../lib/reivindicacao.js';
-import { diaDeSaoPaulo } from '../lib/graduar.js';
+import { diaDeSaoPaulo, viradaDoDia } from '../lib/graduar.js';
+import { liberaRetidas } from '../lib/vigiar.js';
 
 const PROJETO = 'gmdb-qualidade';
 // The in-process admin app must talk to the emulators, never to the real project.
@@ -326,7 +327,12 @@ test('autoAnalisar off: a ficha sent to analysis by the triagem stays in qualifi
     const f = await ate(id, (x) => estado('qualificada')(x) && x.lead);
     assert.equal(mapa(f.lead).quadrante.stringValue, 'priorizar');
     await espera(1500);
-    assert.equal((await le(`fichas/${id}`)).fields.estado.stringValue, 'qualificada');
+    const depois = (await le(`fichas/${id}`)).fields;
+    assert.equal(depois.estado.stringValue, 'qualificada');
+    // Held by autoAnalisar off: no release time, only the admin action releases it (spec 01, section 3).
+    assert.equal(mapa(depois.retencao).motivo.stringValue, 'auto_desligada');
+    assert.ok(mapa(depois.retencao).desde.timestampValue);
+    assert.ok('nullValue' in mapa(depois.retencao).liberacaoPrevista);
     assert.equal((await lista(`fichas/${id}/coleta`)).length, 2);
   } finally {
     await grava('config/pipeline', { autoAnalisar: { booleanValue: true } });
@@ -345,12 +351,71 @@ test('daily ceiling: with the count of the day at the ceiling, a ficha for analy
     assert.equal((await le(`fichas/${id}`)).fields.estado.stringValue, 'qualificada');
     const ev = (await eventos(id)).find((e) => e.tipo.stringValue === 'teto_diario');
     assert.ok(ev, 'teto_diario event');
+    const ret = mapa((await le(`fichas/${id}`)).fields.retencao);
+    assert.equal(ret.motivo.stringValue, 'teto_diario');
+    assert.ok(ret.desde.timestampValue);
+    assert.equal(Date.parse(ret.liberacaoPrevista.timestampValue), viradaDoDia(dia).toMillis());
     const c = (await le(`controle/analises-${dia}`)).fields;
     assert.equal(Number(c.n.integerValue), n);
     assert.ok(Number(c.retidas.integerValue) >= 1);
     assert.equal(c.avisado.booleanValue, true);
   } finally {
     await grava('config/pipeline', { maxAnalisesPorDia: { integerValue: '100' } });
+  }
+});
+
+test('vigiar release: held fichas leave in order of retencao.desde, count in the new day, and the rest wait for the next midnight', { timeout: 60_000 }, async () => {
+  const app = initializeApp({ projectId: PROJETO }, 'liberacao');
+  const db = getFirestore(app);
+  const ts = (iso) => Timestamp.fromDate(new Date(iso));
+  const ids = ['lib-zeta-antiga', 'lib-meio', 'lib-alfa-nova', 'lib-auto', 'lib-futura'];
+  const ficha = (retencao) => ({ estado: 'qualificada', estadoEm: ts('2026-11-19T12:00:00Z'), recebidaEm: ts('2026-11-19T12:00:00Z'), lead: { quadrante: 'priorizar' }, retencao });
+  const teto = (desde, libera) => ({ motivo: 'teto_diario', desde: ts(desde), liberacaoPrevista: ts(libera) });
+  try {
+    // The ceiling of 2 fits the two oldest; the newest has the first id alphabetically, so the order is not the id order.
+    await db.doc('fichas/lib-zeta-antiga').set(ficha(teto('2026-11-19T10:00:00Z', '2026-11-20T03:00:00Z')));
+    await db.doc('fichas/lib-meio').set(ficha(teto('2026-11-19T14:00:00Z', '2026-11-20T03:00:00Z')));
+    await db.doc('fichas/lib-alfa-nova').set(ficha(teto('2026-11-19T18:00:00Z', '2026-11-20T03:00:00Z')));
+    await db.doc('fichas/lib-auto').set(ficha({ motivo: 'auto_desligada', desde: ts('2026-11-18T10:00:00Z'), liberacaoPrevista: null }));
+    await db.doc('fichas/lib-futura').set(ficha(teto('2026-11-20T09:00:00Z', '2026-11-21T03:00:00Z')));
+
+    const agora = new Date('2026-11-20T12:00:00Z');
+    assert.deepEqual(await liberaRetidas(db, { maxAnalisesPorDia: 2 }, agora), { liberadas: 2, adiadas: 1 });
+    const le1 = async (id) => (await db.doc(`fichas/${id}`).get()).data();
+    for (const id of ['lib-zeta-antiga', 'lib-meio']) {
+      const f = await le1(id);
+      assert.equal(f.estado, 'coletando');
+      assert.equal(f.retencao, null);
+      const ev = (await db.collection(`fichas/${id}/eventos`).get()).docs.map((d) => d.data()).find((e) => e.tipo === 'retencao_liberada');
+      assert.deepEqual(ev.detalhe, { motivo: 'teto_diario', modo: 'automatica' });
+      assert.equal(ev.ator.id, 'vigiar');
+    }
+    // Did not fit: still held, release moved to the next midnight, no new event.
+    const adiada = await le1('lib-alfa-nova');
+    assert.equal(adiada.estado, 'qualificada');
+    assert.equal(adiada.retencao.liberacaoPrevista.toMillis(), viradaDoDia('2026-11-20').toMillis());
+    assert.equal((await db.collection('fichas/lib-alfa-nova/eventos').get()).size, 0);
+    // auto_desligada and a release time still in the future are left alone.
+    assert.equal((await le1('lib-auto')).retencao.motivo, 'auto_desligada');
+    assert.equal((await le1('lib-auto')).estado, 'qualificada');
+    assert.equal((await le1('lib-futura')).estado, 'qualificada');
+    assert.equal((await db.doc('controle/analises-2026-11-20').get()).data().n, 2);
+
+    // Same run again: nothing more fits today and nothing is counted twice.
+    assert.deepEqual(await liberaRetidas(db, { maxAnalisesPorDia: 2 }, agora), { liberadas: 0, adiadas: 1 });
+    assert.equal((await db.doc('controle/analises-2026-11-20').get()).data().n, 2);
+
+    // Next day, no ceiling: the held ficha leaves without touching the counter.
+    assert.deepEqual(await liberaRetidas(db, { maxAnalisesPorDia: null }, new Date('2026-11-21T12:00:00Z')), { liberadas: 2, adiadas: 0 });
+    assert.equal((await le1('lib-alfa-nova')).estado, 'coletando');
+    assert.equal((await le1('lib-futura')).estado, 'coletando');
+    assert.equal((await db.doc('controle/analises-2026-11-21').get()).exists, false);
+    assert.equal((await le1('lib-auto')).estado, 'qualificada');
+  } finally {
+    await espera(1000);
+    for (const id of ids) await db.recursiveDelete(db.doc(`fichas/${id}`)).catch(() => {});
+    for (const d of ['2026-11-20', '2026-11-21']) await db.doc(`controle/analises-${d}`).delete().catch(() => {});
+    await deleteApp(app);
   }
 });
 

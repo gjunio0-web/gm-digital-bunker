@@ -1,20 +1,63 @@
-// vigiar – every 30 minutes (phase 6, item 3c; decision of Gon, 8/11/2026): fichas in coletando or sintetizando
+// vigiar – every 30 minutes (phase 6, item 3c; decision of Gon, 8/11/2026; spec 01 v0.25, item 4.2):
+// 1. releases the fichas held by the daily ceiling (retencao.motivo teto_diario) whose liberacaoPrevista has
+//    passed, oldest retencao.desde first, counting each one in the ceiling of the new day (spec 01, section 3);
+// 2. fichas in coleta_minima, coletando or sintetizando
 // (the verification runs with the ficha still in sintetizando) without an error and with estadoEm older than
 // config/pipeline.prazoParadaMin get erro {etapa: "interrupcao:<estado>"} and the "parada" event, and one e-mail
 // lists them. Nothing is run again by itself. It also covers events dropped with maxInstances and retry false
 // (a ficha that never got its trigger stays in the state and is caught here).
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger } from 'firebase-functions';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { REGIAO, SMTP2GO_API_KEY, URL_BASE_POR_PROJETO } from './config.js';
+import { FieldValue, getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
+import { REGIAO, SMTP2GO_API_KEY, URL_BASE_POR_PROJETO, type Pipeline } from './config.js';
+import { diaDeSaoPaulo, viradaDoDia } from './graduar.js';
 import { lePipeline } from './pipeline.js';
 import { avisoParadas } from './email.js';
 
-export const ESTADOS_EM_CURSO = ['coletando', 'sintetizando'] as const;
+export const ESTADOS_EM_CURSO = ['coleta_minima', 'coletando', 'sintetizando'] as const;
 
 // Fichas stopped beyond the deadline; filtered in code (few fichas in progress), so no composite index.
 export function paradas(fichas: { id: string; estado: string; estadoEm: Date; erro: unknown }[], agora: Date, prazoMin: number) {
   return fichas.filter((f) => (ESTADOS_EM_CURSO as readonly string[]).includes(f.estado) && !f.erro && agora.getTime() - f.estadoEm.getTime() > prazoMin * 60_000);
+}
+
+// Releases the fichas held by the daily ceiling whose release time has passed (spec 01, section 3). One
+// transaction per ficha, oldest first; a ficha that no longer fits in the ceiling of the new day stays held
+// and its liberacaoPrevista moves to the next midnight (no new teto_diario event and no new `retidas` count).
+export async function liberaRetidas(db: Firestore, p: Pipeline, agora = new Date()): Promise<{ liberadas: number; adiadas: number }> {
+  const dia = diaDeSaoPaulo(agora);
+  const contador = db.collection('controle').doc(`analises-${dia}`);
+  // Filtered in code (few held fichas), so no composite index.
+  const q = await db.collection('fichas').where('estado', '==', 'qualificada').get();
+  const vencidas = q.docs
+    .filter((d) => {
+      const r = d.get('retencao');
+      return r?.motivo === 'teto_diario' && r.liberacaoPrevista && (r.liberacaoPrevista as Timestamp).toMillis() <= agora.getTime();
+    })
+    .sort((a, b) => (a.get('retencao.desde') as Timestamp).toMillis() - (b.get('retencao.desde') as Timestamp).toMillis());
+  let liberadas = 0;
+  let adiadas = 0;
+  for (const d of vencidas) {
+    const resultado = await db.runTransaction(async (tx) => {
+      const atual = (await tx.get(d.ref)).data();
+      const r = atual?.retencao;
+      // Only if nothing changed since the read (the admin may have released it meanwhile).
+      if (!atual || atual.estado !== 'qualificada' || !atual.lead || r?.motivo !== 'teto_diario' || (r.liberacaoPrevista as Timestamp).toMillis() > agora.getTime()) return 'ignorada';
+      const conta = p.maxAnalisesPorDia !== null ? (await tx.get(contador)).data() ?? {} : null;
+      const em = Timestamp.fromDate(agora);
+      if (conta && (conta.n ?? 0) >= (p.maxAnalisesPorDia ?? 0)) {
+        tx.update(d.ref, { 'retencao.liberacaoPrevista': viradaDoDia(dia) });
+        return 'adiada';
+      }
+      if (conta) tx.set(contador, { dia, n: FieldValue.increment(1), atualizadoEm: em }, { merge: true });
+      tx.update(d.ref, { estado: 'coletando', estadoEm: em, retencao: null });
+      tx.create(d.ref.collection('eventos').doc(), { em, ator: { tipo: 'sistema', id: 'vigiar' }, tipo: 'retencao_liberada', detalhe: { motivo: 'teto_diario', modo: 'automatica' } });
+      return 'liberada';
+    });
+    if (resultado === 'liberada') liberadas++;
+    else if (resultado === 'adiada') adiadas++;
+  }
+  return { liberadas, adiadas };
 }
 
 export async function marcaParadas(agora = new Date()): Promise<{ empresa: string; estado: string; minutos: number; link: string }[]> {
@@ -44,11 +87,18 @@ export async function marcaParadas(agora = new Date()): Promise<{ empresa: strin
 export const vigiar = onSchedule(
   { region: REGIAO, schedule: '*/30 * * * *', timeZone: 'America/Sao_Paulo', secrets: [SMTP2GO_API_KEY], memory: '256MiB', timeoutSeconds: 120, maxInstances: 1 },
   async () => {
+    // A failure in the release must not stop the stalled-ficha check.
+    let liberacao = { liberadas: 0, adiadas: 0 };
+    try {
+      liberacao = await liberaRetidas(getFirestore(), await lePipeline());
+    } catch (e) {
+      logger.error('vigiar: release failed', { mensagem: String((e as Error)?.message ?? e).slice(0, 300) });
+    }
     const marcadas = await marcaParadas();
     if (marcadas.length) {
       await avisoParadas(process.env.FUNCTIONS_EMULATOR === 'true' ? '' : SMTP2GO_API_KEY.value(), marcadas).catch((e) =>
         logger.error('vigiar: notice failed', { mensagem: String((e as Error)?.message ?? e).slice(0, 300) }));
     }
-    logger.info('vigiar: done', { paradas: marcadas.length });
+    logger.info('vigiar: done', { paradas: marcadas.length, ...liberacao });
   },
 );

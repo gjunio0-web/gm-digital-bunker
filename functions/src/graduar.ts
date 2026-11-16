@@ -13,10 +13,14 @@ import { mesDe } from './qualificar.js';
 // Day in São Paulo (UTC-3, no daylight saving time since 2019), for the daily ceiling of analyses.
 export const diaDeSaoPaulo = (d: Date) => new Date(d.getTime() - 3 * 3_600_000).toISOString().slice(0, 10);
 
+// Midnight (00:00, São Paulo) that ends the day "aaaa-mm-dd": when the daily ceiling resets (spec 01, section 3).
+export const viradaDoDia = (dia: string) => Timestamp.fromMillis(Date.parse(`${dia}T00:00:00Z`) + DIA_MS + 3 * 3_600_000);
+
 // Daily ceiling (phase 6, item 4; decision of Gon, 8/11/2026): config/pipeline.maxAnalisesPorDia fichas a day go
 // from the triagem to coletando; beyond it the ficha stays in qualificada with a teto_diario event. Counted in
 // controle/analises-{aaaa-mm-dd}, inside the triagem transaction; the first ficha over the ceiling asks for the
-// notice (avisarTeto), once a day.
+// notice (avisarTeto), once a day. A ficha kept in qualificada gets `retencao` (spec 01, section 2 and 4.2.1):
+// auto_desligada (autoAnalisar off) is tested first, then teto_diario; vigiar releases the second kind.
 export async function graduaTriagem(ref: DocumentReference, p: Pipeline): Promise<{ lead: Lead; estado: string; avisarTeto: { teto: number; dia: string } | null } | null> {
   const db = getFirestore();
   const f = (await ref.get()).data();
@@ -34,6 +38,7 @@ export async function graduaTriagem(ref: DocumentReference, p: Pipeline): Promis
   const contador = db.collection('controle').doc(`analises-${dia}`);
   let estadoFinal: string = estado;
   let avisarTeto: { teto: number; dia: string } | null = null;
+  let retencao: { motivo: 'teto_diario' | 'auto_desligada'; desde: Timestamp; liberacaoPrevista: Timestamp | null } | null = null;
 
   await db.runTransaction(async (tx) => {
     const atual = (await tx.get(ref)).data();
@@ -41,9 +46,13 @@ export async function graduaTriagem(ref: DocumentReference, p: Pipeline): Promis
     if (!atual || atual.estado !== 'qualificada' || atual.lead || !(atual.estadoEm as Timestamp).isEqual(estadoEmLido)) throw new Error('graduar: ficha changed meanwhile');
     estadoFinal = estado;
     avisarTeto = null;
+    retencao = null;
+    // autoAnalisar off: the ficha meant for analysis stays in qualificada and only the admin action releases it.
+    if (estado === 'qualificada') retencao = { motivo: 'auto_desligada', desde: agora, liberacaoPrevista: null };
     if (conta) {
       if ((conta.n ?? 0) >= (p.maxAnalisesPorDia ?? 0)) {
         estadoFinal = 'qualificada';
+        retencao = { motivo: 'teto_diario', desde: agora, liberacaoPrevista: viradaDoDia(dia) };
         if (!conta.avisado) avisarTeto = { teto: p.maxAnalisesPorDia ?? 0, dia };
         tx.set(contador, { dia, retidas: FieldValue.increment(1), avisado: true, atualizadoEm: agora }, { merge: true });
         tx.create(ref.collection('eventos').doc(), { em: agora, ator: { tipo: 'sistema', id: 'graduar' }, tipo: 'teto_diario', detalhe: { teto: p.maxAnalisesPorDia, dia } });
@@ -54,6 +63,7 @@ export async function graduaTriagem(ref: DocumentReference, p: Pipeline): Promis
     tx.update(ref, {
       lead: { ...lead, acao: { ...lead.acao, prazoEm: prazo ? Timestamp.fromDate(prazo) : null }, calculadoEm: agora },
       ...(estadoFinal !== 'qualificada' ? { estado: estadoFinal, estadoEm: agora } : {}),
+      ...(retencao ? { retencao } : {}),
       ...(curta ? { expurgoEm: Timestamp.fromMillis(recebidaEm.toMillis() + p.prazoGuardaDiasBreve * DIA_MS) } : {}),
     });
     tx.create(ref.collection('eventos').doc(), {

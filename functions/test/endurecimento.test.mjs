@@ -3,28 +3,37 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { paradas } from '../lib/vigiar.js';
-import { diaDeSaoPaulo } from '../lib/graduar.js';
+import { diaDeSaoPaulo, viradaDoDia } from '../lib/graduar.js';
 import { ipDe } from '../lib/validacao.js';
 import { semPreco } from '../lib/uso.js';
 
 const agora = new Date('2026-11-08T15:00:00Z');
 const ha = (min) => new Date(agora.getTime() - min * 60_000);
 
-test('paradas: only fichas in coletando or sintetizando, past the deadline and without an error', () => {
+test('paradas: only fichas in coleta_minima, coletando or sintetizando, past the deadline and without an error', () => {
   const fichas = [
+    { id: 'm', estado: 'coleta_minima', estadoEm: ha(45), erro: null },
+    { id: 'n', estado: 'coleta_minima', estadoEm: ha(10), erro: null },
+    { id: 'o', estado: 'coleta_minima', estadoEm: ha(200), erro: { etapa: 'interrupcao:coleta_minima' } },
     { id: 'a', estado: 'coletando', estadoEm: ha(31), erro: null },
     { id: 'b', estado: 'sintetizando', estadoEm: ha(90), erro: null },
     { id: 'c', estado: 'sintetizando', estadoEm: ha(29), erro: null },
     { id: 'd', estado: 'coletando', estadoEm: ha(120), erro: { etapa: 'interrupcao:coletando' } },
     { id: 'e', estado: 'analise_pronta', estadoEm: ha(500), erro: null },
   ];
-  assert.deepEqual(paradas(fichas, agora, 30).map((f) => f.id), ['a', 'b']);
+  assert.deepEqual(paradas(fichas, agora, 30).map((f) => f.id), ['m', 'a', 'b']);
   assert.deepEqual(paradas(fichas, agora, 100).map((f) => f.id), []);
 });
 
 test('diaDeSaoPaulo: the day changes at 03:00 UTC', () => {
   assert.equal(diaDeSaoPaulo(new Date('2026-11-09T02:59:00Z')), '2026-11-08');
   assert.equal(diaDeSaoPaulo(new Date('2026-11-09T03:00:00Z')), '2026-11-09');
+});
+
+test('viradaDoDia: midnight in São Paulo that ends the day, when the daily ceiling resets', () => {
+  assert.equal(viradaDoDia('2026-11-20').toDate().toISOString(), '2026-11-21T03:00:00.000Z');
+  assert.equal(viradaDoDia('2026-12-31').toDate().toISOString(), '2027-01-01T03:00:00.000Z');
+  assert.equal(diaDeSaoPaulo(viradaDoDia('2026-11-20').toDate()), '2026-11-21');
 });
 
 test('ipDe: the last X-Forwarded-For entry, the one appended by the Google front end; req.ip without the header', () => {
