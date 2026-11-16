@@ -85,7 +85,7 @@ export const verificar = onDocumentCreated(
       const verifica = (t: VersaoTextos): AnaliseVerificada => ({
         secoes: t.secoes, resumoExecutivo: t.resumoExecutivo, rascunhoResposta: t.rascunhoResposta, enquadramento: t.enquadramento?.detalhe ?? null,
         conversa: t.conversa, nome, lang: f.original?.lang ?? 'pt-BR',
-        cnpjConfirmado: coleta.empresa_registro.status === 'concluida' && (coleta.empresa_registro.conteudo as any)?.confirmado === true,
+        cnpjConfirmado: Boolean(coleta.empresa_registro.usavel) && (coleta.empresa_registro.conteudo as any)?.confirmado === true,
       });
 
       // cnpj_a_confirmar is applied by the code (spec 02 v0.16, 4.1): "CNPJ a confirmar." as the last paragraph

@@ -4,6 +4,7 @@
 // calculation serves both moments; in "triagem" the items that depend on stages not yet run are 0
 // and carry their mark. Decisions of Gon of 6/11/2026 for the cases the spec 04 table does not cover
 // are marked "decision 6/11"; spec 04 v0.12 records them.
+import { etapaUsavel } from './coleta/preservacao.js';
 
 export type Momento = 'triagem' | 'analise';
 export type Quadrante = 'priorizar' | 'qualificar' | 'nutrir' | 'declinar';
@@ -377,7 +378,7 @@ export function porteLegalDe(porte: unknown): PorteLegal | null {
 // --- Inputs of the triagem from the stored documents (spec 04, section 2.1) ---------------------
 
 type Doc = Record<string, any> | undefined;
-const grauDoBloco = (d: Doc): GrauConfianca | null => (d?.status === 'concluida' ? (d.confianca?.grau ?? null) : d ? 'baixa' : null);
+const grauDoBloco = (d: Doc): GrauConfianca | null => (etapaUsavel(d) ? (d.confianca?.grau ?? null) : d ? 'baixa' : null);
 
 // Legal size of the chosen CNPJ: the BrasilAPI record the code stored, else the model's field.
 export function porteDoRegistro(registro: Doc): PorteLegal | null {
@@ -394,7 +395,7 @@ export function estimativaFuncionarios(digital: Doc, pessoas: Doc, momento: Mome
   // Documents written before the normalization keep the raw Apollo number in insumosCodigo.
   const apollo = fe && typeof fe === 'object' ? numero(fe.maximo) : numero(digital?.insumosCodigo?.apolloFuncionarios);
   if (apollo !== null) return { funcionarios: apollo, fonteFuncionarios: 'apollo' };
-  const doPessoas = momento === 'analise' && pessoas?.status === 'concluida' ? numero(pessoas.conteudo?.empresa?.funcionariosEstimados?.maximo) : null;
+  const doPessoas = momento === 'analise' && etapaUsavel(pessoas) ? numero(pessoas.conteudo?.empresa?.funcionariosEstimados?.maximo) : null;
   if (doPessoas !== null) return { funcionarios: doPessoas, fonteFuncionarios: 'pessoas' };
   return { funcionarios: null, fonteFuncionarios: null };
 }
@@ -409,7 +410,7 @@ export function entradaTriagem(ficha: Record<string, any>, digital: Doc, registr
   const q = ficha.qualificacao ?? {};
   const cm = q.classificacaoMensagem ?? {};
   const cd = digital?.insumosCodigo ?? {};
-  const cnpjConfirmado = registro?.status === 'concluida' && registro.conteudo?.confirmado === true;
+  const cnpjConfirmado = etapaUsavel(registro) && registro.conteudo?.confirmado === true;
   return {
     momento: 'triagem',
     spam: q.decisao === 'descartar',
@@ -446,7 +447,7 @@ export function entradaTriagem(ficha: Record<string, any>, digital: Doc, registr
 // News of the last 12 months about expansion, fundraising or product (axis 3), counted only with a
 // date (AAAA-MM) within 12 months of the analysis; undated items are not counted.
 export function noticiaRecente(noticias: Doc, momento: Date): boolean | null {
-  if (noticias?.status !== 'concluida') return null;
+  if (!etapaUsavel(noticias)) return null;
   const itens = (noticias.conteudo?.itens ?? []) as { data?: string | null; tema?: string }[];
   const limite = new Date(Date.UTC(momento.getUTCFullYear() - 1, momento.getUTCMonth(), 1));
   return itens.some((i) => {
@@ -458,7 +459,7 @@ export function noticiaRecente(noticias: Doc, momento: Date): boolean | null {
 
 const vagasAbertas = (digital: Doc, pessoas: Doc) =>
   digital?.conteudo?.vagasNoSite?.ha === true || digital?.conteudo?.vagasNoSite?.ha === 'true' ||
-  (pessoas?.status === 'concluida' && Array.isArray(pessoas.conteudo?.empresa?.vagasAbertas) && pessoas.conteudo.empresa.vagasAbertas.length > 0);
+  (etapaUsavel(pessoas) && Array.isArray(pessoas.conteudo?.empresa?.vagasAbertas) && pessoas.conteudo.empresa.vagasAbertas.length > 0);
 
 export interface EnquadramentoGraduacao {
   estruturaTecnologia: { categoria: CategoriaTecnologia; evidencia: string };
@@ -480,7 +481,7 @@ export function entradaAnalise(
 ): EntradaGraduacao {
   const { empresa_digital: digital, empresa_registro: registro, empresa_pessoas: pessoas, empresa_noticias: noticias } = docs;
   const base = entradaTriagem(ficha, digital, registro);
-  const coincide = pessoas?.status === 'concluida' ? pessoas.conteudo?.signatario?.coincideComFicha : undefined;
+  const coincide = etapaUsavel(pessoas) ? pessoas.conteudo?.signatario?.coincideComFicha : undefined;
   const cargoConfirmado = coincide === true || coincide === 'true' ? 'true' : coincide === false || coincide === 'false' ? 'false' : coincide === 'indeterminado' ? 'indeterminado' : null;
   const noticia = noticiaRecente(noticias, momento);
   return {

@@ -103,7 +103,7 @@ export function montaPreservado<T>(blocos: string[], desde: T, falhouEm: T, falh
 
 // "Usable stage" (spec 03 v1.17, C5): concluida, or falhou with preservado of the whole stage. pendente and
 // executando never count, even carrying old content.
-export function etapaUsavel(d: { status?: unknown; preservado?: { blocos?: unknown } | null } | null | undefined): boolean {
+export function etapaUsavel<T extends { status?: unknown; preservado?: { blocos?: unknown } | null }>(d: T | null | undefined): d is T {
   if (!d) return false;
   if (d.status === 'concluida') return true;
   return d.status === 'falhou' && Array.isArray(d.preservado?.blocos) && (d.preservado?.blocos as unknown[]).includes('etapa');
@@ -153,7 +153,7 @@ export function preservaBlocos(novo: Parte, anterior: ParteAnterior | null | und
     if (f.desde) datas.push(f.desde);
   };
   const ta = t.apollo;
-  if (ta && ta.resultado !== 'encontrado' && ta.resultado !== 'nao_encontrado' && apolloTemDados(anterior.conteudo?.apollo)) {
+  if (apolloSeraPreservado(anterior, ta) && ta) {
     carrega('apollo', ta);
     if (blocos.includes('apollo')) insumosApollo = insumosDoApollo(anterior.insumosCodigo);
   }
@@ -195,4 +195,25 @@ export function anteriorDe(d: Record<string, unknown> | null | undefined): DocAn
     concluidoEm: d.concluidoEm as Timestamp | undefined,
     preservado: (d.preservado as Preservado<Timestamp> | null | undefined) ?? null,
   };
+}
+
+// Fixed input given to the model of empresa_digital in place of the Apollo result when the Apollo block of the previous
+// run will be kept (spec 02 v0.32): the code already knows this before the model call, because the Apollo query comes first.
+export const INSUMO_APOLLO_MANTIDO =
+  'O Apollo não pôde ser consultado nesta execução; o código mantém o dado da execução anterior; não escreva afirmação sobre o Apollo.';
+
+// True when the Apollo block of `anterior` will be carried: the query failed or was not made, and the previous run had data.
+export function apolloSeraPreservado(anterior: Pick<Parte, 'conteudo'> | null | undefined, t: Tentativa | undefined): boolean {
+  return Boolean(t) && t?.resultado !== 'encontrado' && t?.resultado !== 'nao_encontrado' && apolloTemDados(anterior?.conteudo?.apollo);
+}
+
+// Short reason without personal data for preservado.falha (spec 01): e-mails and long digit runs (CPF, CNPJ, phone) are
+// masked, line breaks collapsed, and the text cut at 200 characters.
+export function saneiaMotivo(m: unknown): string {
+  return String(m ?? '')
+    .replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g, '[e-mail]')
+    .replace(/\(?\d[\d.\-/() ]{6,}\d/g, '[número]')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 200);
 }

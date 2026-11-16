@@ -18,7 +18,7 @@ import { cnpjValido, consultaBrasilApi, type RegistroBrasilApi } from './cnpj.js
 import { consultaApify, consultaApollo, consultaHunter, type Instagram } from './fornecedores.js';
 import type { SinaisIniciais } from '../qualificacao.js';
 import { normalizaFuncionarios } from './funcionarios.js';
-import { etapaUsavel, montaPreservado, motivoDaFalha, preservaBlocos, resultadoDe, type DocAnterior, type Preservado, type Tentativa } from './preservacao.js';
+import { INSUMO_APOLLO_MANTIDO, apolloSeraPreservado, etapaUsavel, montaPreservado, motivoDaFalha, preservaBlocos, saneiaMotivo, resultadoDe, type DocAnterior, type Preservado, type Tentativa } from './preservacao.js';
 export type { DocAnterior };
 
 export interface Contexto {
@@ -219,7 +219,7 @@ async function empresaDigital(c: Contexto, t: Rastro): Promise<Envelope> {
     falhasDeLeitura: leitura?.falhas.length ? leitura.falhas : undefined,
     tecnologiasDetectadas: leitura?.tecnologias,
     cnpjsNoSite: leitura?.cnpjs,
-    apollo,
+    apollo: apolloSeraPreservado(c.anterior?.empresa_digital, tentativas.apollo) ? INSUMO_APOLLO_MANTIDO : apollo,
     instagram: instagram
       ? { ...instagram, origemPerfil: 'site' }
       : leitura?.instagram
@@ -388,7 +388,7 @@ export async function roda(c: Contexto, etapa: Etapa): Promise<void> {
     await doc.update({ status: 'concluida', ...resultado.envelope, ...extra, insumosCodigo, modelo, uso, concluidoEm: Timestamp.now(), tentativa: FieldValue.increment(1), preservado: pb ?? FieldValue.delete() });
   } else if (ant) {
     // `anterior` holds only stages that had usable content. Whole stage failed on a re-run: the previous content stays, status falhou (spec 03 7.3; a second failure keeps `desde`).
-    const pb = montaPreservado(['etapa'], ant.concluidoEm ?? Timestamp.now(), Timestamp.now(), resultado.mensagem, ant.preservado);
+    const pb = montaPreservado(['etapa'], ant.concluidoEm ?? Timestamp.now(), Timestamp.now(), saneiaMotivo(resultado.mensagem), ant.preservado);
     c.conteudos[etapa] = ant.conteudo;
     if (ant.insumosCodigo) c.codigo[etapa] = ant.insumosCodigo;
     preservado = pb.blocos;

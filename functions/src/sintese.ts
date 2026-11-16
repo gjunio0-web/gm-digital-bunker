@@ -4,6 +4,7 @@
 // and the emulator stand-ins. Pure functions: no Firebase imports, so they can be unit tested.
 import type { Lead } from './graduacao.js';
 import { DEFINICOES_TECNOLOGIA } from './qualificacao.js';
+import { etapaUsavel } from './coleta/preservacao.js';
 
 export const ETAPAS_COLETA = ['empresa_registro', 'empresa_digital', 'empresa_pessoas', 'empresa_noticias', 'setor', 'mercado'] as const;
 export type EtapaColeta = (typeof ETAPAS_COLETA)[number];
@@ -65,7 +66,9 @@ const normaTitulo = (t: unknown) => (typeof t === 'string' ? t.trim().toLocaleLo
 export const tituloConfere = (s: SecaoModelo, t: unknown) => normaTitulo(t) === normaTitulo(TITULOS[s]);
 
 export interface FonteColeta { url: string; titulo?: string; tipo?: string; consultadoEm?: string }
-export interface BlocoColeta { status: string | null; conteudo: unknown; afirmacoes: unknown[]; fontes: FonteColeta[] }
+// usavel: concluida, or falhou with the whole stage preserved (spec 03 7.3). anterior: what a re-run kept of the previous
+// run (preservado), with the original consultation date (ISO), for the `anterior` attribute of <coleta> (spec 02 v0.28).
+export interface BlocoColeta { status: string | null; conteudo: unknown; afirmacoes: unknown[]; fontes: FonteColeta[]; usavel?: boolean; anterior?: { blocos: string[]; desde: string | null } }
 export type Coleta = Record<EtapaColeta, BlocoColeta>;
 
 // Stored stage documents reduced to what the synthesis receives (spec 02, section 3: conteudo,
@@ -73,11 +76,16 @@ export type Coleta = Record<EtapaColeta, BlocoColeta>;
 export function coletaDe(docs: Partial<Record<EtapaColeta, Record<string, any> | undefined>>): Coleta {
   return Object.fromEntries(ETAPAS_COLETA.map((e) => {
     const d = docs[e];
+    const usavel = etapaUsavel(d);
+    const p = usavel ? d?.preservado : null;
+    const desde = p?.desde;
     return [e, {
       status: d?.status ?? null,
-      conteudo: d?.status === 'concluida' ? d.conteudo ?? null : null,
-      afirmacoes: d?.status === 'concluida' && Array.isArray(d.afirmacoes) ? d.afirmacoes : [],
-      fontes: d?.status === 'concluida' && Array.isArray(d.fontes) ? d.fontes : [],
+      usavel,
+      conteudo: usavel ? d?.conteudo ?? null : null,
+      afirmacoes: usavel && Array.isArray(d?.afirmacoes) ? d.afirmacoes : [],
+      fontes: usavel && Array.isArray(d?.fontes) ? d.fontes : [],
+      ...(p && Array.isArray(p.blocos) && p.blocos.length ? { anterior: { blocos: p.blocos as string[], desde: desde?.toDate ? desde.toDate().toISOString() : typeof desde === 'string' ? desde : null } } : {}),
     }];
   })) as Coleta;
 }
@@ -105,12 +113,20 @@ export function fontesDisponiveis(coleta: Coleta): string {
 // the six collection blocks with numbered sources. Not cached: in the tests of 7/11/2026 each call was
 // billed as a fresh cache write, which suggests (hypothesis) that the output schema, different in each
 // call, sits ahead of the prompt and breaks the shared prefix; caching it only made it 25% dearer.
+// ` anterior="<blocos>, de <data>"` (spec 02 v0.28): which blocks are previous data (apollo, instagram or etapa) and the date
+// of the original consultation, in full, in the Brasília time zone. Empty when nothing was preserved.
+export function atributoAnterior(a: BlocoColeta['anterior']): string {
+  if (!a || !a.blocos.length) return '';
+  const data = a.desde ? new Date(a.desde).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' }) : 'data não registrada';
+  return ` anterior="${a.blocos.join(' e ')}, de ${data}"`;
+}
+
 export function blocoDados(f: FichaSintese, qualificacao: unknown, coleta: Coleta): string {
   const blocos = ETAPAS_COLETA.map((e) => {
     const b = coleta[e];
-    if (b.status !== 'concluida') return `<coleta etapa="${e}">\netapa sem conteúdo (status: ${b.status ?? 'não executada'})\n</coleta>`;
+    if (!(b.usavel ?? b.status === 'concluida')) return `<coleta etapa="${e}">\netapa sem conteúdo (status: ${b.status ?? 'não executada'})\n</coleta>`;
     const fontes = b.fontes.map((x, i) => ({ idx: i, url: x.url, titulo: x.titulo ?? null, tipo: x.tipo ?? null }));
-    return `<coleta etapa="${e}">\n${json({ conteudo: b.conteudo, afirmacoes: b.afirmacoes, fontes })}\n</coleta>`;
+    return `<coleta etapa="${e}"${atributoAnterior(b.anterior)}>\n${json({ conteudo: b.conteudo, afirmacoes: b.afirmacoes, fontes })}\n</coleta>`;
   });
   return [
     '<ficha>',

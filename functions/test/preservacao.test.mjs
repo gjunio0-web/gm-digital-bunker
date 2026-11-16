@@ -240,3 +240,79 @@ test('deveColetar: the move to coletando, or erro going from filled to null whil
   assert.equal(deveColetar({ estado: 'coletando' }, { estado: 'coletada' }), false);
   assert.equal(deveColetar({ estado: 'coletando', erro: { etapa: 'x' } }, { estado: 'coletada', erro: null }), false);
 });
+
+// --- Readers: usable stage and the `anterior` attribute ---
+import { coletaDe, blocoDados, atributoAnterior } from '../lib/sintese.js';
+import { entradaAnalise, gradua, PESOS_PADRAO } from '../lib/graduacao.js';
+import { simulaEnquadrar } from '../lib/sintese.js';
+
+const fichaSint = { nome: 'A', empresa: 'Acme', cargo: 'x', rotuloCargo: 'x', dominioEmail: 'acme.com.br', site: null, mensagem: null, pagina: null, lang: 'pt' };
+const fnt = { url: 'https://api.apollo.io/x', titulo: 'Apollo', tipo: 'api', consultadoEm: '2026-11-10T10:00:00Z' };
+
+test('coletaDe: a stage preserved whole is usable; block-level preservation carries the attribute data', () => {
+  const c = coletaDe({
+    empresa_digital: { status: 'concluida', conteudo: { apollo: { a: 1 } }, afirmacoes: [], fontes: [fnt], preservado: { blocos: ['apollo'], desde: Timestamp.fromDate(new Date('2026-11-10T13:00:00Z')), falhouEm: Timestamp.now(), falha: 'x' } },
+    setor: { status: 'falhou', conteudo: { s: 1 }, afirmacoes: [], fontes: [fnt], preservado: { blocos: ['etapa'], desde: Timestamp.fromDate(new Date('2026-11-09T13:00:00Z')), falhouEm: Timestamp.now(), falha: 'x' } },
+    mercado: { status: 'falhou', conteudo: {}, afirmacoes: [], fontes: [] },
+  });
+  assert.equal(c.empresa_digital.usavel, true);
+  assert.deepEqual(c.empresa_digital.anterior, { blocos: ['apollo'], desde: '2026-11-10T13:00:00.000Z' });
+  assert.equal(c.setor.usavel, true);
+  assert.deepEqual(c.setor.conteudo, { s: 1 });
+  assert.deepEqual(c.setor.anterior.blocos, ['etapa']);
+  assert.equal(c.mercado.usavel, false);
+  assert.equal(c.mercado.conteudo, null);
+  assert.equal(c.mercado.anterior, undefined);
+});
+
+test('blocoDados: the <coleta> tag carries anterior="<blocos>, de <data>" only when something was preserved', () => {
+  const c = coletaDe({
+    empresa_digital: { status: 'concluida', conteudo: {}, afirmacoes: [], fontes: [fnt], preservado: { blocos: ['apollo', 'instagram'], desde: Timestamp.fromDate(new Date('2026-11-10T13:00:00Z')), falhouEm: Timestamp.now(), falha: 'x' } },
+    setor: { status: 'concluida', conteudo: {}, afirmacoes: [], fontes: [] },
+  });
+  const t = blocoDados(fichaSint, null, c);
+  assert.match(t, /<coleta etapa="empresa_digital" anterior="apollo e instagram, de 10 de novembro de 2026">/);
+  assert.match(t, /<coleta etapa="setor">/);
+  assert.equal(atributoAnterior(undefined), '');
+  assert.match(atributoAnterior({ blocos: ['etapa'], desde: null }), /anterior="etapa, de data não registrada"/);
+});
+
+test('graduar reads a stage preserved whole as usable, with the preserved confidence', () => {
+  const ficha = { qualificacao: { decisao: 'prosseguir', nivelCargo: 'decisor', dominioCorporativo: true, temMensagem: true, classificacaoMensagem: { tipoContato: 'empresa', falaDeProblemaOuFerramenta: 'problema', gatilho: 'prazo' } }, origem: { pagina: '/servicos/conselho-de-ia' } };
+  const base = {
+    empresa_registro: { status: 'concluida', confianca: { grau: 'alta' }, conteudo: { confirmado: true, escolhido: { cnpj: '11222333000181', porteLegal: 'demais' } } },
+    empresa_digital: { status: 'concluida', confianca: { grau: 'alta' }, paginasLidas: ['https://acme.com.br/'], insumosCodigo: { apolloEncontrado: true }, conteudo: { apollo: { funcionariosEstimados: { faixa: '51-200', minimo: 51, maximo: 200 } } } },
+    empresa_noticias: { status: 'concluida', confianca: { grau: 'alta' }, conteudo: { itens: [] } },
+  };
+  const pessoas = { confianca: { grau: 'alta' }, conteudo: { signatario: { coincideComFicha: 'true' }, empresa: { vagasAbertas: [] } } };
+  const momento = new Date('2026-11-16T12:00:00Z');
+  const enq = simulaEnquadrar();
+  const preservada = gradua(entradaAnalise(ficha, { ...base, empresa_pessoas: { ...pessoas, status: 'falhou', preservado: { blocos: ['etapa'] } } }, enq, momento), PESOS_PADRAO);
+  const falhada = gradua(entradaAnalise(ficha, { ...base, empresa_pessoas: { status: 'falhou' } }, enq, momento), PESOS_PADRAO);
+  const concluida = gradua(entradaAnalise(ficha, { ...base, empresa_pessoas: { ...pessoas, status: 'concluida' } }, enq, momento), PESOS_PADRAO);
+  assert.equal(preservada.pontos, concluida.pontos);
+  assert.equal(preservada.modificadores.confianca, concluida.modificadores.confianca);
+  assert.notEqual(falhada.pontos, preservada.pontos);
+});
+
+import { INSUMO_APOLLO_MANTIDO, apolloSeraPreservado, saneiaMotivo } from '../lib/coleta/preservacao.js';
+
+test('apolloSeraPreservado: failed or not consulted with previous data; not for 404/200 without match or without previous block', () => {
+  const ant = { conteudo: { apollo: { funcionariosEstimados: { maximo: 50 } } } };
+  assert.equal(apolloSeraPreservado(ant, { resultado: 'falha', motivo: 'x' }), true);
+  assert.equal(apolloSeraPreservado(ant, { resultado: 'nao_consultado', motivo: 'x' }), true);
+  assert.equal(apolloSeraPreservado(ant, { resultado: 'nao_encontrado', motivo: 'x' }), false);
+  assert.equal(apolloSeraPreservado(ant, { resultado: 'encontrado', motivo: 'x' }), false);
+  assert.equal(apolloSeraPreservado({ conteudo: { apollo: 'não consultado' } }, { resultado: 'falha', motivo: 'x' }), false);
+  assert.equal(apolloSeraPreservado(undefined, { resultado: 'falha', motivo: 'x' }), false);
+  assert.equal(apolloSeraPreservado(ant, undefined), false);
+  assert.match(INSUMO_APOLLO_MANTIDO, /não escreva afirmação sobre o Apollo/);
+});
+
+test('saneiaMotivo: masks e-mails and long digit runs, collapses lines, cuts at 200', () => {
+  assert.equal(saneiaMotivo('falha para ana@acme.com.br no CNPJ 11.222.333/0001-81 e tel (11) 99999-8888'), 'falha para [e-mail] no CNPJ [número] e tel [número]');
+  assert.equal(saneiaMotivo('a\n  b'), 'a b');
+  assert.equal(saneiaMotivo('x'.repeat(500)).length, 200);
+  assert.equal(saneiaMotivo(null), '');
+  assert.equal(saneiaMotivo('HTTP 503'), 'HTTP 503');
+});
