@@ -9,7 +9,7 @@
 // gets only the code checks and keeps the state, the confidence and prazoEm.
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions';
-import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore, Timestamp, type DocumentReference } from 'firebase-admin/firestore';
 import { CLAUDE_API_KEY, REGIAO, SMTP2GO_API_KEY, URL_BASE_POR_PROJETO } from './config.js';
 import { lePipeline } from './pipeline.js';
 import { chamaClaude, ErroComUso, noEmulador } from './claude.js';
@@ -54,7 +54,14 @@ export const verificar = onDocumentCreated(
     const ia = a.autor?.tipo === 'ia';
     try {
       // Only one run per version (phase 6, item 2).
-      if (!(await reivindicaVerificacao(db, docVersao))) {
+      // v1 only: the claim also counts the ficha by door in metricas (spec 01 v0.35); the month is that of recebidaEm.
+      const porta = a.enquadramento?.portaProvavel;
+      let metrica: { ref: DocumentReference; porta: string } | undefined;
+      if (versao === 'v1' && ['projeto', 'conselho', 'workshop', 'combinacao'].includes(porta)) {
+        const recebida = (await ref.get()).get('recebidaEm') as Timestamp | undefined;
+        if (recebida) metrica = { ref: db.collection('metricas').doc(mesDe(recebida.toDate())), porta };
+      }
+      if (!(await reivindicaVerificacao(db, docVersao, metrica))) {
         logger.info('verificar: version already claimed', { id, versao });
         return;
       }

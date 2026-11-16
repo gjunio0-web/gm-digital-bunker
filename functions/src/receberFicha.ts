@@ -5,11 +5,12 @@
 import { createHash } from 'node:crypto';
 import { onRequest } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { DIA_MS, IP_HASH_SALT, ORIGENS_POR_PROJETO, REGIAO, SMTP2GO_API_KEY } from './config.js';
 import { lePipeline } from './pipeline.js';
 import { ehRobo, ipDe, valida } from './validacao.js';
 import { aviso, confirmacao } from './email.js';
+import { mesDe } from './mes.js';
 
 const HORA_MS = 60 * 60 * 1000;
 
@@ -107,6 +108,11 @@ export const receberFicha = onRequest(
         detalhe: {},
       });
       await lote.commit();
+
+      // metricas.recebidas (spec 01 v0.35): every ficha created counts, spam included. Written after the ficha and never
+      // blocks the form: a failure is logged and the count is one short.
+      await db.collection('metricas').doc(mesDe(agora.toDate())).set({ recebidas: FieldValue.increment(1), atualizadoEm: agora }, { merge: true })
+        .catch((e) => logger.error('metricas.recebidas not written', { id: ref.id, motivo: String((e as Error)?.message ?? e).slice(0, 200) }));
 
       // E-mails after the write; a failure is recorded and does not change the response.
       const chave = SMTP2GO_API_KEY.value();

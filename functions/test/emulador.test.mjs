@@ -182,6 +182,9 @@ test('Priorizar: coleta mínima → qualificar → triagem → rest of the colle
   assert.deepEqual(Object.keys(u).sort(), ['enquadrar', 'montar_analise', 'preparar_conversa', 'revisor', 'total']);
   assert.equal(mapa(u.revisor).modelo.stringValue, 'simulado');
   assert.ok('cacheLidos' in mapa(u.total));
+  // metricas by door (spec 01 v0.35): the v1 of this ficha was counted once, under the simulated door "conselho".
+  const meses = await lista('metricas');
+  assert.ok(meses.some((m) => Number(m.fields.portaProvavel && mapa(m.fields.portaProvavel).conselho?.integerValue) >= 1));
 });
 
 test('analysis with a pending issue: analise_com_pendencias, medium-level reason added to the confidence', { timeout: 90_000 }, async () => {
@@ -318,6 +321,8 @@ test('spam: descartada, quadrant still computed, 30-day retention, metrics', { t
   const meses = await lista('metricas');
   assert.ok(meses.some((m) => Number(mapa(m.fields.qualificacao).descartar?.integerValue) >= 1));
   assert.ok(meses.some((m) => m.fields.triagem && Object.keys(mapa(mapa(m.fields.triagem).quadrante)).length >= 1));
+  // metricas.recebidas (spec 01 v0.35): every ficha created counts, spam included.
+  assert.ok(meses.some((m) => Number(m.fields.recebidas?.integerValue) >= 1));
 });
 
 test('autoAnalisar off: a ficha sent to analysis by the triagem stays in qualificada', { timeout: 60_000 }, async () => {
@@ -442,6 +447,35 @@ test('claim of a version: two concurrent runs, exactly one wins; a version alrea
     const feita = db.collection('teste-reivindicacao').doc(`f${Date.now()}`);
     await feita.set({ verificacao: { status: 'pronta' } });
     assert.equal(await reivindicaVerificacao(db, feita), false);
+  } finally {
+    await deleteApp(app);
+  }
+});
+
+test('claim of v1 counts the ficha once by door in metricas; a later version or a lost claim does not count (spec 01 v0.35)', async () => {
+  const app = initializeApp({ projectId: PROJETO }, 'reivindicacao-porta');
+  try {
+    const db = getFirestore(app);
+    const metricas = db.collection('metricas').doc('teste-porta');
+    const doc = db.collection('teste-reivindicacao').doc(`p${Date.now()}`);
+    await doc.set({ autor: { tipo: 'ia' } });
+    const r = await Promise.all([1, 2].map(() => reivindicaVerificacao(db, doc, { ref: metricas, porta: 'conselho' })));
+    assert.deepEqual(r.sort(), [false, true]);
+    assert.equal((await metricas.get()).get('portaProvavel.conselho'), 1); // two runs, one count
+    // Already verified: the claim fails and nothing is counted.
+    const feita = db.collection('teste-reivindicacao').doc(`q${Date.now()}`);
+    await feita.set({ verificacao: { status: 'pronta' } });
+    assert.equal(await reivindicaVerificacao(db, feita, { ref: metricas, porta: 'conselho' }), false);
+    // Another door, and no metrica (versions after v1): only the first one is counted.
+    const outra = db.collection('teste-reivindicacao').doc(`r${Date.now()}`);
+    await outra.set({ autor: { tipo: 'ia' } });
+    assert.equal(await reivindicaVerificacao(db, outra, { ref: metricas, porta: 'combinacao' }), true);
+    const v2 = db.collection('teste-reivindicacao').doc(`s${Date.now()}`);
+    await v2.set({ autor: { tipo: 'ia' } });
+    assert.equal(await reivindicaVerificacao(db, v2), true);
+    const m = (await metricas.get()).data();
+    assert.deepEqual({ c: m.portaProvavel.conselho, k: m.portaProvavel.combinacao }, { c: 1, k: 1 });
+    await metricas.delete();
   } finally {
     await deleteApp(app);
   }

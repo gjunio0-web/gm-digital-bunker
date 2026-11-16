@@ -14,8 +14,9 @@ import { CARGOS_ROTULO } from './textos.generated.js';
 import { decide, ESQUEMA_CLASSIFICACAO, promptQualificacao, sinais, validaClassificacao, type Decisao } from './qualificacao.js';
 import type { Normalizado, Original } from './validacao.js';
 
-// Month key of metricas in São Paulo time (aaaa-mm).
-export const mesDe = (d: Date) => d.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
+// Month key of metricas in São Paulo time (aaaa-mm); defined in mes.ts, re-exported for the other functions.
+import { mesDe } from './mes.js';
+export { mesDe };
 
 export async function qualifica(ref: DocumentReference, p: Pipeline, chaveClaude: string): Promise<Decisao | null> {
   const db = getFirestore();
