@@ -11,6 +11,7 @@ import { deleteApp, initializeApp } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { executaAcao, ErroAcao } from '../lib/acaoAdmin.js';
 import { diaDeSaoPaulo } from '../lib/graduar.js';
+import { limpaControle } from '../lib/expurgar.js';
 import { ARQUIVOS_METODO } from '../lib/metodoArquivos.js';
 
 const PROJETO = 'gmdb-qualidade';
@@ -633,4 +634,28 @@ test('vigiar: a ficha stopped in coletada gets erro interrupcao:coletada and the
   // After the mark, reexecutar sintese is the way out.
   const r = await chama(admin.token, { fichaId: parada, acao: 'reexecutar', parametros: { alvo: ['sintese'] } });
   assert.equal(r.status, 200);
+});
+
+test('limpaControle: old daily counters are summed into metricas.retidasTeto of their month and deleted, in one batch; the rest is left alone', async () => {
+  const agora = new Date('2026-11-16T15:00:00Z');
+  const t = ts('2026-11-16T12:00:00Z');
+  await db.doc('controle/analises-2026-08-30').set({ dia: '2026-08-30', n: 4, retidas: 2, atualizadoEm: t });
+  await db.doc('controle/analises-2026-08-31').set({ dia: '2026-08-31', n: 1, retidas: 3, atualizadoEm: t });
+  await db.doc('controle/analises-2026-09-02').set({ dia: '2026-09-02', n: 5, atualizadoEm: t }); // no retidas: deleted, adds nothing
+  await db.doc('controle/analises-2026-10-17').set({ dia: '2026-10-17', n: 1, retidas: 9, atualizadoEm: t }); // exactly 30 days: kept
+  await db.doc('controle/analises-2026-11-15').set({ dia: '2026-11-15', n: 1, retidas: 9, atualizadoEm: t });
+  await db.doc('controle/outro-documento').set({ qualquer: 1, retidas: 7 }); // not a daily counter: untouched
+  await db.doc('metricas/2026-08').set({ retidasTeto: 1, custo: { sintese: { versoes: 2 } } }); // existing month: incremented, rest kept
+  const r = await limpaControle(db, agora);
+  assert.deepEqual(r, { apagados: 3, retidas: 5 });
+  assert.equal((await db.doc('metricas/2026-08').get()).get('retidasTeto'), 6);
+  assert.equal((await db.doc('metricas/2026-08').get()).get('custo.sintese.versoes'), 2);
+  assert.equal((await db.doc('metricas/2026-09').get()).exists, false); // sum 0: no write
+  for (const id of ['analises-2026-08-30', 'analises-2026-08-31', 'analises-2026-09-02']) assert.equal((await db.doc(`controle/${id}`).get()).exists, false, id);
+  for (const id of ['analises-2026-10-17', 'analises-2026-11-15', 'outro-documento']) assert.equal((await db.doc(`controle/${id}`).get()).exists, true, id);
+  // A second run changes nothing: nothing is counted twice.
+  assert.deepEqual(await limpaControle(db, agora), { apagados: 0, retidas: 0 });
+  assert.equal((await db.doc('metricas/2026-08').get()).get('retidasTeto'), 6);
+  for (const c of ['analises-2026-10-17', 'analises-2026-11-15', 'outro-documento']) await db.doc(`controle/${c}`).delete();
+  await db.doc('metricas/2026-08').delete();
 });
