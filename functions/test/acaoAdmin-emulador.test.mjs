@@ -235,12 +235,12 @@ test('arquivar with expurgoImediato: the ficha and every subcollection are gone 
   assert.equal(codigo(rep), 'ficha_inexistente');
 });
 
-test('actions of phase 5b are validated against the state but not available yet: interno', async () => {
+test('reexecutar (rest of phase 5b) is validated against the state but not available yet: interno', async () => {
   const id = await criaFicha({ estado: 'analise_pronta' });
-  const r = await chama(admin.token, { fichaId: id, acao: 'editar', parametros: { secao: 's1', corpo: 'x', baseadaEm: 'v1' } });
+  const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['sintese'] } });
   assert.equal(r.status, 500);
   assert.equal(codigo(r), 'interno');
-  assert.ok(!/editar|fichas/.test(r.erro.message));
+  assert.ok(!/reexecutar|fichas/.test(r.erro.message));
   const inv = await chama(admin.token, { fichaId: id, acao: 'respostaEnviada' });
   assert.equal(codigo(inv), 'acao_invalida_no_estado');
 });
@@ -255,4 +255,154 @@ test('conflito: the ficha changes between the read and the transaction (in-proce
   );
   assert.equal((await db.doc(`fichas/${id}`).get()).data().estado, 'analise_com_pendencias');
   assert.equal((await eventos(id)).length, 0);
+});
+
+// --- portaDecidida and editar (phase 5b, first part) --------------------------------------------------------
+
+const TITULOS = { s0: 'Cabeçalho', s1: 'Qualificação imediata', s2: 'A empresa', s3: 'Setor', s4: 'Potencial de mercado', s5: 'Pessoas', s6: 'Enquadramento', s7: 'Preparação da primeira conversa', s8: 'Fontes' };
+const secoesV1 = () => Object.fromEntries(Object.entries(TITULOS).map(([k, t]) => [k, {
+  titulo: t, corpo: k === 's0' ? '**Empresa:** ACME\n\n**Método:** versão m1 · **Modelo:** claude-sonnet-5-5' : `corpo original de ${k}`, vazia: false, motivoVazia: null,
+}]));
+// A ficha with a first analysis the way sintetizar leaves it, and a lead for s0.
+async function criaFichaAnalisada(estado = 'analise_pronta') {
+  const id = await criaFicha({
+    estado, qualificacao: {}, versaoMetodo: 'm1',
+    lead: { quadrante: 'priorizar', grau: 'A', pontos: 80, destino: 'convidar', acao: { prazoDiasUteis: 2, prazoEm: ts('2026-11-18T12:00:00Z') } },
+  });
+  await db.doc(`fichas/${id}/analise/v1`).set({
+    autor: { tipo: 'ia', id: 'claude-sonnet-5-5', origem: 'sintese' }, baseadaEm: null, versaoMetodo: 'm1', secoes: secoesV1(),
+    enquadramento: { escopo: 'aprovado', portaProvavel: 'conselho', riscos: [], detalhe: { x: 1 } }, resumoExecutivo: 'resumo', conversa: { perguntas: [], materiais: [], pontosDeAtencao: [] },
+    rascunhoResposta: { assunto: 'a', corpo: 'b' }, verificacao: { status: 'pronta', pendencias: [], reparos: [], avisos: [], checklist: [] }, verificacaoIniciadaEm: Timestamp.now(),
+    uso: { total: { usdEstimado: 1 } }, correcao: { pendencias: [], tratamentos: [], avisos: [] }, criadaEm: ts('2026-11-16T12:00:00Z'),
+  });
+  return id;
+}
+
+test('portaDecidida: sets the door with {de, para}, the same door again is ok without event, another one changes it', async () => {
+  const id = await criaFichaAnalisada();
+  const a = await chama(admin.token, { fichaId: id, acao: 'portaDecidida', parametros: { porta: 'conselho' } });
+  assert.equal(a.status, 200);
+  assert.deepEqual(a.resultado, { estado: 'analise_pronta', analiseAtual: 'v1', ok: true });
+  assert.equal((await db.doc(`fichas/${id}`).get()).data().portaDecidida, 'conselho');
+  const ev = (await eventos(id)).filter((e) => e.tipo === 'porta_decidida');
+  assert.equal(ev.length, 1);
+  assert.deepEqual(ev[0].detalhe, { de: null, para: 'conselho' });
+  assert.deepEqual(ev[0].ator, { tipo: 'humano', id: admin.uid });
+  const b = await chama(admin.token, { fichaId: id, acao: 'portaDecidida', parametros: { porta: 'conselho' } });
+  assert.equal(b.status, 200);
+  assert.equal((await eventos(id)).filter((e) => e.tipo === 'porta_decidida').length, 1);
+  const c = await chama(admin.token, { fichaId: id, acao: 'portaDecidida', parametros: { porta: 'nenhuma' } });
+  assert.equal(c.status, 200);
+  const evs = (await eventos(id)).filter((e) => e.tipo === 'porta_decidida').map((e) => e.detalhe);
+  assert.deepEqual(evs.find((d) => d.para === 'nenhuma'), { de: 'conselho', para: 'nenhuma' });
+  assert.equal((await db.doc(`fichas/${id}`).get()).data().estado, 'analise_pronta');
+});
+
+test('portaDecidida: valid in aprovada and respondida; invalid value, missing value and invalid state', async () => {
+  for (const estado of ['aprovada', 'respondida']) {
+    const id = await criaFichaAnalisada(estado);
+    assert.equal((await chama(admin.token, { fichaId: id, acao: 'portaDecidida', parametros: { porta: 'workshop' } })).status, 200);
+    assert.equal((await db.doc(`fichas/${id}`).get()).data().estado, estado);
+  }
+  const id = await criaFichaAnalisada();
+  for (const parametros of [{ porta: 'outra' }, {}, { porta: 3 }, undefined]) {
+    const r = await chama(admin.token, { fichaId: id, acao: 'portaDecidida', parametros });
+    assert.equal(codigo(r), 'parametro_invalido');
+    assert.equal(r.erro.details.campo, 'porta');
+  }
+  assert.equal((await eventos(id)).length, 0);
+  const rb = await criaFicha({ estado: 'resposta_breve' });
+  assert.equal(codigo(await chama(admin.token, { fichaId: rb, acao: 'portaDecidida', parametros: { porta: 'projeto' } })), 'acao_invalida_no_estado');
+  const sin = await criaFicha({ estado: 'sintetizando' });
+  assert.equal(codigo(await chama(admin.token, { fichaId: sin, acao: 'portaDecidida', parametros: { porta: 'projeto' } })), 'ficha_em_processamento');
+  const leit = await chama(leitor.token, { fichaId: id, acao: 'portaDecidida', parametros: { porta: 'projeto' } });
+  assert.equal(codigo(leit), 'sem_permissao');
+});
+
+test('editar: writes vN+1 with the copied fields, a human author, s0 regenerated and analiseAtual moved; the state and prazoEm stay', async () => {
+  const id = await criaFichaAnalisada('aprovada');
+  const r = await chama(admin.token, { fichaId: id, acao: 'editar', parametros: { secao: 's2', corpo: '**Atividade.** texto novo do administrador', baseadaEm: 'v1' } });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.resultado, { estado: 'aprovada', analiseAtual: 'v2', ok: true });
+  const f = (await db.doc(`fichas/${id}`).get()).data();
+  assert.equal(f.analiseAtual, 'v2');
+  assert.equal(f.estado, 'aprovada');
+  assert.equal(f.lead.acao.prazoEm.toMillis(), ts('2026-11-18T12:00:00Z').toMillis());
+  const v1 = (await db.doc(`fichas/${id}/analise/v1`).get()).data();
+  assert.equal(v1.secoes.s2.corpo, 'corpo original de s2', 'v1 is never edited');
+  const v2 = (await db.doc(`fichas/${id}/analise/v2`).get()).data();
+  assert.deepEqual(v2.autor, { tipo: 'humano', id: admin.uid, origem: 'edicao' });
+  assert.equal(v2.baseadaEm, 'v1');
+  assert.equal(v2.versaoMetodo, 'm1');
+  assert.deepEqual(v2.secoes.s2, { titulo: 'A empresa', corpo: '**Atividade.** texto novo do administrador', vazia: false, motivoVazia: null });
+  for (const k of ['s1', 's3', 's4', 's5', 's6', 's7', 's8']) assert.deepEqual(v2.secoes[k], v1.secoes[k], k);
+  assert.match(v2.secoes.s0.corpo, /Análise:\*\* v2/);
+  assert.match(v2.secoes.s0.corpo, /\*\*Modelo:\*\* claude-sonnet-5-5 · edição humana$/);
+  for (const k of ['enquadramento', 'resumoExecutivo', 'conversa', 'rascunhoResposta']) assert.deepEqual(v2[k], v1[k], k);
+  for (const k of ['uso', 'correcao']) assert.equal(v2[k], undefined, `${k} is not copied`);
+  const ev = (await eventos(id)).filter((e) => e.tipo === 'editada');
+  assert.equal(ev.length, 1);
+  assert.deepEqual(ev[0].detalhe, { secao: 's2', baseadaEm: 'v1', versao: 'v2' });
+});
+
+test('editar: an edit of an edit keeps one "edição humana" suffix and a new empty section becomes not vazia', async () => {
+  const id = await criaFichaAnalisada();
+  await db.doc(`fichas/${id}/analise/v1`).update({ 'secoes.s3.vazia': true, 'secoes.s3.motivoVazia': 'sem material' });
+  assert.equal((await chama(admin.token, { fichaId: id, acao: 'editar', parametros: { secao: 's3', corpo: 'texto', baseadaEm: 'v1' } })).status, 200);
+  const v2 = (await db.doc(`fichas/${id}/analise/v2`).get()).data();
+  assert.equal(v2.secoes.s3.vazia, false);
+  assert.equal(v2.secoes.s3.motivoVazia, null);
+  assert.equal((await chama(admin.token, { fichaId: id, acao: 'editar', parametros: { secao: 's1', corpo: 'outro', baseadaEm: 'v2' } })).status, 200);
+  const v3 = (await db.doc(`fichas/${id}/analise/v3`).get()).data();
+  assert.match(v3.secoes.s0.corpo, /\*\*Modelo:\*\* claude-sonnet-5-5 · edição humana$/);
+  assert.equal(v3.baseadaEm, 'v2');
+  assert.equal((await db.doc(`fichas/${id}`).get()).data().analiseAtual, 'v3');
+});
+
+test('editar: conflito with a stale baseadaEm writes nothing; invalid parameters name the field', async () => {
+  const id = await criaFichaAnalisada();
+  assert.equal((await chama(admin.token, { fichaId: id, acao: 'editar', parametros: { secao: 's1', corpo: 'a', baseadaEm: 'v1' } })).status, 200);
+  const velho = await chama(admin.token, { fichaId: id, acao: 'editar', parametros: { secao: 's1', corpo: 'b', baseadaEm: 'v1' } });
+  assert.equal(codigo(velho), 'conflito');
+  assert.equal((await db.collection(`fichas/${id}/analise`).get()).size, 2);
+  assert.equal((await eventos(id)).filter((e) => e.tipo === 'editada').length, 1);
+  const casos = [
+    [{ secao: 's0', corpo: 'x', baseadaEm: 'v2' }, 'secao'], [{ secao: 's8', corpo: 'x', baseadaEm: 'v2' }, 'secao'], [{ corpo: 'x', baseadaEm: 'v2' }, 'secao'],
+    [{ secao: 's1', corpo: '   ', baseadaEm: 'v2' }, 'corpo'], [{ secao: 's1', baseadaEm: 'v2' }, 'corpo'], [{ secao: 's1', corpo: 'x'.repeat(20_001), baseadaEm: 'v2' }, 'corpo'],
+    [{ secao: 's1', corpo: 'x' }, 'baseadaEm'],
+  ];
+  for (const [parametros, campo] of casos) {
+    const r = await chama(admin.token, { fichaId: id, acao: 'editar', parametros });
+    assert.equal(codigo(r), 'parametro_invalido', JSON.stringify(parametros).slice(0, 60));
+    assert.equal(r.erro.details.campo, campo);
+  }
+  assert.equal((await chama(admin.token, { fichaId: id, acao: 'editar', parametros: { secao: 's1', corpo: 'x'.repeat(20_000), baseadaEm: 'v2' } })).status, 200);
+  assert.equal((await db.collection(`fichas/${id}/analise`).get()).size, 3);
+});
+
+test('editar: the title never comes from the client and invalid states are refused', async () => {
+  const id = await criaFichaAnalisada();
+  await chama(admin.token, { fichaId: id, acao: 'editar', parametros: { secao: 's4', titulo: 'Outro título', corpo: 'x', baseadaEm: 'v1' } });
+  assert.equal((await db.doc(`fichas/${id}/analise/v2`).get()).data().secoes.s4.titulo, 'Potencial de mercado');
+  const resp = await criaFichaAnalisada('respondida');
+  assert.equal(codigo(await chama(admin.token, { fichaId: resp, acao: 'editar', parametros: { secao: 's1', corpo: 'x', baseadaEm: 'v1' } })), 'acao_invalida_no_estado');
+  const sin = await criaFicha({ estado: 'sintetizando' });
+  assert.equal(codigo(await chama(admin.token, { fichaId: sin, acao: 'editar', parametros: { secao: 's1', corpo: 'x', baseadaEm: 'v1' } })), 'ficha_em_processamento');
+  assert.equal(codigo(await chama(semDoc.token, { fichaId: id, acao: 'editar', parametros: { secao: 's1', corpo: 'x', baseadaEm: 'v2' } })), 'sem_permissao');
+  assert.equal(codigo(await chama(null, { fichaId: id, acao: 'editar', parametros: { secao: 's1', corpo: 'x', baseadaEm: 'v2' } })), 'nao_autenticado');
+});
+
+test('editar: the new human version is picked up by verificar, which runs only the code checks and keeps the state', async () => {
+  const id = await criaFichaAnalisada();
+  await chama(admin.token, { fichaId: id, acao: 'editar', parametros: { secao: 's1', corpo: 'texto curto', baseadaEm: 'v1' } });
+  let v2;
+  for (let i = 0; i < 40; i++) {
+    v2 = (await db.doc(`fichas/${id}/analise/v2`).get()).data();
+    if (v2.verificacao) break;
+    await espera(500);
+  }
+  const f = (await db.doc(`fichas/${id}`).get()).data();
+  assert.ok(v2.verificacao, `verificar did not write verificacao on v2 (erro: ${JSON.stringify(f.erro ?? null)})`);
+  assert.equal(v2.verificacao.checklist?.length ?? 0, 0, 'no reviewer on a human version');
+  assert.equal(f.estado, 'analise_pronta');
 });

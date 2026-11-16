@@ -62,3 +62,12 @@ test('paraHttpsError: an unexpected error becomes interno without its own messag
   assert.deepEqual(e.details, { codigo: 'interno' });
   assert.ok(!/segredo|joao|fichas/.test(e.message));
 });
+
+test('modeloDaEdicao: the model of vN followed by " · edição humana", with a single suffix on an edit of an edit', async () => {
+  const { modeloDaEdicao } = await import('../lib/acaoAdmin.js');
+  const s0 = (m) => ({ s0: { corpo: `**Método:** versão m1 · **Modelo:** ${m}` } });
+  assert.equal(modeloDaEdicao({ secoes: s0('claude-sonnet-5-5') }), 'claude-sonnet-5-5 · edição humana');
+  assert.equal(modeloDaEdicao({ secoes: s0('claude-sonnet-5-5 · edição humana') }), 'claude-sonnet-5-5 · edição humana');
+  assert.equal(modeloDaEdicao({ autor: { tipo: 'ia', id: 'claude-haiku-5-5' }, secoes: {} }), 'claude-haiku-5-5 · edição humana');
+  assert.equal(modeloDaEdicao({ autor: { tipo: 'humano', id: 'uid1' } }), 'não informado · edição humana');
+});

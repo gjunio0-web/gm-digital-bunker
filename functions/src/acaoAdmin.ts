@@ -1,7 +1,7 @@
 // acaoAdmin (spec 01 v0.27, section 4.1): the callable the admin hub uses to act on a ficha.
 // One function, onCall, region southamerica-east1, admin only (usuarios/{uid}.papel = admin).
-// Phase 5a: aprovar, respostaEnviada, mandarParaAnalise and arquivar. editar, portaDecidida and reexecutar are
-// validated against the state table but answer "interno" until phase 5b.
+// Phase 5a: aprovar, respostaEnviada, mandarParaAnalise and arquivar. Phase 5b, first part: editar and
+// portaDecidida. reexecutar is validated against the state table but answers "interno" until the rest of 5b.
 // Every action runs in a transaction that rereads estado and estadoEm (the same lock the pipeline uses).
 // Errors are HttpsError with details {codigo, estadoAtual?, campo?}; the raw message of an unexpected
 // error is never returned, and nothing personal goes to the logs.
@@ -10,6 +10,8 @@ import { logger } from 'firebase-functions';
 import { FieldValue, getFirestore, Timestamp, type Firestore, type Transaction, type DocumentReference } from 'firebase-admin/firestore';
 import { DIA_MS, ORIGENS_POR_PROJETO, REGIAO, type Pipeline } from './config.js';
 import { expurgarFicha } from './expurgar.js';
+import { SECOES_MODELO, TITULOS, secaoS0, type SecaoModelo } from './sintese.js';
+import { CARGOS_ROTULO } from './textos.generated.js';
 import { diaDeSaoPaulo } from './graduar.js';
 import { lePipeline } from './pipeline.js';
 
@@ -81,6 +83,18 @@ export function validaEstado(acao: Acao, f: { estado: string; erro?: unknown; re
   if (!ok) throw invalida();
 }
 
+export const PORTAS = ['projeto', 'conselho', 'workshop', 'combinacao', 'nenhuma'] as const;
+export const MAX_CORPO_EDICAO = 20_000;
+const SUFIXO_EDICAO = ' · edição humana';
+
+// Model shown in the "Modelo" line of s0 of an edited version (spec 01, 4.1, item 5): the model of vN followed by
+// " · edição humana". Read from the s0 text of vN (an edit of an edit keeps one suffix); falls back to the author.
+export function modeloDaEdicao(base: { autor?: { tipo?: string; id?: string }; secoes?: Record<string, { corpo?: string }> }): string {
+  const linha = /\*\*Modelo:\*\* (.+)$/m.exec(base.secoes?.s0?.corpo ?? '')?.[1]?.trim();
+  const modelo = (linha ?? (base.autor?.tipo === 'ia' ? base.autor.id : null) ?? 'não informado').replace(/( · edição humana)+$/, '');
+  return modelo + SUFIXO_EDICAO;
+}
+
 export interface Entrada { uid: string | null; fichaId: unknown; acao: unknown; parametros: unknown }
 export interface Saida { ok: true; estado: string; analiseAtual?: string | null }
 // Test seams: a hook between the first read and the transaction (to provoke "conflito"), and the clock.
@@ -90,6 +104,26 @@ type Ficha = { estado: string; [campo: string]: any };
 
 const evento = (tx: Transaction, ref: DocumentReference, uid: string, em: Timestamp, tipo: string, detalhe: Record<string, unknown> = {}) =>
   tx.create(ref.collection('eventos').doc(), { em, ator: { tipo: 'humano', id: uid }, tipo, detalhe });
+
+// Reads vN and builds vN+1 for an edit (spec 01, 4.1, item 5). Runs inside the transaction, before any write.
+async function prepararEdicao(tx: Transaction, ref: DocumentReference, uid: string, f: Ficha, parametros: Record<string, unknown>) {
+  const baseadaEm = parametros.baseadaEm as string;
+  if (baseadaEm !== f.analiseAtual) throw new ErroAcao('conflito');
+  const [base, todas] = await Promise.all([tx.get(ref.collection('analise').doc(baseadaEm)), tx.get(ref.collection('analise'))]);
+  const a = base.data();
+  if (!a) throw new ErroAcao('interno');
+  const secao = parametros.secao as SecaoModelo;
+  const versao = `v${todas.size + 1}`;
+  const criadaEm = new Date();
+  const s0 = secaoS0({
+    empresa: f.original?.empresa ?? '', rotuloCargo: CARGOS_ROTULO[f.original?.cargo as string] ?? f.original?.cargo ?? '',
+    recebidaEm: (f.recebidaEm as Timestamp).toDate(), criadaEm, versao, lead: f.lead, versaoMetodo: a.versaoMetodo ?? '', modelo: modeloDaEdicao(a),
+  });
+  // The title is always the fixed one of the section, never the client's; the edited section is not "vazia".
+  const secoes = { ...(a.secoes ?? {}), s0, [secao]: { titulo: TITULOS[secao], corpo: parametros.corpo, vazia: false, motivoVazia: null } };
+  const copia = Object.fromEntries(['enquadramento', 'resumoExecutivo', 'conversa', 'rascunhoResposta'].filter((k) => a[k] !== undefined).map((k) => [k, a[k]]));
+  return { versao, doc: { autor: { tipo: 'humano', id: uid, origem: 'edicao' }, baseadaEm, versaoMetodo: a.versaoMetodo ?? null, secoes, ...copia } as Record<string, unknown> };
+}
 
 export async function executaAcao(
   db: Firestore,
@@ -108,12 +142,19 @@ export async function executaAcao(
   const parametros = typeof entrada.parametros === 'object' && entrada.parametros !== null ? (entrada.parametros as Record<string, unknown>) : {};
   if (acao === 'arquivar' && typeof parametros.expurgoImediato !== 'boolean') throw new ErroAcao('parametro_invalido', { campo: 'expurgoImediato' });
 
+  if (acao === 'portaDecidida' && !(PORTAS as readonly unknown[]).includes(parametros.porta)) throw new ErroAcao('parametro_invalido', { campo: 'porta' });
+  if (acao === 'editar') {
+    if (typeof parametros.secao !== 'string' || !(SECOES_MODELO as readonly string[]).includes(parametros.secao)) throw new ErroAcao('parametro_invalido', { campo: 'secao' });
+    if (typeof parametros.corpo !== 'string' || !parametros.corpo.trim() || parametros.corpo.length > MAX_CORPO_EDICAO) throw new ErroAcao('parametro_invalido', { campo: 'corpo' });
+    if (typeof parametros.baseadaEm !== 'string' || !parametros.baseadaEm || parametros.baseadaEm.includes('/')) throw new ErroAcao('parametro_invalido', { campo: 'baseadaEm' });
+  }
+
   const ref = db.collection('fichas').doc(fichaId);
   const lida = await ref.get();
   if (!lida.exists) throw new ErroAcao('ficha_inexistente');
   const f0 = lida.data() as Ficha;
   validaEstado(acao as Acao, f0);
-  if (acao === 'editar' || acao === 'portaDecidida' || acao === 'reexecutar') {
+  if (acao === 'reexecutar') {
     logger.warn('acaoAdmin: action not available yet', { acao });
     throw new ErroAcao('interno');
   }
@@ -130,6 +171,7 @@ export async function executaAcao(
     // The same lock as the pipeline: if estado or estadoEm changed since the read, the answer is "conflito".
     if (!f) throw new ErroAcao('conflito');
     if (f.estado !== f0.estado || !(f.estadoEm as Timestamp).isEqual(f0.estadoEm as Timestamp)) throw new ErroAcao('conflito');
+    const edicao = acao === 'editar' ? await prepararEdicao(tx, ref, uid, f, parametros) : null;
     const conta = acao === 'mandarParaAnalise' && p.maxAnalisesPorDia !== null ? await tx.get(contador) : null;
 
     switch (acao) {
@@ -137,6 +179,23 @@ export async function executaAcao(
         tx.update(ref, { estado: 'aprovada', estadoEm: em });
         evento(tx, ref, uid, em, 'aprovada');
         return { ok: true, estado: 'aprovada', analiseAtual: f.analiseAtual ?? null };
+
+      case 'portaDecidida': {
+        const de = (f.portaDecidida as string | null | undefined) ?? null;
+        // The same door again answers ok, with no write and no event (spec 01, 4.1, item 4).
+        if (de === parametros.porta) return { ok: true, estado: f.estado, analiseAtual: f.analiseAtual ?? null };
+        tx.update(ref, { portaDecidida: parametros.porta });
+        evento(tx, ref, uid, em, 'porta_decidida', { de, para: parametros.porta });
+        return { ok: true, estado: f.estado, analiseAtual: f.analiseAtual ?? null };
+      }
+
+      case 'editar': {
+        const { versao, doc } = edicao!;
+        tx.create(ref.collection('analise').doc(versao), { ...doc, criadaEm: em });
+        tx.update(ref, { analiseAtual: versao });
+        evento(tx, ref, uid, em, 'editada', { secao: parametros.secao, baseadaEm: parametros.baseadaEm, versao });
+        return { ok: true, estado: f.estado, analiseAtual: versao };
+      }
 
       case 'respostaEnviada':
         tx.update(ref, { estado: 'respondida', estadoEm: em, respondidaEm: em, expurgoEm: Timestamp.fromMillis(agora.getTime() + p.prazoGuardaDias * DIA_MS) });
