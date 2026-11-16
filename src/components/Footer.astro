@@ -7,6 +7,8 @@ interface Props { lang?: Lang; pageId?: PageId; }
 const { lang = 'pt-BR', pageId = 'inicio' } = Astro.props;
 const u = t(lang);
 const hub = lang === 'en' ? `${HUB}/?lang=en` : HUB;
+// The year in the base line is also a hidden shortcut to /admin (five taps in a row, see the script below).
+// When the year is reviewed, keep the span and its data-atalho-admin attribute.
 const amazon = lang === 'en' ? AMAZON_EN : AMAZON;
 ---
 <footer class="footer">
@@ -38,7 +40,7 @@ const amazon = lang === 'en' ? AMAZON_EN : AMAZON;
       </nav>
     </div>
     <div class="footer__base">
-      <p class="meta">GM Digital Bunker™ · © 2026</p>
+      <p class="meta">GM Digital Bunker™ · © <span class="footer__ano" data-atalho-admin>2026</span></p>
       <p class="meta"><span aria-current="true" class="footer__pt">{u.footer.current}</span> · <a href={path(pageId, otherLang(lang))} lang={u.langSwitch.hreflang} hreflang={u.langSwitch.hreflang}>{u.footer.other}</a></p>
     </div>
   </div>
@@ -60,4 +62,14 @@ const amazon = lang === 'en' ? AMAZON_EN : AMAZON;
   .footer__base p { margin: 0; }
   .footer__pt { color: var(--ink); }
   .footer__base a { color: var(--muted); }
+  /* Hidden admin shortcut: looks like plain text. The padding enlarges the tap area and the negative margin
+     cancels it, so the layout does not move. touch-action keeps fast repeated taps from zooming the page;
+     user-select keeps them from selecting the year. */
+  .footer__ano { display: inline-block; padding: 12px 8px; margin: -12px -8px; cursor: default; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 </style>
+
+<script>
+  import { contarToques } from '../lib/toques';
+  const ano = document.querySelector<HTMLElement>('[data-atalho-admin]');
+  if (ano) contarToques(ano, () => location.assign('/admin'));
+</script>
