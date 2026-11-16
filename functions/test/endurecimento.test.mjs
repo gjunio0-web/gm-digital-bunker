@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { paradas } from '../lib/vigiar.js';
 import { diaDeSaoPaulo, viradaDoDia } from '../lib/graduar.js';
 import { ipDe } from '../lib/validacao.js';
-import { semPreco } from '../lib/uso.js';
+import { semPreco, detalheSemPreco } from '../lib/uso.js';
 
 const agora = new Date('2026-11-08T15:00:00Z');
 const ha = (min) => new Date(agora.getTime() - min * 60_000);
@@ -55,4 +55,14 @@ test('semPreco: calls with usdEstimado null become custo_sem_preco warnings; sim
     ['reparar.s1', { modelo: 'claude-haiku-9', usdEstimado: null }],
   ]);
   assert.deepEqual(avisos, ['custo_sem_preco: montar (claude-novo)', 'custo_sem_preco: reparar.s1 (claude-haiku-9)']);
+});
+
+test('detalheSemPreco: event detail only for a priced-out real model, never for a priced call or the simulated model', () => {
+  assert.deepEqual(detalheSemPreco('qualificar', 'claude-novo', null), { chamada: 'qualificar', modelo: 'claude-novo' });
+  assert.deepEqual(detalheSemPreco('setor', 'claude-haiku-9', null), { chamada: 'setor', modelo: 'claude-haiku-9' });
+  assert.equal(detalheSemPreco('qualificar', 'claude-sonnet-5-5', 0.12), null);
+  assert.equal(detalheSemPreco('qualificar', 'claude-sonnet-5-5', 0), null);
+  assert.equal(detalheSemPreco('mercado', 'simulado', null), null);
+  assert.equal(detalheSemPreco('mercado', '', null), null);
+  assert.equal(detalheSemPreco('mercado', undefined, null), null);
 });

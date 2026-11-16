@@ -9,6 +9,7 @@ import type { Fornecedor, Pipeline } from '../config.js';
 import { leMetodo } from '../metodo.js';
 import { noEmulador } from '../claude.js';
 import { custoDe, promptTotal, type Precos, type Uso } from '../custo.js';
+import { detalheSemPreco } from '../uso.js';
 import { esforcoApi, esforcoDe, modeloDe } from '../modelos.js';
 import { chamaColeta, chaveUrl, ErroColeta, type RespostaColeta } from './claudeColeta.js';
 import { formatoInvalido, normalizaEnvelope, type Envelope, type FonteColeta } from './envelope.js';
@@ -143,7 +144,8 @@ const usoDe = (c: Contexto, rs: RespostaColeta[]) => {
     buscas += r.buscas;
   }
   const k = custoDe(c.precos, modeloDe(c.p, 'coleta'), soma, buscas);
-  return { tokensEntrada: promptTotal(k), tokensSaida: k.tokensSaida, buscas, usd: k.usdEstimado ?? 0 };
+  // semPreco: at least one model call made and no price for it (model missing from config/precos).
+  return { tokensEntrada: promptTotal(k), tokensSaida: k.tokensSaida, buscas, usd: k.usdEstimado ?? 0, semPreco: rs.length > 0 && k.usdEstimado === null };
 };
 
 // Emulator stand-in for the code-side facts of the coleta mínima: a company named "… Média …" gets a
@@ -404,6 +406,12 @@ export async function roda(c: Contexto, etapa: Etapa): Promise<void> {
     });
   }
   await c.ref.collection('eventos').add({ em: Timestamp.now(), ator: { tipo: 'ia', id: 'coletar' }, tipo: 'coleta_etapa', detalhe: { etapa, status: resultado.status, ...(preservado ? { preservado } : {}) } });
+  // One event per stage in each run (the stage name is the call identifier), spec 01 v0.36.
+  const semPreco = u.semPreco ? detalheSemPreco(etapa, modelo, null) : null;
+  if (semPreco) {
+    await c.ref.collection('eventos').add({ em: Timestamp.now(), ator: { tipo: 'sistema', id: 'coletar' }, tipo: 'custo_sem_preco', detalhe: semPreco })
+      .catch((e) => logger.warn('coleta: custo_sem_preco event failed', { id: c.id, etapa, mensagem: String((e as Error)?.message ?? e).slice(0, 200) }));
+  }
 }
 
 // First pass of the full collection: completes the Instagram block of empresa_digital with Apify

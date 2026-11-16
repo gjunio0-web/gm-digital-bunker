@@ -16,6 +16,7 @@ import type { Normalizado, Original } from './validacao.js';
 
 // Month key of metricas in São Paulo time (aaaa-mm); defined in mes.ts, re-exported for the other functions.
 import { mesDe } from './mes.js';
+import { detalheSemPreco } from './uso.js';
 export { mesDe };
 
 export async function qualifica(ref: DocumentReference, p: Pipeline, chaveClaude: string): Promise<Decisao | null> {
@@ -70,6 +71,9 @@ export async function qualifica(ref: DocumentReference, p: Pipeline, chaveClaude
       estadoEm: agora,
     });
     tx.create(ref.collection('eventos').doc(), { em: agora, ator: { tipo: 'ia', id: 'qualificar' }, tipo: 'qualificada', detalhe: { decisao, motivo } });
+    // Model without a price in config/precos: record it, never refuse the model (spec 01 v0.36, section 8, decision 4).
+    const semPreco = detalheSemPreco('qualificar', noEmulador() ? 'simulado' : modelo, custo.usdEstimado);
+    if (semPreco) tx.create(ref.collection('eventos').doc(), { em: agora, ator: { tipo: 'sistema', id: 'qualificar' }, tipo: 'custo_sem_preco', detalhe: semPreco });
     tx.set(
       db.collection('metricas').doc(mesDe((f.recebidaEm as Timestamp).toDate())),
       { qualificacao: { [decisao]: FieldValue.increment(1) }, custo: { qualificacao: { usdEstimado: FieldValue.increment(custo.usdEstimado ?? 0) } }, atualizadoEm: agora },

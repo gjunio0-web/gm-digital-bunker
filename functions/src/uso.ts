@@ -65,3 +65,9 @@ export const custoNaFicha = (c: UsoChamada) => ({
 // verificar records them in verificacao.avisos (phase 6, item 5).
 export const semPreco = (chamadas: [string, { modelo?: string; usdEstimado?: number | null; tokensEntrada?: number }][]) =>
   chamadas.filter(([, c]) => c && c.usdEstimado === null && c.modelo && c.modelo !== 'simulado').map(([k, c]) => `custo_sem_preco: ${k} (${c.modelo})`);
+
+// Detail of the ficha event `custo_sem_preco` (spec 01 v0.36, section 8, decision 4): one event per call identifier
+// in each run, written by qualificar and by the collection stages. Null when the call has a price, or when the
+// model is the emulator's 'simulado'. Never refuses the model and never writes `erro`.
+export const detalheSemPreco = (chamada: string, modelo: string | undefined, usdEstimado: number | null): { chamada: string; modelo: string } | null =>
+  usdEstimado === null && modelo && modelo !== 'simulado' ? { chamada, modelo } : null;

@@ -160,6 +160,8 @@ test('Priorizar: coleta mínima → qualificar → triagem → rest of the colle
   const tipos = todos.map((e) => e.tipo.stringValue);
   for (const t of ['coleta_minima', 'qualificada', 'triada', 'coleta_iniciada', 'graduada', 'sintese', 'verificacao']) assert.equal(tipos.filter((x) => x === t).length, 1, t);
   assert.equal(tipos.filter((x) => x === 'coleta_etapa').length, 6);
+  // Simulated model: no custo_sem_preco event (spec 01 v0.36, section 8, decision 4).
+  assert.equal(tipos.filter((x) => x === 'custo_sem_preco').length, 0);
   const a = (await le(`fichas/${id}/analise/v1`)).fields;
   assert.deepEqual(Object.keys(mapa(a.secoes)).sort(), ['s0', 's1', 's2', 's3', 's4', 's5', 's6', 's7', 's8']);
   assert.match(mapa(mapa(a.secoes).s0).corpo.stringValue, /\*\*Quadrante:\*\* Priorizar · \*\*Grau:\*\* [A-D]/);
