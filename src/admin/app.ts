@@ -95,7 +95,8 @@ function iniciar(opcoes: FirebaseOptions) {
             ? 'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.'
             : codigo === 'auth/network-request-failed'
               ? 'Sem conexão com o serviço de login. Verifique a rede e tente de novo.'
-              : 'Não foi possível entrar. Tente de novo.';
+              // Untranslated codes are shown on screen so a failure on a device without dev tools can be diagnosed
+              : `Não foi possível entrar. Tente de novo. (código: ${codigo || 'desconhecido'})`;
       erroLogin.hidden = false;
       entrarBtn.disabled = false;
     }
