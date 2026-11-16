@@ -216,3 +216,27 @@ test('roda: a clean success deletes preservado', async () => {
     delete process.env.FUNCTIONS_EMULATOR;
   }
 });
+
+import { anteriorDe } from '../lib/coleta/preservacao.js';
+import { deveColetar } from '../lib/coletar.js';
+
+test('anteriorDe: usable previous data is read from the content, whatever the status the claim left', () => {
+  const doc = { conteudo: { a: 1 }, fontes: [], afirmacoes: [], confianca: { grau: 'alta', motivo: 'm' }, insumosCodigo: { x: 1 } };
+  for (const status of ['concluida', 'pendente', 'executando']) assert.equal(anteriorDe({ ...doc, status }).conteudo.a, 1, status);
+  assert.equal(anteriorDe({ ...doc, status: 'falhou', preservado: { blocos: ['etapa'] } }).conteudo.a, 1);
+  assert.equal(anteriorDe({ ...doc, status: 'falhou' }), null);
+  assert.equal(anteriorDe({ status: 'falhou', conteudo: {} }), null);
+  assert.equal(anteriorDe({ status: 'pendente' }), null);
+  assert.equal(anteriorDe(undefined), null);
+  assert.deepEqual(anteriorDe({ ...doc, status: 'concluida' }).insumosCodigo, { x: 1 });
+});
+
+test('deveColetar: the move to coletando, or erro going from filled to null while it stays coletando', () => {
+  assert.equal(deveColetar({ estado: 'coletada' }, { estado: 'coletando' }), true);
+  assert.equal(deveColetar(undefined, { estado: 'coletando' }), true);
+  assert.equal(deveColetar({ estado: 'coletando', erro: { etapa: 'x' } }, { estado: 'coletando', erro: null }), true);
+  assert.equal(deveColetar({ estado: 'coletando', erro: null }, { estado: 'coletando', erro: null }), false);
+  assert.equal(deveColetar({ estado: 'coletando', erro: null }, { estado: 'coletando', erro: { etapa: 'x' } }), false);
+  assert.equal(deveColetar({ estado: 'coletando' }, { estado: 'coletada' }), false);
+  assert.equal(deveColetar({ estado: 'coletando', erro: { etapa: 'x' } }, { estado: 'coletada', erro: null }), false);
+});

@@ -18,7 +18,8 @@ import { cnpjValido, consultaBrasilApi, type RegistroBrasilApi } from './cnpj.js
 import { consultaApify, consultaApollo, consultaHunter, type Instagram } from './fornecedores.js';
 import type { SinaisIniciais } from '../qualificacao.js';
 import { normalizaFuncionarios } from './funcionarios.js';
-import { etapaUsavel, montaPreservado, motivoDaFalha, preservaBlocos, resultadoDe, type Preservado, type Tentativa } from './preservacao.js';
+import { etapaUsavel, montaPreservado, motivoDaFalha, preservaBlocos, resultadoDe, type DocAnterior, type Preservado, type Tentativa } from './preservacao.js';
+export type { DocAnterior };
 
 export interface Contexto {
   id: string;
@@ -50,18 +51,6 @@ export interface Contexto {
   preservado?: Partial<Record<Etapa, Preservado<Timestamp>>>;
 }
 
-// What a re-run keeps of the previous run of a stage: only a usable stage (concluida, or falhou with the whole stage preserved).
-export interface DocAnterior {
-  status: string;
-  conteudo: Record<string, unknown>;
-  fontes: FonteColeta[];
-  afirmacoes: { texto: string; tipo: 'fato' | 'inferencia' | 'nao_encontrado'; fonteIdx: number[] }[];
-  confianca: { grau: 'alta' | 'media' | 'baixa'; motivo: string };
-  insumosCodigo?: Record<string, unknown> | null;
-  paginasLidas?: string[];
-  concluidoEm?: Timestamp;
-  preservado?: Preservado<Timestamp> | null;
-}
 
 // What a stage consumed, kept even when it fails: model calls (complete or partial) and provider calls.
 interface Rastro {
@@ -397,8 +386,8 @@ export async function roda(c: Contexto, etapa: Etapa): Promise<void> {
     const pb = c.preservado?.[etapa];
     preservado = pb?.blocos;
     await doc.update({ status: 'concluida', ...resultado.envelope, ...extra, insumosCodigo, modelo, uso, concluidoEm: Timestamp.now(), tentativa: FieldValue.increment(1), preservado: pb ?? FieldValue.delete() });
-  } else if (ant && etapaUsavel(ant)) {
-    // Whole stage failed on a re-run: the previous content stays, status falhou (spec 03 7.3; a second failure keeps `desde`).
+  } else if (ant) {
+    // `anterior` holds only stages that had usable content. Whole stage failed on a re-run: the previous content stays, status falhou (spec 03 7.3; a second failure keeps `desde`).
     const pb = montaPreservado(['etapa'], ant.concluidoEm ?? Timestamp.now(), Timestamp.now(), resultado.mensagem, ant.preservado);
     c.conteudos[etapa] = ant.conteudo;
     if (ant.insumosCodigo) c.codigo[etapa] = ant.insumosCodigo;

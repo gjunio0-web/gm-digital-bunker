@@ -18,10 +18,18 @@ import { noEmulador } from './claude.js';
 import { CARGOS_ROTULO } from './textos.generated.js';
 import { dominioDe, sinaisIniciais } from './qualificacao.js';
 import { ETAPAS, ETAPAS_RESTANTES, orcamentoBuscas, orcamentoPrimeiraPassagem, type Etapa } from './coleta/etapas.js';
-import { completaInstagram, roda, type Contexto } from './coleta/motor.js';
+import { completaInstagram, roda, type Contexto, type DocAnterior } from './coleta/motor.js';
+import { anteriorDe } from './coleta/preservacao.js';
 import { mesDe } from './qualificar.js';
 import type { Normalizado, Original } from './validacao.js';
 
+
+// Runs on the move to "coletando", and also when the ficha stays in "coletando" and erro goes from filled to null
+// (the admin re-ran a collection stage; spec 01 v0.31).
+export function deveColetar(antes: Record<string, any> | undefined, depois: Record<string, any> | undefined): boolean {
+  if (!depois || depois.estado !== 'coletando') return false;
+  return antes?.estado !== 'coletando' || Boolean(antes.erro && !depois.erro);
+}
 
 export const coletar = onDocumentUpdated(
   {
@@ -31,7 +39,7 @@ export const coletar = onDocumentUpdated(
   async (evento) => {
     const antes = evento.data?.before.data();
     const depois = evento.data?.after.data();
-    if (!depois || depois.estado !== 'coletando' || antes?.estado === 'coletando') return;
+    if (!depois || !deveColetar(antes, depois)) return;
     const id = evento.params.id;
     const db = getFirestore();
     const ref = db.collection('fichas').doc(id);
@@ -47,8 +55,10 @@ export const coletar = onDocumentUpdated(
       let aRodar: Etapa[] = [];
       let primeira = false;
       let buscasMinima = 0;
+      let anterior: Partial<Record<Etapa, DocAnterior>> = {};
       await db.runTransaction(async (tx) => {
         aRodar = [];
+        anterior = {};
         const f = (await tx.get(ref)).data();
         const docs = await Promise.all(ETAPAS.map((e) => tx.get(ref.collection('coleta').doc(e))));
         if (!f || f.estado !== 'coletando' || !(f.estadoEm as Timestamp).isEqual(depois.estadoEm as Timestamp)) return;
@@ -65,7 +75,13 @@ export const coletar = onDocumentUpdated(
         tx.update(ref, { estadoEm: agora });
         for (const e of aRodar) {
           const v = porEtapa[e].data();
-          tx.set(porEtapa[e].ref, { etapa: e, status: 'pendente', versaoMetodo: versao, tentativa: v?.tentativa ?? 0, ...(v?.insumosCodigo ? { insumosCodigo: v.insumosCodigo } : {}) });
+          // Re-run of a stage with previous content: the claim only changes status; the previous data stays in the
+          // document and in memory until the end of the run (spec 03 7.3). Otherwise the document is written afresh.
+          const ant = primeira ? null : anteriorDe(v);
+          if (ant) {
+            anterior[e] = ant;
+            tx.update(porEtapa[e].ref, { status: 'pendente', versaoMetodo: versao });
+          } else tx.set(porEtapa[e].ref, { etapa: e, status: 'pendente', versaoMetodo: versao, tentativa: v?.tentativa ?? 0, ...(v?.insumosCodigo ? { insumosCodigo: v.insumosCodigo } : {}) });
         }
         tx.create(ref.collection('eventos').doc(), {
           em: agora, ator: { tipo: 'sistema', id: 'coletar' }, tipo: 'coleta_iniciada', detalhe: { versaoMetodo: versao, passagem: primeira ? 'primeira' : 'reexecucao', etapas: aRodar },
@@ -92,6 +108,7 @@ export const coletar = onDocumentUpdated(
           : { claude: CLAUDE_API_KEY.value(), apollo: APOLLO_API_KEY.value(), apify: APIFY_TOKEN.value(), hunter: HUNTER_API_KEY.value() },
         apify: true,
         aRodar: new Set(aRodar),
+        anterior,
         buscasRestantes: primeira ? orcamentoPrimeiraPassagem(p.tetoBuscasPorFicha, buscasMinima) : orcamentoBuscas(p.tetoBuscasPorFicha, aRodar),
         chamadas: { brasilapi: 0, apollo: 0, apify: 0, hunter: 0 },
         conteudos: {},

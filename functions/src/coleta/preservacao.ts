@@ -1,6 +1,7 @@
 // Preservation of the previous data on a re-run (spec 03, section 7.3; spec 01, coleta/{etapa}.preservado).
 // Pure functions only (no Firestore, no provider call): the failure and merge tests are unit tests because
 // pode() is false in the emulator. The engine (motor.ts) applies them.
+import type { Timestamp } from 'firebase-admin/firestore';
 import type { Afirmacao, FonteColeta } from './envelope.js';
 
 export type Bloco = 'apollo' | 'instagram';
@@ -161,4 +162,37 @@ export function preservaBlocos(novo: Parte, anterior: ParteAnterior | null | und
   if (ti && ti.resultado !== 'encontrado' && ti.resultado !== 'nao_encontrado' && instagramTemDados(ig) && mesmoPerfil(ig?.perfil, ti.perfil)) carrega('instagram', ti);
   if (!blocos.length) return null;
   return { parte, blocos, falha: falhas.join('; '), desde: datas.sort()[0] ?? null, insumosApollo };
+}
+
+// What a re-run keeps of the previous run of a stage (read by coletar before the claim).
+export interface DocAnterior {
+  status: string;
+  conteudo: Record<string, unknown>;
+  fontes: FonteColeta[];
+  afirmacoes: Afirmacao[];
+  confianca: { grau: 'alta' | 'media' | 'baixa'; motivo: string };
+  insumosCodigo?: Record<string, unknown> | null;
+  paginasLidas?: string[];
+  concluidoEm?: Timestamp;
+  preservado?: Preservado<Timestamp> | null;
+}
+
+// Previous usable data of a stage document, or null. Once the admin action sets a stage "pendente" its former status is
+// gone, so usability is read from the content: a stage that failed without preservation was written with an empty
+// `conteudo`, and a stage never run has none; any other document with content (concluida, falhou with the whole stage
+// preserved, or left pendente/executando by a claim that no longer erases) carries usable previous data.
+export function anteriorDe(d: Record<string, unknown> | null | undefined): DocAnterior | null {
+  if (!d || !d.conteudo || typeof d.conteudo !== 'object' || Array.isArray(d.conteudo) || !Object.keys(d.conteudo).length) return null;
+  if (d.status === 'falhou' && !etapaUsavel(d as { status: unknown; preservado?: { blocos?: unknown } | null })) return null;
+  return {
+    status: String(d.status ?? ''),
+    conteudo: d.conteudo as Record<string, unknown>,
+    fontes: (d.fontes as DocAnterior['fontes']) ?? [],
+    afirmacoes: (d.afirmacoes as DocAnterior['afirmacoes']) ?? [],
+    confianca: (d.confianca as DocAnterior['confianca']) ?? { grau: 'baixa', motivo: 'sem confiança gravada' },
+    insumosCodigo: (d.insumosCodigo as Record<string, unknown> | null | undefined) ?? null,
+    paginasLidas: d.paginasLidas as string[] | undefined,
+    concluidoEm: d.concluidoEm as Timestamp | undefined,
+    preservado: (d.preservado as Preservado<Timestamp> | null | undefined) ?? null,
+  };
 }
