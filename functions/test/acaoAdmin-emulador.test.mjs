@@ -310,7 +310,7 @@ async function garanteMetodo() {
   if ((await db.doc('config/metodo').get()).get('versao')) return;
   const raiz = new URL('../../metodo/', import.meta.url);
   const arquivos = ARQUIVOS_METODO.map((nome) => ({ nome, conteudo: readFileSync(new URL(nome, raiz), 'utf8') }));
-  const r = await fetch(`http://127.0.0.1:5001/${PROJETO}/southamerica-east1/publicarMetodo`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versao: 'm1', arquivos }) });
+  const r = await fetch(`http://127.0.0.1:5001/${PROJETO}/southamerica-east1/publicarMetodo`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versao: 'abc1234', arquivos }) });
   assert.equal(r.status, 200);
 }
 
