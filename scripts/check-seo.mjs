@@ -32,14 +32,20 @@ const pages = walk(DIST).map((file) => {
   };
 });
 
+// Internal pages (the admin module): never indexed. They are held to the opposite rule of a public page:
+// noindex, no canonical, no hreflang, not in the sitemap. They need no description or JSON-LD.
+const INTERNAS = new Set(['admin.html']);
+
 const byCanonical = new Map(pages.filter((p) => p.canonical).map((p) => [p.canonical, p]));
 const titles = new Map();
 
 for (const p of pages) {
   const is404 = p.f === '404.html';
+  const interna = INTERNAS.has(p.f);
   if (!p.title) err(p.f, 'missing <title>');
   else titles.set(p.title, [...(titles.get(p.title) ?? []), p.f]);
-  if (!p.description) err(p.f, 'missing meta description');
+  if (interna) { /* no description required */ }
+  else if (!p.description) err(p.f, 'missing meta description');
   else if (!is404 && (p.description.length < 70 || p.description.length > 160)) warn(p.f, `description has ${p.description.length} characters (target 70–160)`);
   if (p.title && /^(.+?) – GM Digital Bunker™$/.test(p.title) && /GM Digital Bunker™/.test(p.title.replace(/ – GM Digital Bunker™$/, ''))) warn(p.f, `brand repeated in title: "${p.title}"`);
 
@@ -47,6 +53,10 @@ for (const p of pages) {
     if (p.canonical) err(p.f, '404 must not declare a canonical');
     if (Object.keys(p.hreflang).length) err(p.f, '404 must not declare hreflang');
     if (!p.robots?.includes('noindex')) err(p.f, '404 must be noindex');
+  } else if (interna) {
+    if (p.canonical) err(p.f, 'internal page must not declare a canonical');
+    if (Object.keys(p.hreflang).length) err(p.f, 'internal page must not declare hreflang');
+    if (!p.robots?.includes('noindex')) err(p.f, 'internal page must be noindex');
   } else {
     if (!p.canonical) err(p.f, 'missing canonical');
     for (const l of ['pt-BR', 'en', 'x-default']) if (!p.hreflang[l]) err(p.f, `missing hreflang ${l}`);
@@ -70,10 +80,11 @@ const sitemapFile = join(DIST, 'sitemap-0.xml');
 if (!existsSync(sitemapFile)) err('sitemap-0.xml', 'missing');
 else {
   const urls = [...readFileSync(sitemapFile, 'utf8').matchAll(/<url><loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  for (const u of urls) if (INTERNAS.has(`${new URL(u).pathname.replace(/^\//, '')}.html`)) err('sitemap-0.xml', `internal page listed in the sitemap: ${u}`);
   for (const u of urls) if (!byCanonical.has(u)) err('sitemap-0.xml', `URL is not the canonical of any page: ${u}`);
   for (const c of byCanonical.keys()) if (!urls.includes(c)) err('sitemap-0.xml', `canonical missing from the sitemap: ${c}`);
 }
-for (const p of pages) if (p.f !== '404.html' && !p.jsonld.length) warn(p.f, 'no JSON-LD');
+for (const p of pages) if (p.f !== '404.html' && !INTERNAS.has(p.f) && !p.jsonld.length) warn(p.f, 'no JSON-LD');
 
 // JSON-LD: every { "@id": … } reference must resolve to a node of the same @graph.
 for (const p of pages) {
