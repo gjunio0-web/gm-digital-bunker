@@ -7,6 +7,7 @@ import {
   type User,
 } from 'firebase/auth';
 import { getFirestore, doc, getDoc, type Firestore } from 'firebase/firestore';
+import { verificarAcesso } from './acesso';
 import { voltarConsumido } from './historico';
 import { MODULOS, type Modulo } from './registro';
 
@@ -109,10 +110,20 @@ function iniciar(opcoes: FirebaseOptions) {
 
   onAuthStateChanged(auth, async (user) => {
     if (!user) return semSessao();
-    const papel = await lerPapel(db, user);
-    if (papel !== 'admin' && papel !== 'leitor') {
+    const acesso = await verificarAcesso(() => lerPapel(db, user));
+    if (acesso === 'sem-acesso') {
       await signOut(auth);
       erroLogin.textContent = 'Esta conta não tem acesso à administração.';
+      erroLogin.hidden = false;
+      return;
+    }
+    if (acesso === 'indisponivel') {
+      // The role could not be read (not the same as having no access): keep the session and ask for a reload,
+      // which runs this check again with the stored session. The button stays disabled because signing in
+      // again as the same user would not trigger this listener.
+      mostrar('entrada');
+      entrarBtn.disabled = true;
+      erroLogin.textContent = 'Não foi possível verificar o acesso agora. Verifique a conexão e recarregue a página.';
       erroLogin.hidden = false;
       return;
     }
@@ -134,13 +145,11 @@ function iniciar(opcoes: FirebaseOptions) {
   }
 }
 
+// Resolves with the role (null when the document is absent) and rejects when the read fails;
+// verificarAcesso (./acesso) tells those two situations apart.
 async function lerPapel(db: Firestore, user: User): Promise<string | null> {
-  try {
-    const snap = await getDoc(doc(db, 'usuarios', user.uid));
-    return snap.exists() ? ((snap.data().papel as string) ?? null) : null;
-  } catch {
-    return null;
-  }
+  const snap = await getDoc(doc(db, 'usuarios', user.uid));
+  return snap.exists() ? ((snap.data().papel as string) ?? null) : null;
 }
 
 // ---------- Routing ----------
