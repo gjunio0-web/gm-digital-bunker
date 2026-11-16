@@ -486,3 +486,35 @@ test('confiancaFinal: prazoEm is written only when it is still null (spec 01 v0.
   assert.equal('lead.acao.prazoEm' in preenchido, false);
   assert.ok('lead.modificadores.confianca' in preenchido);
 });
+
+test('reexecutar sintese: coletada with erro (interruption marked by vigiar) renews estadoEm, clears erro and keeps the state', async () => {
+  for (const etapa of ['interrupcao:coletada', 'sintetizar']) {
+    const id = await criaFicha({ estado: 'coletada', erro: { etapa, mensagem: 'x', em: ts('2026-11-16T12:30:00Z') } });
+    const antes = (await db.doc(`fichas/${id}`).get()).data();
+    const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['sintese'] } });
+    assert.equal(r.status, 200, etapa);
+    assert.equal(r.resultado.estado, 'coletada');
+    const f = (await db.doc(`fichas/${id}`).get()).data();
+    assert.equal(f.estado, 'coletada');
+    assert.equal(f.erro, null);
+    assert.ok(f.estadoEm.toMillis() > antes.estadoEm.toMillis());
+    assert.deepEqual((await eventos(id)).filter((e) => e.tipo === 'reexecucao').map((e) => e.detalhe), [{ alvos: ['sintese'] }]);
+  }
+  const sem = await criaFicha({ estado: 'coletada' });
+  assert.equal(codigo(await chama(admin.token, { fichaId: sem, acao: 'reexecutar', parametros: { alvo: ['sintese'] } })), 'acao_invalida_no_estado');
+});
+
+test('vigiar: a ficha stopped in coletada gets erro interrupcao:coletada and the parada event; a recent one is left alone', async () => {
+  const { marcaParadas } = await import('../lib/vigiar.js');
+  const agora = new Date();
+  const parada = await criaFicha({ estado: 'coletada', estadoEm: Timestamp.fromDate(new Date(agora.getTime() - 3 * 3_600_000)) });
+  const recente = await criaFicha({ estado: 'coletada', estadoEm: Timestamp.fromDate(new Date(agora.getTime() - 60_000)) });
+  await marcaParadas(agora, db, 30);
+  const f = (await db.doc(`fichas/${parada}`).get()).data();
+  assert.equal(f.erro.etapa, 'interrupcao:coletada');
+  assert.deepEqual((await eventos(parada)).filter((e) => e.tipo === 'parada').map((e) => e.detalhe.estado), ['coletada']);
+  assert.equal((await db.doc(`fichas/${recente}`).get()).data().erro ?? null, null);
+  // After the mark, reexecutar sintese is the way out.
+  const r = await chama(admin.token, { fichaId: parada, acao: 'reexecutar', parametros: { alvo: ['sintese'] } });
+  assert.equal(r.status, 200);
+});

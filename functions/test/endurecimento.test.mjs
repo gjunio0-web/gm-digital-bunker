@@ -10,7 +10,7 @@ import { semPreco } from '../lib/uso.js';
 const agora = new Date('2026-11-08T15:00:00Z');
 const ha = (min) => new Date(agora.getTime() - min * 60_000);
 
-test('paradas: only fichas in coleta_minima, coletando or sintetizando, past the deadline and without an error', () => {
+test('paradas: only fichas in coleta_minima, coletando, coletada or sintetizando, past the deadline and without an error', () => {
   const fichas = [
     { id: 'm', estado: 'coleta_minima', estadoEm: ha(45), erro: null },
     { id: 'n', estado: 'coleta_minima', estadoEm: ha(10), erro: null },
@@ -20,8 +20,11 @@ test('paradas: only fichas in coleta_minima, coletando or sintetizando, past the
     { id: 'c', estado: 'sintetizando', estadoEm: ha(29), erro: null },
     { id: 'd', estado: 'coletando', estadoEm: ha(120), erro: { etapa: 'interrupcao:coletando' } },
     { id: 'e', estado: 'analise_pronta', estadoEm: ha(500), erro: null },
+    { id: 'f', estado: 'coletada', estadoEm: ha(40), erro: null },
+    { id: 'g', estado: 'coletada', estadoEm: ha(5), erro: null },
+    { id: 'h', estado: 'coletada', estadoEm: ha(300), erro: { etapa: 'interrupcao:coletada' } },
   ];
-  assert.deepEqual(paradas(fichas, agora, 30).map((f) => f.id), ['m', 'a', 'b']);
+  assert.deepEqual(paradas(fichas, agora, 30).map((f) => f.id), ['m', 'a', 'b', 'f']);
   assert.deepEqual(paradas(fichas, agora, 100).map((f) => f.id), []);
 });
 

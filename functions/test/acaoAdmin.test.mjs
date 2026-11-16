@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ACOES, ErroAcao, paraHttpsError, validaAlvo, validaEstado } from '../lib/acaoAdmin.js';
 import { deveRetomar } from '../lib/retomarTriagem.js';
+import { deveSintetizar } from '../lib/sintetizar.js';
 
 const ESTADOS = [
   'recebida', 'coleta_minima', 'qualificada', 'descartada', 'resposta_breve', 'coletando', 'coletada', 'sintetizando',
@@ -90,7 +91,9 @@ test('validaAlvo: sintese only in the analysed states and in sintetizando with e
   const erro = (etapa) => ({ etapa });
   for (const estado of ['analise_pronta', 'analise_com_pendencias', 'aprovada']) assert.equal(validaAlvo(['sintese'], { estado, erro: null }).tipo, 'sintese');
   assert.equal(validaAlvo(['sintese'], { estado: 'sintetizando', erro: erro('sintetizar') }).tipo, 'sintese');
-  for (const f of [{ estado: 'sintetizando', erro: null }, { estado: 'coletando', erro: erro('coletar') }, { estado: 'coleta_minima', erro: erro('qualificar') }, { estado: 'qualificada', erro: erro('graduar') }]) {
+  assert.equal(validaAlvo(['sintese'], { estado: 'coletada', erro: erro('interrupcao:coletada') }).tipo, 'sintese');
+  assert.equal(validaAlvo(['sintese'], { estado: 'coletada', erro: erro('sintetizar') }).tipo, 'sintese');
+  for (const f of [{ estado: 'sintetizando', erro: null }, { estado: 'coletada', erro: null }, { estado: 'coletando', erro: erro('coletar') }, { estado: 'coleta_minima', erro: erro('qualificar') }, { estado: 'qualificada', erro: erro('graduar') }]) {
     assert.equal(campoDe(() => validaAlvo(['sintese'], f)), 'parametro_invalido:alvo', JSON.stringify(f));
   }
   assert.equal(validaAlvo(['qualificacao'], { estado: 'coleta_minima', erro: erro('qualificar') }).tipo, 'qualificacao');
@@ -111,4 +114,16 @@ test('deveRetomar: only when erro goes from filled to null, in coleta_minima or 
   assert.equal(deveRetomar({ erro: null }, { estado: 'coleta_minima', erro: null }), null);
   assert.equal(deveRetomar(undefined, { estado: 'coleta_minima', erro: null }), null);
   assert.equal(deveRetomar({ erro }, undefined), null);
+});
+
+test('deveSintetizar: the ficha moves to coletada, or erro goes from filled to null while it stays in coletada', () => {
+  const erro = { etapa: 'interrupcao:coletada' };
+  assert.equal(deveSintetizar({ estado: 'coletando' }, { estado: 'coletada' }), true);
+  assert.equal(deveSintetizar(undefined, { estado: 'coletada' }), true);
+  assert.equal(deveSintetizar({ estado: 'coletada', erro }, { estado: 'coletada', erro: null }), true);
+  assert.equal(deveSintetizar({ estado: 'coletada', erro }, { estado: 'coletada', erro }), false);
+  assert.equal(deveSintetizar({ estado: 'coletada', erro: null }, { estado: 'coletada', erro }), false);
+  assert.equal(deveSintetizar({ estado: 'coletada', erro: null }, { estado: 'coletada', erro: null }), false);
+  assert.equal(deveSintetizar({ estado: 'coletada', erro }, { estado: 'sintetizando', erro: null }), false);
+  assert.equal(deveSintetizar({ estado: 'coletando' }, { estado: 'analise_pronta' }), false);
 });

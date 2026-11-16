@@ -32,12 +32,19 @@ import type { Normalizado, Original } from './validacao.js';
 const MAX_TOKENS = { enquadrar: 32_000, preparar_conversa: 32_000, montar_analise: 48_000 } as const;
 const TIMEOUT_CHAMADA_MS = 480_000;
 
+// Trigger condition: the ficha moves to coletada, or erro goes from filled to null while it stays in coletada
+// (re-run of the synthesis after a failure before the claim or an interruption; spec 01 v0.30, 4.1, item 3).
+export function deveSintetizar(antes: { estado?: string; erro?: unknown } | undefined, depois: { estado?: string; erro?: unknown }): boolean {
+  if (depois.estado !== 'coletada') return false;
+  return antes?.estado !== 'coletada' || Boolean(antes.erro && !depois.erro);
+}
+
 export const sintetizar = onDocumentUpdated(
   { document: 'fichas/{id}', region: REGIAO, secrets: [CLAUDE_API_KEY], memory: '1GiB', timeoutSeconds: 540, maxInstances: 3, retry: false },
   async (evento) => {
     const antes = evento.data?.before.data();
     const depois = evento.data?.after.data();
-    if (!depois || depois.estado !== 'coletada' || antes?.estado === 'coletada') return;
+    if (!depois || !deveSintetizar(antes, depois)) return;
     const id = evento.params.id;
     const db = getFirestore();
     const ref = db.collection('fichas').doc(id);

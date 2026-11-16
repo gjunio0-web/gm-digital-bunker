@@ -85,7 +85,7 @@ export function validaEstado(acao: Acao, f: { estado: string; erro?: unknown; re
   if (!ok) throw invalida();
 }
 
-// `alvo` of reexecutar (spec 01 v0.28, 4.1, item 3). Checks the shape (non-empty list, no repetition, known values,
+// `alvo` of reexecutar (spec 01 v0.30, 4.1, item 3). Checks the shape (non-empty list, no repetition, known values,
 // sintese and qualificacao only alone) and, for those two, the states where they are valid. Returns the kind of
 // request; a list of collection stages is only shape-checked here.
 export const ALVOS = ['sintese', 'qualificacao', ...ETAPAS] as const;
@@ -97,7 +97,7 @@ export function validaAlvo(alvo: unknown, f: { estado: string; erro?: { etapa?: 
   const exclusivo = alvos.includes('sintese') || alvos.includes('qualificacao');
   if (exclusivo && alvos.length > 1) throw invalido();
   if (alvos[0] === 'sintese') {
-    if (!(ESTADOS_ANALISADA.includes(f.estado) || (f.estado === 'sintetizando' && f.erro))) throw invalido();
+    if (!(ESTADOS_ANALISADA.includes(f.estado) || ((f.estado === 'sintetizando' || f.estado === 'coletada') && f.erro))) throw invalido();
     return { tipo: 'sintese', alvos };
   }
   if (alvos[0] === 'qualificacao') {

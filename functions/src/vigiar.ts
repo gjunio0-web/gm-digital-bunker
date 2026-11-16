@@ -1,7 +1,7 @@
 // vigiar – every 30 minutes (phase 6, item 3c; decision of Gon, 8/11/2026; spec 01 v0.25, item 4.2):
 // 1. releases the fichas held by the daily ceiling (retencao.motivo teto_diario) whose liberacaoPrevista has
 //    passed, oldest retencao.desde first, counting each one in the ceiling of the new day (spec 01, section 3);
-// 2. fichas in coleta_minima, coletando or sintetizando
+// 2. fichas in coleta_minima, coletando, coletada or sintetizando
 // (the verification runs with the ficha still in sintetizando) without an error and with estadoEm older than
 // config/pipeline.prazoParadaMin get erro {etapa: "interrupcao:<estado>"} and the "parada" event, and one e-mail
 // lists them. Nothing is run again by itself. It also covers events dropped with maxInstances and retry false
@@ -14,7 +14,8 @@ import { diaDeSaoPaulo, viradaDoDia } from './graduar.js';
 import { lePipeline } from './pipeline.js';
 import { avisoParadas } from './email.js';
 
-export const ESTADOS_EM_CURSO = ['coleta_minima', 'coletando', 'sintetizando'] as const;
+// coletada is a passing state, but sintetizar can die before claiming it: any ficha stopped there is a failure (spec 01 v0.30, 4.2).
+export const ESTADOS_EM_CURSO = ['coleta_minima', 'coletando', 'coletada', 'sintetizando'] as const;
 
 // Fichas stopped beyond the deadline; filtered in code (few fichas in progress), so no composite index.
 export function paradas(fichas: { id: string; estado: string; estadoEm: Date; erro: unknown }[], agora: Date, prazoMin: number) {
@@ -60,9 +61,9 @@ export async function liberaRetidas(db: Firestore, p: Pipeline, agora = new Date
   return { liberadas, adiadas };
 }
 
-export async function marcaParadas(agora = new Date()): Promise<{ empresa: string; estado: string; minutos: number; link: string }[]> {
-  const db = getFirestore();
-  const p = await lePipeline();
+// `db` and `prazoMin` are test seams; the scheduled function passes neither.
+export async function marcaParadas(agora = new Date(), db: Firestore = getFirestore(), prazoMin?: number): Promise<{ empresa: string; estado: string; minutos: number; link: string }[]> {
+  const p = { prazoParadaMin: prazoMin ?? (await lePipeline()).prazoParadaMin };
   const q = await db.collection('fichas').where('estado', 'in', [...ESTADOS_EM_CURSO]).get();
   const lista = q.docs.map((d) => ({ id: d.id, estado: d.get('estado'), estadoEm: (d.get('estadoEm') as Timestamp).toDate(), erro: d.get('erro') ?? null }));
   const base = URL_BASE_POR_PROJETO[process.env.GCLOUD_PROJECT ?? ''];
