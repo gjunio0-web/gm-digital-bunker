@@ -1,0 +1,64 @@
+// Unit tests of acaoAdmin (spec 01 v0.27, section 4.1): the state table with the long-state rule, and the
+// mapping of errors to HttpsError (an unexpected error never leaks its message).
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { ACOES, ErroAcao, paraHttpsError, validaEstado } from '../lib/acaoAdmin.js';
+
+const ESTADOS = [
+  'recebida', 'coleta_minima', 'qualificada', 'descartada', 'resposta_breve', 'coletando', 'coletada', 'sintetizando',
+  'analise_pronta', 'analise_com_pendencias', 'aprovada', 'respondida', 'arquivada',
+];
+const LONGOS = ['coleta_minima', 'coletando', 'sintetizando'];
+const ANALISADA = ['analise_pronta', 'analise_com_pendencias', 'aprovada'];
+
+// Expected from the table of section 4.1, item 2, written independently of the code.
+function esperado(acao, estado, { erro, retencao }) {
+  if (estado === 'arquivada') return 'acao_invalida_no_estado';
+  if (LONGOS.includes(estado) && !erro) return 'ficha_em_processamento';
+  const ok = {
+    aprovar: ['analise_pronta', 'analise_com_pendencias'].includes(estado),
+    editar: ANALISADA.includes(estado),
+    reexecutar: ANALISADA.includes(estado) || (erro && [...LONGOS, 'coletada'].includes(estado)),
+    portaDecidida: [...ANALISADA, 'respondida'].includes(estado),
+    respostaEnviada: estado === 'aprovada',
+    mandarParaAnalise: estado === 'resposta_breve' || (estado === 'qualificada' && retencao),
+    arquivar: true,
+  }[acao];
+  return ok ? null : 'acao_invalida_no_estado';
+}
+
+test('validaEstado: every action in every state, with and without erro and retencao, follows the table', () => {
+  for (const acao of ACOES) {
+    for (const estado of ESTADOS) {
+      for (const erro of [false, true]) {
+        for (const retencao of [false, true]) {
+          const f = { estado, erro: erro ? { etapa: 'x' } : null, retencao: retencao ? { motivo: 'teto_diario' } : null };
+          let codigo = null;
+          try { validaEstado(acao, f); } catch (e) { assert.ok(e instanceof ErroAcao); codigo = e.codigo; assert.equal(e.extra.estadoAtual, estado); }
+          assert.equal(codigo, esperado(acao, estado, { erro, retencao }), `${acao} em ${estado} (erro ${erro}, retencao ${retencao})`);
+        }
+      }
+    }
+  }
+});
+
+test('paraHttpsError: each code maps to its HttpsError with details {codigo, estadoAtual, campo}', () => {
+  const casos = {
+    nao_autenticado: 'unauthenticated', sem_permissao: 'permission-denied', ficha_inexistente: 'not-found',
+    acao_invalida_no_estado: 'failed-precondition', parametro_invalido: 'invalid-argument',
+    ficha_em_processamento: 'failed-precondition', conflito: 'aborted', interno: 'internal',
+  };
+  for (const [codigo, https] of Object.entries(casos)) {
+    const e = paraHttpsError(new ErroAcao(codigo, { estadoAtual: 'aprovada', campo: 'acao' }));
+    assert.equal(e.code, https);
+    assert.deepEqual(e.details, { codigo, estadoAtual: 'aprovada', campo: 'acao' });
+    assert.ok(e.message.length > 0 && e.message.length < 80);
+  }
+});
+
+test('paraHttpsError: an unexpected error becomes interno without its own message', () => {
+  const e = paraHttpsError(new Error('segredo: /fichas/abc caiu em joao@exemplo.com'));
+  assert.equal(e.code, 'internal');
+  assert.deepEqual(e.details, { codigo: 'interno' });
+  assert.ok(!/segredo|joao|fichas/.test(e.message));
+});

@@ -2,10 +2,16 @@
 // its subcollections (spec 01, sections 4 and 6). Minimal version for item 1: metricas comes later.
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger } from 'firebase-functions';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp, type DocumentReference, type Firestore } from 'firebase-admin/firestore';
 import { REGIAO } from './config.js';
 
 const LOTE = 100;
+
+// Removes a ficha with every subcollection (coleta, analise, eventos). Shared by the daily purge and by
+// acaoAdmin (arquivar with expurgoImediato, spec 01, section 4.1, item 7). The update of `metricas` comes later.
+export async function expurgarFicha(db: Firestore, ref: DocumentReference): Promise<void> {
+  await db.recursiveDelete(ref);
+}
 
 export async function expurgaVencidas(agora = Timestamp.now()): Promise<number> {
   const db = getFirestore();
@@ -13,7 +19,7 @@ export async function expurgaVencidas(agora = Timestamp.now()): Promise<number> 
   for (;;) {
     const vencidas = await db.collection('fichas').where('expurgoEm', '<', agora).limit(LOTE).get();
     if (vencidas.empty) break;
-    for (const doc of vencidas.docs) await db.recursiveDelete(doc.ref);
+    for (const doc of vencidas.docs) await expurgarFicha(db, doc.ref);
     total += vencidas.size;
     if (vencidas.size < LOTE) break;
   }
