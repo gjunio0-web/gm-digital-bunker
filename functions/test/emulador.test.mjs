@@ -404,8 +404,9 @@ test('vigiar release: held fichas leave in order of retencao.desde, count in the
     assert.equal((await le1('lib-futura')).estado, 'qualificada');
     assert.equal((await db.doc('controle/analises-2026-11-20').get()).data().n, 2);
 
-    // Same run again: nothing more fits today and nothing is counted twice.
-    assert.deepEqual(await liberaRetidas(db, { maxAnalisesPorDia: 2 }, agora), { liberadas: 0, adiadas: 1 });
+    // Same run again: the postponed ficha is not eligible until the next midnight, so nothing is released,
+    // nothing is postponed again and nothing is counted twice.
+    assert.deepEqual(await liberaRetidas(db, { maxAnalisesPorDia: 2 }, agora), { liberadas: 0, adiadas: 0 });
     assert.equal((await db.doc('controle/analises-2026-11-20').get()).data().n, 2);
 
     // Next day, no ceiling: the held ficha leaves without touching the counter.
