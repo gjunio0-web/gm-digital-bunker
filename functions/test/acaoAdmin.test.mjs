@@ -2,6 +2,8 @@
 // mapping of errors to HttpsError (an unexpected error never leaks its message).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { triagemPodeSeguir } from '../lib/retomarTriagem.js';
+import { deveRetomarColeta } from '../lib/retomarColetaMinima.js';
 import { ACOES, ErroAcao, paraHttpsError, validaAlvo, validaEstado, validaStatusColeta } from '../lib/acaoAdmin.js';
 import { deveRetomar } from '../lib/retomarTriagem.js';
 import { deveSintetizar } from '../lib/sintetizar.js';
@@ -128,17 +130,19 @@ test('deveSintetizar: the ficha moves to coletada, or erro goes from filled to n
   assert.equal(deveSintetizar({ estado: 'coletando' }, { estado: 'analise_pronta' }), false);
 });
 
-test('validaAlvo (coleta): analysed states take any of the six; erro in coleta_minima only the two minimal stages; coletando and coletada with erro any', () => {
+test('validaAlvo (coleta): analysed states take any of the six; erro in coleta_minima only the two minimal stages; coletando with erro any; coletada and sintetizando with erro none', () => {
   const erro = (etapa) => ({ etapa });
   for (const estado of ['analise_pronta', 'analise_com_pendencias', 'aprovada']) assert.equal(validaAlvo(['empresa_pessoas', 'mercado'], { estado, erro: null }).tipo, 'coleta');
   assert.equal(validaAlvo(['empresa_digital', 'empresa_registro'], { estado: 'coleta_minima', erro: erro('coleta_minima') }).tipo, 'coleta');
   assert.equal(validaAlvo(['empresa_registro'], { estado: 'coleta_minima', erro: erro('interrupcao:coleta_minima') }).tipo, 'coleta');
-  for (const estado of ['coletando', 'coletada']) assert.equal(validaAlvo(['setor', 'empresa_digital'], { estado, erro: erro('coletar') }).tipo, 'coleta');
+  assert.equal(validaAlvo(['setor', 'empresa_digital'], { estado: 'coletando', erro: erro('coletar') }).tipo, 'coleta');
   for (const f of [
     { estado: 'coleta_minima', erro: erro('coleta_minima') }, // only with a non-minimal stage, below
   ]) assert.equal(campoDe(() => validaAlvo(['setor'], f)), 'parametro_invalido:alvo');
   for (const f of [
     { estado: 'sintetizando', erro: erro('sintetizar') },
+    { estado: 'coletada', erro: erro('sintetizar') },
+    { estado: 'coletada', erro: erro('interrupcao:coletada') },
     { estado: 'qualificada', erro: erro('graduar') },
     { estado: 'resposta_breve', erro: null },
     { estado: 'respondida', erro: null },
@@ -154,4 +158,25 @@ test('validaStatusColeta: analysed states need the stage to exist; with erro onl
   assert.equal(campoDe(() => validaStatusColeta(['setor'], comErro, { setor: 'concluida' })), 'parametro_invalido:alvo');
   assert.equal(campoDe(() => validaStatusColeta(['setor', 'mercado'], comErro, { setor: 'falhou', mercado: 'concluida' })), 'parametro_invalido:alvo');
   assert.equal(campoDe(() => validaStatusColeta(['setor'], comErro, { setor: undefined })), 'parametro_invalido:alvo');
+});
+
+test('deveRetomarColeta: erro filled to null in coleta_minima only', () => {
+  const erro = { etapa: 'coleta_minima' };
+  assert.equal(deveRetomarColeta({ estado: 'coleta_minima', erro }, { estado: 'coleta_minima', erro: null }), true);
+  assert.equal(deveRetomarColeta({ estado: 'coleta_minima', erro: null }, { estado: 'coleta_minima', erro: null }), false);
+  assert.equal(deveRetomarColeta({ estado: 'coleta_minima', erro }, { estado: 'coleta_minima', erro }), false);
+  assert.equal(deveRetomarColeta({ estado: 'coletando', erro }, { estado: 'coletando', erro: null }), false);
+  assert.equal(deveRetomarColeta({ estado: 'qualificada', erro }, { estado: 'qualificada', erro: null }), false);
+  assert.equal(deveRetomarColeta(undefined, { estado: 'coleta_minima', erro: null }), false);
+  assert.equal(deveRetomarColeta({ estado: 'coleta_minima', erro }, undefined), false);
+});
+
+test('triagemPodeSeguir: concluida, nao_aplicavel or preserved whole; pendente, executando or falhou alone make it give up', () => {
+  const c = { status: 'concluida' };
+  assert.equal(triagemPodeSeguir([c, c]), true);
+  assert.equal(triagemPodeSeguir([c, { status: 'nao_aplicavel' }]), true);
+  assert.equal(triagemPodeSeguir([c, { status: 'falhou', preservado: { blocos: ['etapa'] } }]), true);
+  assert.equal(triagemPodeSeguir([c, { status: 'falhou', preservado: { blocos: ['apollo'] } }]), false);
+  for (const status of ['pendente', 'executando', 'falhou']) assert.equal(triagemPodeSeguir([c, { status }]), false, status);
+  assert.equal(triagemPodeSeguir([c, {}]), false);
 });

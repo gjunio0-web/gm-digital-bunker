@@ -286,16 +286,45 @@ test('reexecutar (coleta): coletando with erro cleared by the action fires colet
   assert.equal(refeita.tentativa, 2);
 });
 
-test('reexecutar (coleta): coletada with erro goes to coletando; a stage that finished is not offered when there is erro', async () => {
-  const id = await criaFicha({ estado: 'coletada', ...camposDeColeta, erro: { etapa: 'sintetizar', mensagem: 'x', em: ts('2026-11-16T12:30:00Z') } });
-  for (const e of ETAPAS_COLETA) await etapaDoc(id, e, e === 'setor' ? falhou : concluida);
-  const recusa = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['empresa_digital'] } });
+test('reexecutar (coleta): coletada with erro (synthesis phase) takes only sintese; a finished stage is not offered in coletando with erro', async () => {
+  const erro = { etapa: 'sintetizar', mensagem: 'x', em: ts('2026-11-16T12:30:00Z') };
+  const coletada = await criaFicha({ estado: 'coletada', ...camposDeColeta, erro });
+  for (const e of ETAPAS_COLETA) await etapaDoc(coletada, e, e === 'setor' ? falhou : concluida);
+  const naColetada = await chama(admin.token, { fichaId: coletada, acao: 'reexecutar', parametros: { alvo: ['setor'] } });
+  assert.equal(codigo(naColetada), 'parametro_invalido');
+  assert.equal(naColetada.erro.details.campo, 'alvo');
+  assert.equal((await db.doc(`fichas/${coletada}/coleta/setor`).get()).data().status, 'falhou');
+  assert.deepEqual(await tiposDe(coletada), []);
+  const coletando = await criaFicha({ estado: 'coletando', ...camposDeColeta, erro: { ...erro, etapa: 'coletar' } });
+  for (const e of ETAPAS_COLETA) await etapaDoc(coletando, e, e === 'setor' ? falhou : concluida);
+  const recusa = await chama(admin.token, { fichaId: coletando, acao: 'reexecutar', parametros: { alvo: ['empresa_digital'] } });
   assert.equal(codigo(recusa), 'parametro_invalido');
-  assert.equal(recusa.erro.details.campo, 'alvo');
-  assert.equal((await db.doc(`fichas/${id}/coleta/empresa_digital`).get()).data().status, 'concluida');
-  assert.deepEqual(await tiposDe(id), []);
-  const ok = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['setor'] } });
-  assert.equal(ok.resultado.estado, 'coletando');
+  assert.equal((await db.doc(`fichas/${coletando}/coleta/empresa_digital`).get()).data().status, 'concluida');
+  assert.deepEqual(await tiposDe(coletando), []);
+});
+
+test('reexecutar (coleta_minima com erro): the pending minimal stage is redone by retomarColetaMinima, then qualificar and graduar run', async () => {
+  const id = await criaFicha({ estado: 'coleta_minima', ...camposDeColeta, erro: { etapa: 'coleta_minima', mensagem: 'x', em: ts('2026-11-16T12:30:00Z') } });
+  await db.doc(`fichas/${id}`).update({ 'original.mensagem': 'Queremos sair das planilhas com apoio de um conselho.' });
+  await etapaDoc(id, 'empresa_digital', concluida);
+  await etapaDoc(id, 'empresa_registro', falhou);
+  const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['empresa_registro'] } });
+  assert.deepEqual(r.resultado, { ok: true, estado: 'coleta_minima', analiseAtual: 'v1' });
+  const f = await ate(async () => {
+    const d = (await db.doc(`fichas/${id}`).get()).data();
+    return d.estado !== 'coleta_minima' || d.erro ? d : null;
+  });
+  assert.ok(f, 'the ficha left coleta_minima');
+  assert.equal(f.erro ?? null, null);
+  assert.ok(f.lead, 'graduar ran');
+  const registro = (await db.doc(`fichas/${id}/coleta/empresa_registro`).get()).data();
+  assert.equal(registro.status, 'concluida');
+  assert.equal(registro.tentativa, 2);
+  assert.equal((await db.doc(`fichas/${id}/coleta/empresa_digital`).get()).data().tentativa, 1); // not pending: untouched
+  const tipos = await tiposDe(id);
+  for (const t of ['reexecucao', 'coleta_minima', 'qualificada']) assert.ok(tipos.includes(t), t);
+  const min = (await eventos(id)).find((e) => e.tipo === 'coleta_minima');
+  assert.equal(min.detalhe.passagem, 'reexecucao');
 });
 
 test('reexecutar (coleta): refused with nothing written in coleta_minima with a non-minimal stage, in sintetizando and qualificada with erro, and with a missing stage document', async () => {

@@ -10,6 +10,7 @@ import { APOLLO_API_KEY, CLAUDE_API_KEY, REGIAO, SMTP2GO_API_KEY } from './confi
 import { lePipeline } from './pipeline.js';
 import { noEmulador } from './claude.js';
 import { ETAPAS_MINIMAS } from './coleta/etapas.js';
+import { etapaUsavel } from './coleta/preservacao.js';
 import { concluiTriagem } from './triagem.js';
 
 type Ficha = { estado?: string; erro?: unknown; lead?: unknown } | undefined;
@@ -20,6 +21,12 @@ export function deveRetomar(antes: Ficha, depois: Ficha): 'qualificar' | 'gradua
   if (depois.estado === 'coleta_minima') return 'qualificar';
   if (depois.estado === 'qualificada' && !depois.lead) return 'graduar';
   return null;
+}
+
+// The triagem can go on when every minimal stage is concluida or nao_aplicavel, or usable (falhou with the whole stage
+// preserved; spec 01 v0.33). A stage pendente, executando or falhou without preservado makes it give up.
+export function triagemPodeSeguir(etapas: { status?: unknown; preservado?: { blocos?: unknown } | null }[]): boolean {
+  return etapas.every((d) => ['concluida', 'nao_aplicavel'].includes(d.status as string) || etapaUsavel(d));
 }
 
 export const retomarTriagem = onDocumentUpdated(
@@ -33,7 +40,7 @@ export const retomarTriagem = onDocumentUpdated(
     let etapa: string = inicio;
     try {
       const docs = await Promise.all(ETAPAS_MINIMAS.map((e) => ref.collection('coleta').doc(e).get()));
-      if (docs.some((d) => !['concluida', 'nao_aplicavel'].includes(d.get('status')))) return;
+      if (!triagemPodeSeguir(docs.map((d) => d.data() ?? {}))) return;
       const p = await lePipeline();
       const { decisao, g } = await concluiTriagem(
         ref, id, p, { claude: noEmulador() ? '' : CLAUDE_API_KEY.value(), smtp: noEmulador() ? '' : SMTP2GO_API_KEY.value() }, inicio === 'qualificar', (e) => { etapa = e; },

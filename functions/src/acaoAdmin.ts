@@ -105,10 +105,10 @@ export function validaAlvo(alvo: unknown, f: { estado: string; erro?: { etapa?: 
     if (!((f.estado === 'coleta_minima' && etapa === 'qualificar') || (f.estado === 'qualificada' && etapa === 'graduar'))) throw invalido();
     return { tipo: 'qualificacao', alvos };
   }
-  // Collection stages (spec 01 v0.32, 4.1, item 3; spec 05, 5.7): in the analysed states any of the six; with erro in
-  // coleta_minima only the two minimal stages; with erro in coletando or coletada any of the six. qualificada and
-  // sintetizando with erro take other targets only (sintese and qualificacao).
-  const erroDeColeta = Boolean(f.erro) && (f.estado === 'coleta_minima' || f.estado === 'coletando' || f.estado === 'coletada');
+  // Collection stages (spec 01 v0.33, 4.1, item 3; spec 05, 5.7): in the analysed states any of the six; with erro in
+  // coleta_minima only the two minimal stages; with erro in coletando any of the six. With erro in the synthesis phase
+  // (sintetizando, coletada) and in qualificada only sintese or qualificacao is accepted.
+  const erroDeColeta = Boolean(f.erro) && (f.estado === 'coleta_minima' || f.estado === 'coletando');
   if (!(ESTADOS_ANALISADA.includes(f.estado) || erroDeColeta)) throw invalido();
   if (f.estado === 'coleta_minima' && alvos.some((a) => a !== 'empresa_digital' && a !== 'empresa_registro')) throw invalido();
   return { tipo: 'coleta', alvos };

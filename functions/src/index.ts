@@ -16,3 +16,4 @@ export { verificar } from './verificar.js';
 export { sondarCache } from './sondarCache.js';
 export { vigiar } from './vigiar.js';
 export { acaoAdmin } from './acaoAdmin.js';
+export { retomarColetaMinima } from './retomarColetaMinima.js';
