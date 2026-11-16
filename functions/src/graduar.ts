@@ -108,7 +108,7 @@ export async function graduaAnalise(ref: DocumentReference, p: Pipeline, enq: En
       ? Timestamp.fromMillis(recebidaEm.toMillis() + p.prazoGuardaDiasBreve * DIA_MS)
       : !atual.respondidaEm && (atual.expurgoEm?.toMillis?.() ?? 0) < normal.toMillis() ? normal : null;
     tx.update(ref, {
-      lead: { ...lead, destinoAlterado: atual.lead?.destinoAlterado === true, acao: { ...lead.acao, prazoEm: null }, calculadoEm: agora },
+      lead: { ...lead, destinoAlterado: atual.lead?.destinoAlterado === true, acao: { ...lead.acao, prazoEm: primeira ? null : atual.lead?.acao?.prazoEm ?? null }, calculadoEm: agora },
       ...(expurgo ? { expurgoEm: expurgo } : {}),
     });
     tx.create(ref.collection('eventos').doc(), {
@@ -138,7 +138,8 @@ export async function confiancaFinal(ref: DocumentReference, f: Record<string, a
     porta: { provavel: 'indeterminada', sinais: [] }, hipotesesDeAlavanca: [], riscosDoLead: [], leituraDoPotencial: { direcao: 'indeterminado' },
   };
   const c = confianca(entradaAnalise(f, await docsDaColeta(ref), enq, new Date(), comPendencias));
-  const prazo = prontaEm ? prazoDaAnalise(lead, prontaEm) : undefined;
+  // prazoEm is written only the first time (spec 01 v0.26): a re-run or a later verification keeps the value.
+  const prazo = prontaEm && !(lead.acao as { prazoEm?: unknown }).prazoEm ? prazoDaAnalise(lead, prontaEm) : undefined;
   return {
     'lead.modificadores.confianca': c.nivel,
     'lead.modificadores.confiancaMotivo': c.motivo,

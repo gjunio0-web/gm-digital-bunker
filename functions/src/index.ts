@@ -11,6 +11,7 @@ export { publicarMetodo } from './publicarMetodo.js';
 export { coletarMinima } from './coletarMinima.js';
 export { coletar } from './coletar.js';
 export { sintetizar } from './sintetizar.js';
+export { retomarTriagem } from './retomarTriagem.js';
 export { verificar } from './verificar.js';
 export { sondarCache } from './sondarCache.js';
 export { vigiar } from './vigiar.js';

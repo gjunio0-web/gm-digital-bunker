@@ -235,12 +235,14 @@ test('arquivar with expurgoImediato: the ficha and every subcollection are gone 
   assert.equal(codigo(rep), 'ficha_inexistente');
 });
 
-test('reexecutar (rest of phase 5b) is validated against the state but not available yet: interno', async () => {
+test('reexecutar: a list of collection stages is validated in shape and still answers interno (not available yet)', async () => {
   const id = await criaFicha({ estado: 'analise_pronta' });
-  const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['sintese'] } });
+  const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['setor', 'mercado'] } });
   assert.equal(r.status, 500);
   assert.equal(codigo(r), 'interno');
   assert.ok(!/reexecutar|fichas/.test(r.erro.message));
+  assert.equal((await db.doc(`fichas/${id}`).get()).data().estado, 'analise_pronta');
+  assert.deepEqual(await tiposDe(id), []);
   const inv = await chama(admin.token, { fichaId: id, acao: 'respostaEnviada' });
   assert.equal(codigo(inv), 'acao_invalida_no_estado');
 });
@@ -390,4 +392,97 @@ test('editar: the title never comes from the client and invalid states are refus
   assert.equal(codigo(await chama(admin.token, { fichaId: sin, acao: 'editar', parametros: { secao: 's1', corpo: 'x', baseadaEm: 'v1' } })), 'ficha_em_processamento');
   assert.equal(codigo(await chama(semDoc.token, { fichaId: id, acao: 'editar', parametros: { secao: 's1', corpo: 'x', baseadaEm: 'v2' } })), 'sem_permissao');
   assert.equal(codigo(await chama(null, { fichaId: id, acao: 'editar', parametros: { secao: 's1', corpo: 'x', baseadaEm: 'v2' } })), 'nao_autenticado');
+});
+
+// --- reexecutar: sintese and qualificacao (phase 5b, second part) -------------------------------------------
+
+test('reexecutar sintese: from each analysed state the ficha goes back to coletada, erro null, estadoEm renewed, event reexecucao', async () => {
+  for (const estado of ['analise_pronta', 'analise_com_pendencias', 'aprovada']) {
+    const id = await criaFichaAnalisada(estado);
+    const antes = (await db.doc(`fichas/${id}`).get()).data();
+    const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['sintese'] } });
+    assert.equal(r.status, 200, estado);
+    assert.deepEqual(r.resultado, { ok: true, estado: 'coletada', analiseAtual: 'v1' });
+    const f = (await db.doc(`fichas/${id}`).get()).data();
+    assert.equal(f.estado, 'coletada');
+    assert.equal(f.erro ?? null, null);
+    assert.ok(f.estadoEm.toMillis() > antes.estadoEm.toMillis());
+    assert.equal(f.analiseAtual, 'v1');
+    assert.deepEqual(f.lead.acao.prazoEm, antes.lead.acao.prazoEm);
+    const ev = (await eventos(id)).filter((e) => e.tipo === 'reexecucao');
+    assert.equal(ev.length, 1);
+    assert.deepEqual(ev[0].detalhe, { alvos: ['sintese'] });
+    assert.deepEqual(ev[0].ator, { tipo: 'humano', id: admin.uid });
+    assert.equal((await db.collection(`fichas/${id}/analise`).get()).size, 1);
+  }
+});
+
+test('reexecutar sintese: sintetizando with erro goes back to coletada; without erro it is ficha_em_processamento', async () => {
+  const id = await criaFicha({ estado: 'sintetizando', erro: { etapa: 'sintetizar', mensagem: 'x', em: ts('2026-11-16T12:30:00Z') } });
+  const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['sintese'] } });
+  assert.equal(r.status, 200);
+  const f = (await db.doc(`fichas/${id}`).get()).data();
+  assert.equal(f.estado, 'coletada');
+  assert.equal(f.erro, null);
+  const sem = await criaFicha({ estado: 'sintetizando' });
+  assert.equal(codigo(await chama(admin.token, { fichaId: sem, acao: 'reexecutar', parametros: { alvo: ['sintese'] } })), 'ficha_em_processamento');
+});
+
+test('reexecutar: parametro_invalido with campo alvo, and nothing is written', async () => {
+  const id = await criaFichaAnalisada();
+  const invalidos = [undefined, [], 'sintese', ['sintese', 'sintese'], ['sintese', 'setor'], ['qualificacao'], ['nada']];
+  for (const alvo of invalidos) {
+    const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo } });
+    assert.equal(codigo(r), 'parametro_invalido', JSON.stringify(alvo));
+    assert.equal(r.erro.details.campo, 'alvo');
+  }
+  const coleta = await criaFicha({ estado: 'coletando', erro: { etapa: 'coletar', mensagem: 'x', em: ts('2026-11-16T12:30:00Z') } });
+  assert.equal(codigo(await chama(admin.token, { fichaId: coleta, acao: 'reexecutar', parametros: { alvo: ['sintese'] } })), 'parametro_invalido');
+  assert.equal((await db.doc(`fichas/${id}`).get()).data().estado, 'analise_pronta');
+  assert.deepEqual(await tiposDe(id), []);
+});
+
+test('reexecutar qualificacao: with erro.etapa qualificar (coleta_minima) and graduar (qualificada) it clears erro and keeps the state', async () => {
+  for (const [estado, etapa] of [['coleta_minima', 'qualificar'], ['qualificada', 'graduar']]) {
+    const id = await criaFicha({ estado, erro: { etapa, mensagem: 'x', em: ts('2026-11-16T12:30:00Z') } });
+    const antes = (await db.doc(`fichas/${id}`).get()).data();
+    const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['qualificacao'] } });
+    assert.equal(r.status, 200, estado);
+    assert.equal(r.resultado.estado, estado);
+    const f = (await db.doc(`fichas/${id}`).get()).data();
+    assert.equal(f.estado, estado);
+    assert.equal(f.erro, null);
+    assert.ok(f.estadoEm.toMillis() > antes.estadoEm.toMillis());
+    assert.equal(f.lead, undefined);
+    assert.deepEqual((await eventos(id)).filter((e) => e.tipo === 'reexecucao').map((e) => e.detalhe), [{ alvos: ['qualificacao'] }]);
+  }
+});
+
+test('reexecutar qualificacao: other erro.etapa, other states and a combination are parametro_invalido', async () => {
+  const casos = [
+    [{ estado: 'coleta_minima', erro: { etapa: 'coleta_minima' } }, ['qualificacao']],
+    [{ estado: 'coleta_minima', erro: { etapa: 'interrupcao:coleta_minima' } }, ['qualificacao']],
+    [{ estado: 'qualificada', erro: { etapa: 'qualificar' } }, ['qualificacao']],
+    [{ estado: 'coleta_minima', erro: { etapa: 'qualificar' } }, ['qualificacao', 'sintese']],
+  ];
+  for (const [campos, alvo] of casos) {
+    const id = await criaFicha({ ...campos, erro: { ...campos.erro, mensagem: 'x', em: ts('2026-11-16T12:30:00Z') } });
+    const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo } });
+    assert.equal(codigo(r), 'parametro_invalido', JSON.stringify(campos));
+    assert.equal((await db.doc(`fichas/${id}`).get()).data().erro.etapa, campos.erro.etapa);
+  }
+  const pronta = await criaFichaAnalisada();
+  assert.equal(codigo(await chama(admin.token, { fichaId: pronta, acao: 'reexecutar', parametros: { alvo: ['qualificacao'] } })), 'parametro_invalido');
+});
+
+test('confiancaFinal: prazoEm is written only when it is still null (spec 01 v0.26)', async () => {
+  const { confiancaFinal } = await import('../lib/graduar.js');
+  const lead = (prazoEm) => ({ quadrante: 'priorizar', grau: 'A', pontos: 80, destino: 'convidar', modificadores: { escopo: 'aprovado' }, acao: { prazoDiasUteis: 2, prazoEm } });
+  const id = await criaFicha({ estado: 'analise_pronta' });
+  const ref = db.doc(`fichas/${id}`);
+  const nulo = await confiancaFinal(ref, { lead: lead(null) }, false, new Date('2026-11-16T12:00:00Z'));
+  assert.ok(nulo['lead.acao.prazoEm'] instanceof Timestamp);
+  const preenchido = await confiancaFinal(ref, { lead: lead(ts('2026-11-18T12:00:00Z')) }, false, new Date('2026-11-17T12:00:00Z'));
+  assert.equal('lead.acao.prazoEm' in preenchido, false);
+  assert.ok('lead.modificadores.confianca' in preenchido);
 });

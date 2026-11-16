@@ -2,7 +2,8 @@
 // mapping of errors to HttpsError (an unexpected error never leaks its message).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ACOES, ErroAcao, paraHttpsError, validaEstado } from '../lib/acaoAdmin.js';
+import { ACOES, ErroAcao, paraHttpsError, validaAlvo, validaEstado } from '../lib/acaoAdmin.js';
+import { deveRetomar } from '../lib/retomarTriagem.js';
 
 const ESTADOS = [
   'recebida', 'coleta_minima', 'qualificada', 'descartada', 'resposta_breve', 'coletando', 'coletada', 'sintetizando',
@@ -18,7 +19,7 @@ function esperado(acao, estado, { erro, retencao }) {
   const ok = {
     aprovar: ['analise_pronta', 'analise_com_pendencias'].includes(estado),
     editar: ANALISADA.includes(estado),
-    reexecutar: ANALISADA.includes(estado) || (erro && [...LONGOS, 'coletada'].includes(estado)),
+    reexecutar: ANALISADA.includes(estado) || (erro && [...LONGOS, 'coletada', 'qualificada'].includes(estado)),
     portaDecidida: [...ANALISADA, 'respondida'].includes(estado),
     respostaEnviada: estado === 'aprovada',
     mandarParaAnalise: estado === 'resposta_breve' || (estado === 'qualificada' && retencao),
@@ -70,4 +71,44 @@ test('modeloDaEdicao: the model of vN followed by " · edição humana", with a 
   assert.equal(modeloDaEdicao({ secoes: s0('claude-sonnet-5-5 · edição humana') }), 'claude-sonnet-5-5 · edição humana');
   assert.equal(modeloDaEdicao({ autor: { tipo: 'ia', id: 'claude-haiku-5-5' }, secoes: {} }), 'claude-haiku-5-5 · edição humana');
   assert.equal(modeloDaEdicao({ autor: { tipo: 'humano', id: 'uid1' } }), 'não informado · edição humana');
+});
+
+// --- reexecutar: alvo and the trigger condition of retomarTriagem (phase 5b, second part) -------------------
+
+const campoDe = (fn) => { try { fn(); } catch (e) { return `${e.codigo}:${e.extra?.campo}`; } return 'ok'; };
+
+test('validaAlvo: shape (non-empty list, no repetition, known values) and sintese / qualificacao only alone', () => {
+  const f = { estado: 'analise_pronta', erro: null };
+  for (const ruim of [undefined, null, 'sintese', [], ['x'], [1], ['sintese', 'sintese'], ['setor', 'setor'], ['sintese', 'setor'], ['qualificacao', 'sintese'], ['qualificacao', 'mercado']]) {
+    assert.equal(campoDe(() => validaAlvo(ruim, f)), 'parametro_invalido:alvo', JSON.stringify(ruim));
+  }
+  assert.deepEqual(validaAlvo(['sintese'], f), { tipo: 'sintese', alvos: ['sintese'] });
+  assert.deepEqual(validaAlvo(['setor', 'mercado'], f), { tipo: 'coleta', alvos: ['setor', 'mercado'] });
+});
+
+test('validaAlvo: sintese only in the analysed states and in sintetizando with erro; qualificacao only with erro.etapa qualificar / graduar', () => {
+  const erro = (etapa) => ({ etapa });
+  for (const estado of ['analise_pronta', 'analise_com_pendencias', 'aprovada']) assert.equal(validaAlvo(['sintese'], { estado, erro: null }).tipo, 'sintese');
+  assert.equal(validaAlvo(['sintese'], { estado: 'sintetizando', erro: erro('sintetizar') }).tipo, 'sintese');
+  for (const f of [{ estado: 'sintetizando', erro: null }, { estado: 'coletando', erro: erro('coletar') }, { estado: 'coleta_minima', erro: erro('qualificar') }, { estado: 'qualificada', erro: erro('graduar') }]) {
+    assert.equal(campoDe(() => validaAlvo(['sintese'], f)), 'parametro_invalido:alvo', JSON.stringify(f));
+  }
+  assert.equal(validaAlvo(['qualificacao'], { estado: 'coleta_minima', erro: erro('qualificar') }).tipo, 'qualificacao');
+  assert.equal(validaAlvo(['qualificacao'], { estado: 'qualificada', erro: erro('graduar') }).tipo, 'qualificacao');
+  for (const f of [
+    { estado: 'coleta_minima', erro: erro('coleta_minima') }, { estado: 'coleta_minima', erro: erro('graduar') }, { estado: 'qualificada', erro: erro('qualificar') },
+    { estado: 'coleta_minima', erro: erro('interrupcao:coleta_minima') }, { estado: 'analise_pronta', erro: null }, { estado: 'qualificada', erro: null },
+  ]) assert.equal(campoDe(() => validaAlvo(['qualificacao'], f)), 'parametro_invalido:alvo', JSON.stringify(f));
+});
+
+test('deveRetomar: only when erro goes from filled to null, in coleta_minima or in qualificada without lead', () => {
+  const erro = { etapa: 'x' };
+  assert.equal(deveRetomar({ erro }, { estado: 'coleta_minima', erro: null }), 'qualificar');
+  assert.equal(deveRetomar({ erro }, { estado: 'qualificada', erro: null }), 'graduar');
+  assert.equal(deveRetomar({ erro }, { estado: 'qualificada', erro: null, lead: { grau: 'A' } }), null);
+  assert.equal(deveRetomar({ erro }, { estado: 'coletando', erro: null }), null);
+  assert.equal(deveRetomar({ erro }, { estado: 'coleta_minima', erro }), null);
+  assert.equal(deveRetomar({ erro: null }, { estado: 'coleta_minima', erro: null }), null);
+  assert.equal(deveRetomar(undefined, { estado: 'coleta_minima', erro: null }), null);
+  assert.equal(deveRetomar({ erro }, undefined), null);
 });

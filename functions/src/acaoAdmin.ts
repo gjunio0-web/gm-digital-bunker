@@ -1,7 +1,8 @@
 // acaoAdmin (spec 01 v0.27, section 4.1): the callable the admin hub uses to act on a ficha.
 // One function, onCall, region southamerica-east1, admin only (usuarios/{uid}.papel = admin).
 // Phase 5a: aprovar, respostaEnviada, mandarParaAnalise and arquivar. Phase 5b, first part: editar and
-// portaDecidida. reexecutar is validated against the state table but answers "interno" until the rest of 5b.
+// portaDecidida. Phase 5b, second part: reexecutar with the alvos sintese and qualificacao; a list of collection
+// stages is validated in shape but still answers "interno" until the previous-data preservation is built.
 // Every action runs in a transaction that rereads estado and estadoEm (the same lock the pipeline uses).
 // Errors are HttpsError with details {codigo, estadoAtual?, campo?}; the raw message of an unexpected
 // error is never returned, and nothing personal goes to the logs.
@@ -14,6 +15,7 @@ import { SECOES_MODELO, TITULOS, secaoS0, type SecaoModelo } from './sintese.js'
 import { CARGOS_ROTULO } from './textos.generated.js';
 import { diaDeSaoPaulo } from './graduar.js';
 import { lePipeline } from './pipeline.js';
+import { ETAPAS } from './coleta/etapas.js';
 
 export const ACOES = ['aprovar', 'editar', 'reexecutar', 'portaDecidida', 'respostaEnviada', 'mandarParaAnalise', 'arquivar'] as const;
 export type Acao = (typeof ACOES)[number];
@@ -74,13 +76,36 @@ export function validaEstado(acao: Acao, f: { estado: string; erro?: unknown; re
   switch (acao) {
     case 'aprovar': ok = estado === 'analise_pronta' || estado === 'analise_com_pendencias'; break;
     case 'editar': ok = ESTADOS_ANALISADA.includes(estado); break;
-    case 'reexecutar': ok = ESTADOS_ANALISADA.includes(estado) || ((ESTADOS_LONGOS.includes(estado) || estado === 'coletada') && erro); break;
+    case 'reexecutar': ok = ESTADOS_ANALISADA.includes(estado) || ((ESTADOS_LONGOS.includes(estado) || estado === 'coletada' || estado === 'qualificada') && erro); break;
     case 'portaDecidida': ok = ESTADOS_ANALISADA.includes(estado) || estado === 'respondida'; break;
     case 'respostaEnviada': ok = estado === 'aprovada'; break;
     case 'mandarParaAnalise': ok = estado === 'resposta_breve' || (estado === 'qualificada' && Boolean(f.retencao)); break;
     case 'arquivar': ok = true; break; // every state but arquivada; long states were handled above
   }
   if (!ok) throw invalida();
+}
+
+// `alvo` of reexecutar (spec 01 v0.28, 4.1, item 3). Checks the shape (non-empty list, no repetition, known values,
+// sintese and qualificacao only alone) and, for those two, the states where they are valid. Returns the kind of
+// request; a list of collection stages is only shape-checked here.
+export const ALVOS = ['sintese', 'qualificacao', ...ETAPAS] as const;
+export function validaAlvo(alvo: unknown, f: { estado: string; erro?: { etapa?: string } | null }): { tipo: 'sintese' | 'qualificacao' | 'coleta'; alvos: string[] } {
+  const invalido = () => new ErroAcao('parametro_invalido', { campo: 'alvo' });
+  if (!Array.isArray(alvo) || alvo.length === 0 || alvo.some((v) => typeof v !== 'string' || !(ALVOS as readonly string[]).includes(v))) throw invalido();
+  const alvos = alvo as string[];
+  if (new Set(alvos).size !== alvos.length) throw invalido();
+  const exclusivo = alvos.includes('sintese') || alvos.includes('qualificacao');
+  if (exclusivo && alvos.length > 1) throw invalido();
+  if (alvos[0] === 'sintese') {
+    if (!(ESTADOS_ANALISADA.includes(f.estado) || (f.estado === 'sintetizando' && f.erro))) throw invalido();
+    return { tipo: 'sintese', alvos };
+  }
+  if (alvos[0] === 'qualificacao') {
+    const etapa = f.erro?.etapa;
+    if (!((f.estado === 'coleta_minima' && etapa === 'qualificar') || (f.estado === 'qualificada' && etapa === 'graduar'))) throw invalido();
+    return { tipo: 'qualificacao', alvos };
+  }
+  return { tipo: 'coleta', alvos };
 }
 
 export const PORTAS = ['projeto', 'conselho', 'workshop', 'combinacao', 'nenhuma'] as const;
@@ -154,8 +179,8 @@ export async function executaAcao(
   if (!lida.exists) throw new ErroAcao('ficha_inexistente');
   const f0 = lida.data() as Ficha;
   validaEstado(acao as Acao, f0);
-  if (acao === 'reexecutar') {
-    logger.warn('acaoAdmin: action not available yet', { acao });
+  if (acao === 'reexecutar' && validaAlvo(parametros.alvo, f0).tipo === 'coleta') {
+    logger.warn('acaoAdmin: collection targets of reexecutar are not available yet');
     throw new ErroAcao('interno');
   }
   await ganchos.antesDaTransacao?.();
@@ -195,6 +220,18 @@ export async function executaAcao(
         tx.update(ref, { analiseAtual: versao });
         evento(tx, ref, uid, em, 'editada', { secao: parametros.secao, baseadaEm: parametros.baseadaEm, versao });
         return { ok: true, estado: f.estado, analiseAtual: versao };
+      }
+
+      case 'reexecutar': {
+        // Re-checked on the data read inside the transaction (vigiar can set erro without touching estadoEm).
+        validaEstado('reexecutar', f);
+        const { tipo, alvos } = validaAlvo(parametros.alvo, f);
+        // estadoEm is renewed in both cases: vigiar measures a stop from it. sintese goes back to coletada and
+        // sintetizar takes over; qualificacao keeps the state and retomarTriagem takes over (erro goes to null).
+        if (tipo === 'sintese') tx.update(ref, { estado: 'coletada', estadoEm: em, erro: null });
+        else tx.update(ref, { estadoEm: em, erro: null });
+        evento(tx, ref, uid, em, 'reexecucao', { alvos });
+        return { ok: true, estado: tipo === 'sintese' ? 'coletada' : f.estado, analiseAtual: f.analiseAtual ?? null };
       }
 
       case 'respostaEnviada':

@@ -7,7 +7,6 @@ import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions';
 import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { APOLLO_API_KEY, CLAUDE_API_KEY, REGIAO, SMTP2GO_API_KEY } from './config.js';
-import { avisoTeto } from './email.js';
 import { lePipeline } from './pipeline.js';
 import { lePrecos } from './precos.js';
 import { modeloDe } from './modelos.js';
@@ -16,8 +15,8 @@ import { CARGOS_ROTULO } from './textos.generated.js';
 import { dominioDe, sinaisIniciais } from './qualificacao.js';
 import { ETAPAS_MINIMAS, orcamentoBuscas } from './coleta/etapas.js';
 import { roda, type Contexto } from './coleta/motor.js';
-import { mesDe, qualifica } from './qualificar.js';
-import { graduaTriagem } from './graduar.js';
+import { mesDe } from './qualificar.js';
+import { concluiTriagem } from './triagem.js';
 import type { Normalizado, Original } from './validacao.js';
 
 export const coletarMinima = onDocumentCreated(
@@ -97,14 +96,7 @@ export const coletarMinima = onDocumentCreated(
       );
       await lote.commit();
 
-      etapa = 'qualificar';
-      const decisao = await qualifica(ref, p, claude);
-      etapa = 'graduar';
-      const g = await graduaTriagem(ref, p);
-      if (g?.avisarTeto) {
-        await avisoTeto(noEmulador() ? '' : SMTP2GO_API_KEY.value(), g.avisarTeto.teto, g.avisarTeto.dia).catch((e) =>
-          logger.error('coletarMinima: ceiling notice failed', { id, mensagem: String((e as Error)?.message ?? e).slice(0, 300) }));
-      }
+      const { decisao, g } = await concluiTriagem(ref, id, p, { claude, smtp: noEmulador() ? '' : SMTP2GO_API_KEY.value() }, true, (e) => { etapa = e; });
       logger.info('coletarMinima: done', { id, buscas: t.buscas, usd, decisao, quadrante: g?.lead.quadrante, grau: g?.lead.grau, estado: g?.estado });
     } catch (e) {
       const mensagem = String((e as Error)?.message ?? e).slice(0, 500);
