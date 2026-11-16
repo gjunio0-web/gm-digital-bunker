@@ -6,10 +6,12 @@
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { deleteApp, initializeApp } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { executaAcao, ErroAcao } from '../lib/acaoAdmin.js';
 import { diaDeSaoPaulo } from '../lib/graduar.js';
+import { ARQUIVOS_METODO } from '../lib/metodoArquivos.js';
 
 const PROJETO = 'gmdb-qualidade';
 process.env.FIRESTORE_EMULATOR_HOST ??= '127.0.0.1:8080';
@@ -303,7 +305,17 @@ test('reexecutar (coleta): coletada with erro (synthesis phase) takes only sinte
   assert.deepEqual(await tiposDe(coletando), []);
 });
 
+// qualificar reads the published method (config/metodo); this file may run on an emulator where none was published.
+async function garanteMetodo() {
+  if ((await db.doc('config/metodo').get()).get('versao')) return;
+  const raiz = new URL('../../metodo/', import.meta.url);
+  const arquivos = ARQUIVOS_METODO.map((nome) => ({ nome, conteudo: readFileSync(new URL(nome, raiz), 'utf8') }));
+  const r = await fetch(`http://127.0.0.1:5001/${PROJETO}/southamerica-east1/publicarMetodo`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versao: 'm1', arquivos }) });
+  assert.equal(r.status, 200);
+}
+
 test('reexecutar (coleta_minima com erro): the pending minimal stage is redone by retomarColetaMinima, then qualificar and graduar run', async () => {
+  await garanteMetodo();
   const id = await criaFicha({ estado: 'coleta_minima', ...camposDeColeta, erro: { etapa: 'coleta_minima', mensagem: 'x', em: ts('2026-11-16T12:30:00Z') } });
   await db.doc(`fichas/${id}`).update({ 'original.mensagem': 'Queremos sair das planilhas com apoio de um conselho.' });
   await etapaDoc(id, 'empresa_digital', concluida);
