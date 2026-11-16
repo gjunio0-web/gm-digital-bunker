@@ -267,3 +267,27 @@ test('confidence at the end of verificar: pending issues make it medium, keeping
   const baixa = entradaAnalise(ficha, { ...docs, empresa_registro: { status: 'concluida', confianca: { grau: 'baixa' }, conteudo: { confirmado: false } } }, enq(), momento, true);
   assert.deepEqual(confianca(baixa), { nivel: 'baixa', motivo: 'CNPJ não confirmado · análise com pendências · Registro com confiança baixa' });
 });
+
+test('montar_analise gets the same <lead> block as preparar_conversa, outside the data block (spec 02 v0.27)', async () => {
+  const { mensagemMontar, PROPOSITOS, LISTAS_ROTULOS } = await import('../lib/sintese.js');
+  const lead = { destino: 'nutrir', modificadores: { spam: false, escopo: 'aprovado', confianca: 'alta', confiancaMotivo: 'x' }, quadrante: 'q', grau: 'B', pontos: 55 };
+  const blocoDe = (m) => /<lead>\n[\s\S]*?\n<\/lead>/.exec(m[1].texto)[0];
+  const a = mensagemMontar('dados', {}, {}, lead, 'A0 (fora)');
+  assert.equal(blocoDe(a), blocoDe(mensagemConversa('dados', {}, lead)));
+  assert.deepEqual(Object.keys(JSON.parse(blocoDe(a).replace(/<\/?lead>/g, ''))), ['destino', 'destinoRotulo', 'modificadores']);
+  assert.match(blocoDe(a), /"destinoRotulo": "Nutrir"|"destinoRotulo":"Nutrir"/);
+  assert.doesNotMatch(a[0].texto, /<lead>/);
+  assert.ok(PROPOSITOS.s7.startsWith('o objetivo da conversa e o que ela precisa validar, ligados ao destino do lead (`<lead>.destino`: convidar, verificar aderência, nutrir ou encerrar), que não é a porta: a porta fica na s6.'));
+  assert.match(LISTAS_ROTULOS.s7, /\*\*Ligação com o destino\.\*\* \(o destino de `<lead>`, pelo nome em `destinoRotulo`; a porta fica na s6\)/);
+});
+
+test('the secao-s7 item of the reviewer checklist carries the same purpose and label list as the instruction (spec 02 v0.27)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { checklistDoRevisor } = await import('../lib/metodoRegras.js');
+  const { PROPOSITOS, LISTAS_ROTULOS, instrucaoMontar } = await import('../lib/sintese.js');
+  const escopo = readFileSync(new URL('../../metodo/escopo-limites.md', import.meta.url), 'utf8');
+  const item = checklistDoRevisor(escopo).find((r) => r.regra === 'secao-s7').texto;
+  assert.ok(item.includes(PROPOSITOS.s7));
+  assert.ok(item.includes(LISTAS_ROTULOS.s7));
+  assert.ok(instrucaoMontar('A0 (fora)').includes(`- **s7 Preparação da primeira conversa** – ${PROPOSITOS.s7}`));
+});

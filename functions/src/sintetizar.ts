@@ -130,7 +130,7 @@ export const sintetizar = onDocumentUpdated(
       const lead = await graduaAnalise(ref, p, enq, versao);
       const conversa = validaConversa(await chama('preparar_conversa', mensagemConversa(dados, enquadramentoDoModelo(enq), lead), ESQUEMA_CONVERSA, () => simulaConversa(original.nome, /reparo/i.test(original.mensagem ?? ''))));
       const comFalha = /pend[eê]ncia/i.test(original.mensagem ?? '');
-      const montagem = validaMontar(await chama('montar_analise', mensagemMontar(dados, enquadramentoDoModelo(enq), conversa, graus), ESQUEMA_MONTAR, () => simulaMontar(comFalha)));
+      const montagem = validaMontar(await chama('montar_analise', mensagemMontar(dados, enquadramentoDoModelo(enq), conversa, lead, graus), ESQUEMA_MONTAR, () => simulaMontar(comFalha)));
 
       // Usage per call and in total (spec 01 v0.11, uso); the revisor's entry is added by verificar.
       const chamadas = Object.values(registros);

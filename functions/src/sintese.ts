@@ -31,7 +31,7 @@ export const PROPOSITOS: Record<SecaoModelo, string> = {
   s4: 'TAM, SAM e SOM com método e confiança, dinâmica, ligação com o problema declarado e a direção do potencial (de `enquadramento.leituraDoPotencial`). Fonte: `mercado`.',
   s5: 'o signatário (cargo por fonte, senioridade, divergências entre fontes) e os decisores visíveis; trajetória profissional não coletada. Fonte: `empresa_pessoas` (`signatario`, `outrosDecisoresVisiveis`).',
   s6: 'escopo com os itens e graus, classificação da estrutura de tecnologia (com remissão à s2), porta provável, hipóteses de alavanca, riscos do lead; da direção do potencial, só como orienta a porta. Sem pontos: o hub mostra a conta. Fonte: `enquadramento`.',
-  s7: 'o objetivo da conversa e o que ela precisa validar, ligados ao destino. Não liste as perguntas, os materiais nem os pontos de atenção: o hub os mostra a partir do bloco `conversa`. Fontes: `conversa`, `<lead>`.',
+  s7: 'o objetivo da conversa e o que ela precisa validar, ligados ao destino do lead (`<lead>.destino`: convidar, verificar aderência, nutrir ou encerrar), que não é a porta: a porta fica na s6. Não liste as perguntas, os materiais nem os pontos de atenção: o hub os mostra a partir do bloco `conversa`. Fontes: `conversa`, `<lead>`.',
 };
 
 // Fixed subsection labels of each section, in order (spec 02 v0.17, 3.3): the montar_analise instruction, the
@@ -56,7 +56,7 @@ export const LISTAS_ROTULOS: Record<SecaoModelo, string> = {
   s4: '**Mercado total endereçável (TAM).** · **Mercado atendível (SAM).** · **Mercado obtível (SOM).** (cada um com valor, ano, método e confiança, ou "não estimado" com a razão; o SOM com horizonte de 2 a 3 anos, estimativa própria rotulada) · **Dinâmica.** (tendência, concentração, novos entrantes digitais, preço) · **Ligação com o problema declarado.** · **Direção do potencial.** (direção e confiança).',
   s5: '**Signatário.** (ou **Signatária.**; cargo confirmado, cargo por fonte, senioridade) · **Divergências entre fontes.** (sem escolher) · **Relação com tecnologia.** · **Atuação profissional pública.** (só no papel profissional, regra 4) · **Trajetória profissional.** (sempre "não coletada", em uma linha) · **Outros decisores visíveis.** (nomes e cargos).',
   s6: '**Escopo.** (itens, classificação e graus com nome) · **Estrutura de tecnologia.** (classificação, com remissão à s2) · **Porta provável.** (porta, sinais e alternativa; com `combinacao`, nomeie as portas e a sequência) · **Hipóteses de alavanca.** · **Riscos do lead.** · **Direção do potencial e porta.** (só como a direção orienta a porta; o detalhe fica na s4).',
-  s7: '**Objetivo da conversa.** · **O que validar.** (sem listar as perguntas) · **Ligação com o destino.**',
+  s7: '**Objetivo da conversa.** · **O que validar.** (sem listar as perguntas) · **Ligação com o destino.** (o destino de `<lead>`, pelo nome em `destinoRotulo`; a porta fica na s6).',
 };
 
 // Title check (spec 02 v0.13, 3.3): the model must bring the fixed title. The API does not guarantee the case
@@ -160,18 +160,22 @@ export const rotuloDestino = (d: string) => DESTINO_ROTULO[d] ?? d;
 export const mensagemEnquadrar = (dados: string) => [{ texto: dados }, { texto: `${INSTRUCAO_ENQUADRAR}\n${INSTRUCAO_FONTES}\nResponda no esquema.` }];
 
 // <lead> carries only lead.destino and lead.modificadores (spec 02, 3; spec 04, 3.1).
+// The same <lead> block goes to preparar_conversa and montar_analise (spec 02 v0.27, 3), in the user message,
+// outside the cached prefix.
+const blocoLead = (lead: Pick<Lead, 'destino' | 'modificadores'>) =>
+  `<lead>\n${json({ destino: lead.destino, destinoRotulo: rotuloDestino(lead.destino), modificadores: lead.modificadores })}\n</lead>`;
+
 export function mensagemConversa(dados: string, enquadramento: unknown, lead: Pick<Lead, 'destino' | 'modificadores'>) {
-  const l = { destino: lead.destino, destinoRotulo: rotuloDestino(lead.destino), modificadores: lead.modificadores };
   return [
     { texto: dados },
-    { texto: [`<enquadramento>\n${json(enquadramento)}\n</enquadramento>`, `<lead>\n${json(l)}\n</lead>`, INSTRUCAO_CONVERSA, INSTRUCAO_FONTES, 'Responda no esquema.'].join('\n') },
+    { texto: [`<enquadramento>\n${json(enquadramento)}\n</enquadramento>`, blocoLead(lead), INSTRUCAO_CONVERSA, INSTRUCAO_FONTES, 'Responda no esquema.'].join('\n') },
   ];
 }
 
-export function mensagemMontar(dados: string, enquadramento: unknown, conversa: unknown, graus: string) {
+export function mensagemMontar(dados: string, enquadramento: unknown, conversa: unknown, lead: Pick<Lead, 'destino' | 'modificadores'>, graus: string) {
   return [
     { texto: dados },
-    { texto: [`<enquadramento>\n${json(enquadramento)}\n</enquadramento>`, `<conversa>\n${json(conversa)}\n</conversa>`, instrucaoMontar(graus), INSTRUCAO_FONTES, 'Responda no esquema.'].join('\n') },
+    { texto: [`<enquadramento>\n${json(enquadramento)}\n</enquadramento>`, `<conversa>\n${json(conversa)}\n</conversa>`, blocoLead(lead), instrucaoMontar(graus), INSTRUCAO_FONTES, 'Responda no esquema.'].join('\n') },
   ];
 }
 
