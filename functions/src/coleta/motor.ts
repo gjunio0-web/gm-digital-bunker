@@ -18,6 +18,7 @@ import { cnpjValido, consultaBrasilApi, type RegistroBrasilApi } from './cnpj.js
 import { consultaApify, consultaApollo, consultaHunter, type Instagram } from './fornecedores.js';
 import type { SinaisIniciais } from '../qualificacao.js';
 import { normalizaFuncionarios } from './funcionarios.js';
+import { etapaUsavel, montaPreservado, motivoDaFalha, preservaBlocos, resultadoDe, type Preservado, type Tentativa } from './preservacao.js';
 
 export interface Contexto {
   id: string;
@@ -43,6 +44,23 @@ export interface Contexto {
   // URLs of the site pages the code delivered to the model in this run (spec 01, paginasLidas).
   paginasLidas?: string[];
   totais: { tokensEntrada: number; tokensSaida: number; buscas: number; usd: number };
+  // Previous usable content of each stage this run re-executes, read by coletar before the claim (spec 03 7.3).
+  anterior?: Partial<Record<Etapa, DocAnterior>>;
+  // preservado to write per stage at the end of its run (set by the stage; absent means none, and the field is deleted).
+  preservado?: Partial<Record<Etapa, Preservado<Timestamp>>>;
+}
+
+// What a re-run keeps of the previous run of a stage: only a usable stage (concluida, or falhou with the whole stage preserved).
+export interface DocAnterior {
+  status: string;
+  conteudo: Record<string, unknown>;
+  fontes: FonteColeta[];
+  afirmacoes: { texto: string; tipo: 'fato' | 'inferencia' | 'nao_encontrado'; fonteIdx: number[] }[];
+  confianca: { grau: 'alta' | 'media' | 'baixa'; motivo: string };
+  insumosCodigo?: Record<string, unknown> | null;
+  paginasLidas?: string[];
+  concluidoEm?: Timestamp;
+  preservado?: Preservado<Timestamp> | null;
 }
 
 // What a stage consumed, kept even when it fails: model calls (complete or partial) and provider calls.
@@ -57,6 +75,14 @@ const registraChamada = (c: Contexto, t: Rastro, f: Fornecedor) => {
 };
 
 const agoraIso = () => new Date().toISOString();
+
+// Why a provider was not consulted (recorded in preservado.falha, spec 03 7.3).
+function motivoNaoConsultado(c: Contexto, f: Fornecedor): string {
+  if (f === 'apify' && !c.apify) return 'fora da coleta mínima';
+  if (!c.p.fontes[f].ativo) return 'fornecedor desligado na configuração';
+  if (!(f === 'brasilapi' ? 'x' : c.chaves[f])) return 'sem chave do fornecedor';
+  return 'teto de chamadas da execução atingido';
+}
 
 // Provider allowed for this ficha: active in config, key present (BrasilAPI needs none), under its cap.
 function pode(c: Contexto, f: Fornecedor): boolean {
@@ -164,24 +190,29 @@ async function empresaDigital(c: Contexto, t: Rastro): Promise<Envelope> {
   let apollo: unknown = 'não consultado';
   let apolloFuncionarios: number | null = null;
   let apolloEncontrado = false;
+  // What happened to each preservable block in this run (spec 03 7.3).
+  const tentativas: { apollo?: Tentativa; instagram?: Tentativa } = {};
   const dominio = site ? new URL(site).hostname.replace(/^www\./, '') : null;
   if (dominio && pode(c, 'apollo')) {
     registraChamada(c, t, 'apollo');
     const a = await consultaApollo(c.chaves.apollo, dominio).catch(() => ({ status: 0, dados: null }));
     apollo = a.dados ?? `sem correspondência (HTTP ${a.status})`;
+    tentativas.apollo = { resultado: resultadoDe(a.status, a.dados), motivo: motivoDaFalha(a.status) };
     if (a.dados) {
       apolloEncontrado = true;
       apolloFuncionarios = a.dados.funcionariosEstimados;
       fontes.push({ url: `https://api.apollo.io/api/v1/organizations/enrich?domain=${dominio}`, titulo: 'Apollo – enriquecimento de empresa pelo domínio', tipo: 'api', consultadoEm: agoraIso() });
     }
-  }
+  } else if (dominio) tentativas.apollo = { resultado: 'nao_consultado', motivo: motivoNaoConsultado(c, 'apollo') };
 
   let instagram: Instagram | null = null;
   if (leitura?.instagram && pode(c, 'apify')) {
     registraChamada(c, t, 'apify');
-    instagram = (await consultaApify(c.chaves.apify, leitura.instagram).catch(() => ({ status: 0, dados: null }))).dados;
+    const r = await consultaApify(c.chaves.apify, leitura.instagram).catch(() => ({ status: 0, dados: null }));
+    instagram = r.dados;
+    tentativas.instagram = { resultado: resultadoDe(r.status, r.dados), motivo: motivoDaFalha(r.status), perfil: leitura.instagram };
     if (instagram) fontes.push({ url: `https://www.instagram.com/${instagram.perfil}/`, titulo: 'Instagram da empresa (Apify)', tipo: 'api', consultadoEm: agoraIso() });
-  }
+  } else if (leitura?.instagram) tentativas.instagram = { resultado: 'nao_consultado', motivo: motivoNaoConsultado(c, 'apify'), perfil: leitura.instagram };
 
   c.codigo.empresa_digital = noEmulador()
     ? simulaCodigo(c, 'empresa_digital')
@@ -209,19 +240,34 @@ async function empresaDigital(c: Contexto, t: Rastro): Promise<Envelope> {
   const env = await envelopeDaEtapa(c, t, 'empresa_digital', fontes, insumos, MAX_BUSCAS.empresa_digital);
 
   const ig = env.conteudo.instagram as Record<string, any> | null;
-  if (!instagram && ig?.perfil && ig.origemPerfil === 'busca' && pode(c, 'apify') && perfilCitaEmpresa(c.ficha.empresa, String(ig.perfil))) {
-    registraChamada(c, t, 'apify');
-    const d = (await consultaApify(c.chaves.apify, String(ig.perfil).replace(/^@/, '').toLowerCase()).catch(() => ({ status: 0, dados: null }))).dados;
-    if (d) {
-      const idx = env.fontes.push({ url: `https://www.instagram.com/${d.perfil}/`, titulo: 'Instagram (Apify), perfil achado por busca', tipo: 'api', consultadoEm: agoraIso() }) - 1;
-      env.conteudo.instagram = instagramDoApify(d, 'busca');
-      env.afirmacoes.push({ texto: `Perfil de Instagram ${d.perfil}, achado por busca, com dados do Apify (inferência: perfil da empresa).`, tipo: 'inferencia', fonteIdx: [idx] });
-    }
+  if (!instagram && ig?.perfil && ig.origemPerfil === 'busca' && perfilCitaEmpresa(c.ficha.empresa, String(ig.perfil))) {
+    const perfilBusca = String(ig.perfil).replace(/^@/, '').toLowerCase();
+    if (pode(c, 'apify')) {
+      registraChamada(c, t, 'apify');
+      const r = await consultaApify(c.chaves.apify, perfilBusca).catch(() => ({ status: 0, dados: null }));
+      tentativas.instagram = { resultado: resultadoDe(r.status, r.dados), motivo: motivoDaFalha(r.status), perfil: perfilBusca };
+      const d = r.dados;
+      if (d) {
+        const idx = env.fontes.push({ url: `https://www.instagram.com/${d.perfil}/`, titulo: 'Instagram (Apify), perfil achado por busca', tipo: 'api', consultadoEm: agoraIso() }) - 1;
+        env.conteudo.instagram = instagramDoApify(d, 'busca');
+        env.afirmacoes.push({ texto: `Perfil de Instagram ${d.perfil}, achado por busca, com dados do Apify (inferência: perfil da empresa).`, tipo: 'inferencia', fonteIdx: [idx] });
+      }
+    } else tentativas.instagram = { resultado: 'nao_consultado', motivo: motivoNaoConsultado(c, 'apify'), perfil: perfilBusca };
   }
   // Apollo head count written by the code as {faixa, minimo, maximo} (spec 02 v0.10, 2.2), not by the model.
   const ap = env.conteudo.apollo && typeof env.conteudo.apollo === 'object' ? (env.conteudo.apollo as Record<string, unknown>) : null;
   if (ap || apolloEncontrado) {
     env.conteudo.apollo = { setorFornecedor: null, localizacao: null, ...(ap ?? {}), funcionariosEstimados: normalizaFuncionarios(noEmulador() ? c.codigo.empresa_digital?.apolloFuncionarios : apolloFuncionarios) };
+  }
+  // Re-run: a block whose provider failed or was not consulted keeps the previous data (spec 03 7.3).
+  const ant = c.anterior?.empresa_digital;
+  const pres = preservaBlocos(env, ant, tentativas);
+  if (pres) {
+    env.conteudo = pres.parte.conteudo;
+    env.fontes = pres.parte.fontes;
+    env.afirmacoes = pres.parte.afirmacoes;
+    if (pres.insumosApollo) c.codigo.empresa_digital = { ...(c.codigo.empresa_digital ?? {}), ...pres.insumosApollo };
+    (c.preservado ??= {}).empresa_digital = { blocos: pres.blocos, desde: Timestamp.fromDate(new Date(pres.desde ?? Date.now())), falhouEm: Timestamp.now(), falha: pres.falha };
   }
   return env;
 }
@@ -315,7 +361,7 @@ const somaUso = (c: Contexto, u: ReturnType<typeof usoDe>) => {
 // Reads the stored content and code facts of a stage this run does not execute.
 async function carrega(c: Contexto, etapa: Etapa): Promise<void> {
   const d = (await c.ref.collection('coleta').doc(etapa).get()).data();
-  if (d?.status === 'concluida') c.conteudos[etapa] = d.conteudo;
+  if (etapaUsavel(d)) c.conteudos[etapa] = d?.conteudo;
   if (d?.insumosCodigo) c.codigo[etapa] = d.insumosCodigo;
 }
 
@@ -344,16 +390,31 @@ export async function roda(c: Contexto, etapa: Etapa): Promise<void> {
   const insumosCodigo = c.codigo[etapa] ?? null;
   // Pages read: only in empresa_digital, recorded by the code even when the stage fails (empty when none).
   const extra = etapa === 'empresa_digital' ? { paginasLidas: c.paginasLidas ?? [] } : {};
+  const ant = c.anterior?.[etapa];
+  let preservado: string[] | undefined;
   if (resultado.status === 'concluida') {
     c.conteudos[etapa] = resultado.envelope.conteudo;
-    await doc.update({ status: 'concluida', ...resultado.envelope, ...extra, insumosCodigo, modelo, uso, concluidoEm: Timestamp.now(), tentativa: FieldValue.increment(1) });
+    const pb = c.preservado?.[etapa];
+    preservado = pb?.blocos;
+    await doc.update({ status: 'concluida', ...resultado.envelope, ...extra, insumosCodigo, modelo, uso, concluidoEm: Timestamp.now(), tentativa: FieldValue.increment(1), preservado: pb ?? FieldValue.delete() });
+  } else if (ant && etapaUsavel(ant)) {
+    // Whole stage failed on a re-run: the previous content stays, status falhou (spec 03 7.3; a second failure keeps `desde`).
+    const pb = montaPreservado(['etapa'], ant.concluidoEm ?? Timestamp.now(), Timestamp.now(), resultado.mensagem, ant.preservado);
+    c.conteudos[etapa] = ant.conteudo;
+    if (ant.insumosCodigo) c.codigo[etapa] = ant.insumosCodigo;
+    preservado = pb.blocos;
+    await doc.update({
+      status: 'falhou', conteudo: ant.conteudo, fontes: ant.fontes, afirmacoes: ant.afirmacoes, confianca: ant.confianca,
+      ...(etapa === 'empresa_digital' ? { paginasLidas: ant.paginasLidas ?? [] } : {}),
+      insumosCodigo: ant.insumosCodigo ?? null, modelo, uso, concluidoEm: Timestamp.now(), tentativa: FieldValue.increment(1), preservado: pb,
+    });
   } else {
     await doc.update({
       status: 'falhou', conteudo: {}, fontes: [], afirmacoes: [], confianca: { grau: 'baixa', motivo: `falha: ${resultado.mensagem}` },
       ...extra, insumosCodigo, modelo, uso, concluidoEm: Timestamp.now(), tentativa: FieldValue.increment(1),
     });
   }
-  await c.ref.collection('eventos').add({ em: Timestamp.now(), ator: { tipo: 'ia', id: 'coletar' }, tipo: 'coleta_etapa', detalhe: { etapa, status: resultado.status } });
+  await c.ref.collection('eventos').add({ em: Timestamp.now(), ator: { tipo: 'ia', id: 'coletar' }, tipo: 'coleta_etapa', detalhe: { etapa, status: resultado.status, ...(preservado ? { preservado } : {}) } });
 }
 
 // First pass of the full collection: completes the Instagram block of empresa_digital with Apify

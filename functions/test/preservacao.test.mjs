@@ -114,3 +114,105 @@ test('etapaUsavel: concluida, or falhou with whole-stage preservation; never pen
   assert.equal(etapaUsavel({ status: 'executando', conteudo: { a: 1 } }), false);
   assert.equal(etapaUsavel(undefined), false);
 });
+
+import { preservaBlocos } from '../lib/coleta/preservacao.js';
+
+const anteriorCompleto = { ...antigo, insumosCodigo: { siteLido: true, apolloEncontrado: true, apolloFuncionarios: 50, instagramDoSite: 'acme', cnpjsNoSite: [], paginaCnpj: null } };
+
+test('preservaBlocos: failed Apollo and failed Instagram of the same profile carry both, with the two Apollo facts', () => {
+  const r = preservaBlocos(novo, anteriorCompleto, {
+    apollo: { resultado: 'falha', motivo: 'resposta HTTP 503' },
+    instagram: { resultado: 'nao_consultado', motivo: 'teto de chamadas da execução atingido', perfil: '@Acme' },
+  });
+  assert.deepEqual(r.blocos, ['apollo', 'instagram']);
+  assert.equal(r.falha, 'Apollo: resposta HTTP 503; Instagram: teto de chamadas da execução atingido');
+  assert.equal(r.desde, '2026-11-10T10:01:00.000Z');
+  assert.deepEqual(r.insumosApollo, { apolloEncontrado: true, apolloFuncionarios: 50 });
+  assert.equal(r.parte.fontes.length, 3);
+  assert.deepEqual(r.parte.afirmacoes.map((a) => a.fonteIdx), [[0], [1], [2]]);
+});
+
+test('preservaBlocos: "não encontrado" and success never preserve', () => {
+  assert.equal(preservaBlocos(novo, anteriorCompleto, { apollo: { resultado: 'nao_encontrado', motivo: 'x' }, instagram: { resultado: 'encontrado', motivo: 'x', perfil: 'acme' } }), null);
+});
+
+test('preservaBlocos: Instagram of another profile, or with no profile now, is not carried', () => {
+  assert.equal(preservaBlocos(novo, anteriorCompleto, { instagram: { resultado: 'falha', motivo: 'x', perfil: 'outra.conta' } }), null);
+  assert.equal(preservaBlocos(novo, anteriorCompleto, { instagram: { resultado: 'falha', motivo: 'x', perfil: null } }), null);
+});
+
+test('preservaBlocos: nothing to carry when the previous run had no data for the block', () => {
+  const sem = { conteudo: { apollo: 'não consultado', instagram: 'sem link' }, fontes: [], afirmacoes: [] };
+  assert.equal(preservaBlocos(novo, sem, { apollo: { resultado: 'falha', motivo: 'x' }, instagram: { resultado: 'falha', motivo: 'x', perfil: 'acme' } }), null);
+  assert.equal(preservaBlocos(novo, null, { apollo: { resultado: 'falha', motivo: 'x' } }), null);
+});
+
+test('preservaBlocos: only the failed block is carried', () => {
+  const r = preservaBlocos(novo, anteriorCompleto, { apollo: { resultado: 'encontrado', motivo: 'x' }, instagram: { resultado: 'falha', motivo: 'resposta HTTP 429', perfil: 'acme' } });
+  assert.deepEqual(r.blocos, ['instagram']);
+  assert.equal(r.insumosApollo, undefined);
+  assert.equal(r.parte.conteudo.apollo, 'não consultado');
+});
+
+// --- roda(): whole-stage preservation and clean success, with a fake document (no network, no model) ---
+import { Timestamp, FieldValue } from 'firebase-admin/firestore';
+import { roda } from '../lib/coleta/motor.js';
+
+function contexto(anterior, completo = false) {
+  const escritas = [];
+  const doc = { update: async (d) => { escritas.push(d); } };
+  const ref = { collection: () => ({ doc: () => doc, add: async (e) => { escritas.push({ evento: e.detalhe }); } }) };
+  const c = {
+    id: 'x', ref, p: { modelos: {}, fontes: {} }, ficha: { empresa: 'A' }, chaves: {}, aRodar: new Set(['empresa_noticias']),
+    buscasRestantes: 5, chamadas: {}, conteudos: {}, codigo: {}, precos: null, totais: { tokensEntrada: 0, tokensSaida: 0, buscas: 0, usd: 0 }, anterior,
+    ...(completo ? { contexto: { rotulo: 'qualificacao', valor: {} }, sinais: {}, email: 'a@b.com' } : {}),
+  };
+  return { c, escritas };
+}
+const ant = (extra = {}) => ({ status: 'concluida', conteudo: { a: 1 }, fontes: [{ url: 'u', titulo: 't', tipo: 'busca', consultadoEm: '2026-11-01T00:00:00.000Z' }], afirmacoes: [{ texto: 'x', tipo: 'fato', fonteIdx: [0] }], confianca: { grau: 'alta', motivo: 'm' }, concluidoEm: Timestamp.fromDate(new Date('2026-11-01T00:00:00Z')), ...extra });
+
+test('roda: a stage that fails on a re-run keeps the previous content, status falhou, preservado "etapa"', async () => {
+  delete process.env.FUNCTIONS_EMULATOR; // the stage fails because the context is deliberately incomplete (no model, no network)
+  const { c, escritas } = contexto({ empresa_noticias: ant() });
+  await roda(c, 'empresa_noticias');
+  const f = escritas.find((e) => e.status === 'falhou');
+  assert.deepEqual(f.conteudo, { a: 1 });
+  assert.equal(f.confianca.grau, 'alta');
+  assert.deepEqual(f.preservado.blocos, ['etapa']);
+  assert.equal(f.preservado.desde.toDate().toISOString(), '2026-11-01T00:00:00.000Z');
+  assert.ok(f.preservado.falha.length > 0);
+  assert.deepEqual(c.conteudos.empresa_noticias, { a: 1 }); // downstream stages still read it
+  assert.deepEqual(escritas.at(-1).evento.preservado, ['etapa']);
+});
+
+test('roda: second failure keeps the original desde and updates falhouEm', async () => {
+  delete process.env.FUNCTIONS_EMULATOR;
+  const desde = Timestamp.fromDate(new Date('2026-11-01T00:00:00Z'));
+  const { c, escritas } = contexto({ empresa_noticias: ant({ status: 'falhou', preservado: { blocos: ['etapa'], desde, falhouEm: Timestamp.fromDate(new Date('2026-11-05T00:00:00Z')), falha: 'antiga' } }) });
+  await roda(c, 'empresa_noticias');
+  const f = escritas.find((e) => e.status === 'falhou');
+  assert.equal(f.preservado.desde.toDate().toISOString(), '2026-11-01T00:00:00.000Z');
+  assert.ok(f.preservado.falhouEm.toMillis() > Timestamp.fromDate(new Date('2026-11-05T00:00:00Z')).toMillis());
+  assert.notEqual(f.preservado.falha, 'antiga');
+});
+
+test('roda: a stage with no usable previous content that fails is emptied as before', async () => {
+  delete process.env.FUNCTIONS_EMULATOR;
+  const { c, escritas } = contexto(undefined);
+  await roda(c, 'empresa_noticias');
+  const f = escritas.find((e) => e.status === 'falhou');
+  assert.deepEqual(f.conteudo, {});
+  assert.equal(f.preservado, undefined);
+});
+
+test('roda: a clean success deletes preservado', async () => {
+  process.env.FUNCTIONS_EMULATOR = 'true'; // simulated stage: succeeds without a model
+  try {
+    const { c, escritas } = contexto({ empresa_noticias: ant() }, true);
+    await roda(c, 'empresa_noticias');
+    const f = escritas.find((e) => e.status === 'concluida');
+    assert.equal(f.preservado instanceof FieldValue ? 'delete' : 'other', 'delete');
+  } finally {
+    delete process.env.FUNCTIONS_EMULATOR;
+  }
+});

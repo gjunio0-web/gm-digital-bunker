@@ -107,3 +107,58 @@ export function etapaUsavel(d: { status?: unknown; preservado?: { blocos?: unkno
   if (d.status === 'concluida') return true;
   return d.status === 'falhou' && Array.isArray(d.preservado?.blocos) && (d.preservado?.blocos as unknown[]).includes('etapa');
 }
+
+// What the engine tried for a block in this run. "nao_consultado": provider off, no key or cap reached.
+export interface Tentativa {
+  resultado: Resultado | 'nao_consultado';
+  // Reason as recorded in preservado.falha (e.g. "resposta HTTP 503", "desligado na configuração").
+  motivo: string;
+  // Instagram only: the profile consulted (or that would have been) now; null when none was determined.
+  perfil?: string | null;
+}
+
+export interface ParteAnterior extends Parte {
+  insumosCodigo?: Record<string, unknown> | null;
+}
+
+export interface ResultadoPreservacao {
+  parte: Parte;
+  blocos: Bloco[];
+  falha: string;
+  // Earliest original consultation among the carried sources (ISO), null when none is known.
+  desde: string | null;
+  // Present when the Apollo block was carried: the two code facts that go with it.
+  insumosApollo?: { apolloEncontrado?: unknown; apolloFuncionarios?: unknown };
+}
+
+const ROTULO: Record<Bloco, string> = { apollo: 'Apollo', instagram: 'Instagram' };
+
+// Decides and applies the block-level preservation of empresa_digital (spec 03 7.3): a block is carried when its
+// provider failed or was not consulted, the previous run had data for it and, for Instagram, the previous profile
+// is the one consulted now. Returns null when nothing is carried.
+export function preservaBlocos(novo: Parte, anterior: ParteAnterior | null | undefined, t: { apollo?: Tentativa; instagram?: Tentativa }): ResultadoPreservacao | null {
+  if (!anterior) return null;
+  let parte = novo;
+  const blocos: Bloco[] = [];
+  const falhas: string[] = [];
+  const datas: string[] = [];
+  let insumosApollo: ResultadoPreservacao['insumosApollo'];
+  const carrega = (bloco: Bloco, tent: Tentativa) => {
+    const f = fundeBloco(parte, anterior, bloco);
+    if (!f) return;
+    parte = f.parte;
+    blocos.push(bloco);
+    falhas.push(`${ROTULO[bloco]}: ${tent.motivo}`);
+    if (f.desde) datas.push(f.desde);
+  };
+  const ta = t.apollo;
+  if (ta && ta.resultado !== 'encontrado' && ta.resultado !== 'nao_encontrado' && apolloTemDados(anterior.conteudo?.apollo)) {
+    carrega('apollo', ta);
+    if (blocos.includes('apollo')) insumosApollo = insumosDoApollo(anterior.insumosCodigo);
+  }
+  const ti = t.instagram;
+  const ig = anterior.conteudo?.instagram as Record<string, unknown> | undefined;
+  if (ti && ti.resultado !== 'encontrado' && ti.resultado !== 'nao_encontrado' && instagramTemDados(ig) && mesmoPerfil(ig?.perfil, ti.perfil)) carrega('instagram', ti);
+  if (!blocos.length) return null;
+  return { parte, blocos, falha: falhas.join('; '), desde: datas.sort()[0] ?? null, insumosApollo };
+}
