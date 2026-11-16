@@ -2,7 +2,7 @@
 // One function, onCall, region southamerica-east1, admin only (usuarios/{uid}.papel = admin).
 // Phase 5a: aprovar, respostaEnviada, mandarParaAnalise and arquivar. Phase 5b, first part: editar and
 // portaDecidida. Phase 5b, second part: reexecutar with the alvos sintese and qualificacao; a list of collection
-// stages is validated in shape but still answers "interno" until the previous-data preservation is built.
+// stages (phase C) puts the chosen stages in pendente and hands the ficha to coletar or retomarColetaMinima.
 // Every action runs in a transaction that rereads estado and estadoEm (the same lock the pipeline uses).
 // Errors are HttpsError with details {codigo, estadoAtual?, campo?}; the raw message of an unexpected
 // error is never returned, and nothing personal goes to the logs.
@@ -105,7 +105,25 @@ export function validaAlvo(alvo: unknown, f: { estado: string; erro?: { etapa?: 
     if (!((f.estado === 'coleta_minima' && etapa === 'qualificar') || (f.estado === 'qualificada' && etapa === 'graduar'))) throw invalido();
     return { tipo: 'qualificacao', alvos };
   }
+  // Collection stages (spec 01 v0.32, 4.1, item 3; spec 05, 5.7): in the analysed states any of the six; with erro in
+  // coleta_minima only the two minimal stages; with erro in coletando or coletada any of the six. qualificada and
+  // sintetizando with erro take other targets only (sintese and qualificacao).
+  const erroDeColeta = Boolean(f.erro) && (f.estado === 'coleta_minima' || f.estado === 'coletando' || f.estado === 'coletada');
+  if (!(ESTADOS_ANALISADA.includes(f.estado) || erroDeColeta)) throw invalido();
+  if (f.estado === 'coleta_minima' && alvos.some((a) => a !== 'empresa_digital' && a !== 'empresa_registro')) throw invalido();
   return { tipo: 'coleta', alvos };
+}
+
+// Status of each stage document, read inside the transaction (undefined when the document does not exist). In the
+// analysed states every stage is a valid target; with erro only the stages that did not finish (falhou, pendente or
+// executando) are offered, so a concluida one is refused. Throws parametro_invalido.
+export function validaStatusColeta(alvos: string[], f: { estado: string }, status: Record<string, string | undefined>): void {
+  const invalido = () => new ErroAcao('parametro_invalido', { campo: 'alvo' });
+  for (const a of alvos) {
+    const st = status[a];
+    if (!st) throw invalido();
+    if (!ESTADOS_ANALISADA.includes(f.estado) && !['falhou', 'pendente', 'executando'].includes(st)) throw invalido();
+  }
 }
 
 export const PORTAS = ['projeto', 'conselho', 'workshop', 'combinacao', 'nenhuma'] as const;
@@ -179,10 +197,7 @@ export async function executaAcao(
   if (!lida.exists) throw new ErroAcao('ficha_inexistente');
   const f0 = lida.data() as Ficha;
   validaEstado(acao as Acao, f0);
-  if (acao === 'reexecutar' && validaAlvo(parametros.alvo, f0).tipo === 'coleta') {
-    logger.warn('acaoAdmin: collection targets of reexecutar are not available yet');
-    throw new ErroAcao('interno');
-  }
+  if (acao === 'reexecutar') validaAlvo(parametros.alvo, f0);
   await ganchos.antesDaTransacao?.();
 
   const agora = ganchos.agora ?? new Date();
@@ -226,6 +241,18 @@ export async function executaAcao(
         // Re-checked on the data read inside the transaction (vigiar can set erro without touching estadoEm).
         validaEstado('reexecutar', f);
         const { tipo, alvos } = validaAlvo(parametros.alvo, f);
+        if (tipo === 'coleta') {
+          // Stage documents are read before any write. They go to pendente keeping their content (the previous data
+          // that coletar reads and preserves); coletar (or retomarColetaMinima in coleta_minima) takes over.
+          const refs = alvos.map((a) => ref.collection('coleta').doc(a));
+          const docs = await Promise.all(refs.map((r) => tx.get(r)));
+          validaStatusColeta(alvos, f, Object.fromEntries(alvos.map((a, i) => [a, docs[i].get('status') as string | undefined])));
+          for (const r of refs) tx.update(r, { status: 'pendente' });
+          const estado = f.estado === 'coleta_minima' ? 'coleta_minima' : 'coletando';
+          tx.update(ref, { estado, estadoEm: em, erro: null });
+          evento(tx, ref, uid, em, 'reexecucao', { alvos });
+          return { ok: true, estado, analiseAtual: f.analiseAtual ?? null };
+        }
         // estadoEm is renewed in both cases: vigiar measures a stop from it. sintese goes back to coletada and
         // sintetizar takes over; qualificacao keeps the state and retomarTriagem takes over (erro goes to null).
         if (tipo === 'sintese') tx.update(ref, { estado: 'coletada', estadoEm: em, erro: null });

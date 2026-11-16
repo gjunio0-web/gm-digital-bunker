@@ -235,15 +235,90 @@ test('arquivar with expurgoImediato: the ficha and every subcollection are gone 
   assert.equal(codigo(rep), 'ficha_inexistente');
 });
 
-test('reexecutar: a list of collection stages is validated in shape and still answers interno (not available yet)', async () => {
-  const id = await criaFicha({ estado: 'analise_pronta' });
-  const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['setor', 'mercado'] } });
-  assert.equal(r.status, 500);
-  assert.equal(codigo(r), 'interno');
-  assert.ok(!/reexecutar|fichas/.test(r.erro.message));
-  assert.equal((await db.doc(`fichas/${id}`).get()).data().estado, 'analise_pronta');
+const ETAPAS_COLETA = ['empresa_digital', 'empresa_registro', 'empresa_pessoas', 'empresa_noticias', 'setor', 'mercado'];
+const etapaDoc = (id, etapa, campos) => db.doc(`fichas/${id}/coleta/${etapa}`).set({ etapa, versaoMetodo: 'm1', tentativa: 1, ...campos });
+const concluida = { status: 'concluida', conteudo: { a: 1 }, fontes: [], afirmacoes: [], confianca: { grau: 'alta', motivo: 'm' }, insumosCodigo: null };
+const falhou = { status: 'falhou', conteudo: {}, fontes: [], afirmacoes: [], confianca: { grau: 'baixa', motivo: 'falha: x' } };
+// What coletar reads when the ficha goes to coletando (the real coletar runs in the emulator, with simulated stages).
+const camposDeColeta = { versaoMetodo: 'm1', normalizado: { email: 'teste@acme.com.br', site: null }, qualificacao: { dominioCorporativo: true, siteResolvido: null } };
+async function ate(fn, ms = 40000) {
+  const fim = Date.now() + ms;
+  while (Date.now() < fim) { const r = await fn(); if (r) return r; await espera(400); }
+  return null;
+}
+
+test('reexecutar (coleta): from an analysed state the chosen stage is redone by coletar with its previous data kept, and the ficha leaves coletando', async () => {
+  const id = await criaFichaAnalisada();
+  await db.doc(`fichas/${id}`).update(camposDeColeta);
+  for (const e of ETAPAS_COLETA) await etapaDoc(id, e, concluida);
+  const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['empresa_noticias', 'setor'] } });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.resultado, { ok: true, estado: 'coletando', analiseAtual: 'v1' });
+  const reexec = (await eventos(id)).find((e) => e.tipo === 'reexecucao');
+  assert.deepEqual(reexec.detalhe.alvos, ['empresa_noticias', 'setor']);
+  // coletar picks it up: only the two stages are rerun (tentativa 2); the others stay as they were (tentativa 1).
+  const refeita = await ate(async () => {
+    const d = (await db.doc(`fichas/${id}/coleta/setor`).get()).data();
+    return d.status === 'concluida' && d.tentativa === 2 ? d : null;
+  });
+  assert.ok(refeita, 'setor was redone by coletar');
+  const noticias = (await db.doc(`fichas/${id}/coleta/empresa_noticias`).get()).data();
+  assert.equal(noticias.tentativa, 2);
+  for (const e of ['empresa_digital', 'empresa_registro', 'empresa_pessoas', 'mercado']) assert.equal((await db.doc(`fichas/${id}/coleta/${e}`).get()).data().tentativa, 1, e);
+  const inicio = (await eventos(id)).find((e) => e.tipo === 'coleta_iniciada');
+  assert.equal(inicio.detalhe.passagem, 'reexecucao');
+  assert.deepEqual([...inicio.detalhe.etapas].sort(), ['empresa_noticias', 'setor']);
+  const f = (await db.doc(`fichas/${id}`).get()).data();
+  assert.ok(f.lead); // the triagem is not redone: the lead stays (the synthesis may regrade it)
+  assert.ok(f.analiseAtual);
+});
+
+test('reexecutar (coleta): coletando with erro cleared by the action fires coletar again (the stage that failed is redone)', async () => {
+  const id = await criaFicha({ estado: 'coletando', ...camposDeColeta, erro: { etapa: 'coletar', mensagem: 'x', em: ts('2026-11-16T12:30:00Z') } });
+  for (const e of ETAPAS_COLETA) await etapaDoc(id, e, e === 'mercado' ? falhou : concluida);
+  const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['mercado'] } });
+  assert.deepEqual(r.resultado, { ok: true, estado: 'coletando', analiseAtual: 'v1' });
+  const refeita = await ate(async () => {
+    const d = (await db.doc(`fichas/${id}/coleta/mercado`).get()).data();
+    return d.status === 'concluida' ? d : null;
+  });
+  assert.ok(refeita, 'mercado was redone by coletar although the ficha stayed in coletando');
+  assert.equal(refeita.tentativa, 2);
+});
+
+test('reexecutar (coleta): coletada with erro goes to coletando; a stage that finished is not offered when there is erro', async () => {
+  const id = await criaFicha({ estado: 'coletada', ...camposDeColeta, erro: { etapa: 'sintetizar', mensagem: 'x', em: ts('2026-11-16T12:30:00Z') } });
+  for (const e of ETAPAS_COLETA) await etapaDoc(id, e, e === 'setor' ? falhou : concluida);
+  const recusa = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['empresa_digital'] } });
+  assert.equal(codigo(recusa), 'parametro_invalido');
+  assert.equal(recusa.erro.details.campo, 'alvo');
+  assert.equal((await db.doc(`fichas/${id}/coleta/empresa_digital`).get()).data().status, 'concluida');
   assert.deepEqual(await tiposDe(id), []);
-  const inv = await chama(admin.token, { fichaId: id, acao: 'respostaEnviada' });
+  const ok = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['setor'] } });
+  assert.equal(ok.resultado.estado, 'coletando');
+});
+
+test('reexecutar (coleta): refused with nothing written in coleta_minima with a non-minimal stage, in sintetizando and qualificada with erro, and with a missing stage document', async () => {
+  const erro = (etapa) => ({ etapa, mensagem: 'x', em: ts('2026-11-16T12:30:00Z') });
+  const casos = [
+    [{ estado: 'coleta_minima', erro: erro('coleta_minima') }, ['setor']],
+    [{ estado: 'sintetizando', erro: erro('sintetizar') }, ['empresa_digital']],
+    [{ estado: 'qualificada', erro: erro('graduar') }, ['empresa_digital']],
+  ];
+  for (const [campos, alvo] of casos) {
+    const id = await criaFicha(campos);
+    for (const e of ETAPAS_COLETA) await etapaDoc(id, e, falhou);
+    const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo } });
+    assert.equal(codigo(r), 'parametro_invalido', campos.estado);
+    assert.equal((await db.doc(`fichas/${id}/coleta/${alvo[0]}`).get()).data().status, 'falhou');
+    assert.equal((await db.doc(`fichas/${id}`).get()).data().estado, campos.estado);
+    assert.deepEqual(await tiposDe(id), []);
+  }
+  const semDoc = await criaFichaAnalisada();
+  const r = await chama(admin.token, { fichaId: semDoc, acao: 'reexecutar', parametros: { alvo: ['setor'] } });
+  assert.equal(codigo(r), 'parametro_invalido');
+  assert.equal((await db.doc(`fichas/${semDoc}`).get()).data().estado, 'analise_pronta');
+  const inv = await chama(admin.token, { fichaId: semDoc, acao: 'respostaEnviada' });
   assert.equal(codigo(inv), 'acao_invalida_no_estado');
 });
 
