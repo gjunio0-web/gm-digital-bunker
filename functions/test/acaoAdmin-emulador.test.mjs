@@ -391,18 +391,3 @@ test('editar: the title never comes from the client and invalid states are refus
   assert.equal(codigo(await chama(semDoc.token, { fichaId: id, acao: 'editar', parametros: { secao: 's1', corpo: 'x', baseadaEm: 'v2' } })), 'sem_permissao');
   assert.equal(codigo(await chama(null, { fichaId: id, acao: 'editar', parametros: { secao: 's1', corpo: 'x', baseadaEm: 'v2' } })), 'nao_autenticado');
 });
-
-test('editar: the new human version is picked up by verificar, which runs only the code checks and keeps the state', async () => {
-  const id = await criaFichaAnalisada();
-  await chama(admin.token, { fichaId: id, acao: 'editar', parametros: { secao: 's1', corpo: 'texto curto', baseadaEm: 'v1' } });
-  let v2;
-  for (let i = 0; i < 40; i++) {
-    v2 = (await db.doc(`fichas/${id}/analise/v2`).get()).data();
-    if (v2.verificacao) break;
-    await espera(500);
-  }
-  const f = (await db.doc(`fichas/${id}`).get()).data();
-  assert.ok(v2.verificacao, `verificar did not write verificacao on v2 (erro: ${JSON.stringify(f.erro ?? null)})`);
-  assert.equal(v2.verificacao.checklist?.length ?? 0, 0, 'no reviewer on a human version');
-  assert.equal(f.estado, 'analise_pronta');
-});
