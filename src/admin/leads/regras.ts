@@ -63,13 +63,16 @@ const ETAPA_COLETA: Record<string, string> = {
 /** Error chip text (spec 05 §5.2). */
 export function erroTxt(e: { etapa: string }): string {
   const et = e.etapa || '';
+  if (et === 'interrupcao:recebida') return 'Erro na recepção · interrompida';
   if (et === 'interrupcao:coleta_minima') return 'Erro na coleta mínima · interrompida';
   if (et === 'interrupcao:coletando') return 'Erro na coleta · interrompida';
   if (et === 'interrupcao:coletada') return 'Erro na síntese · não iniciada';
   if (et === 'interrupcao:sintetizando') return 'Erro na síntese · interrompida';
   if (ETAPA_COLETA[et]) return 'Erro na coleta · ' + ETAPA_COLETA[et];
   if (et === 'coletar' || et === 'coleta') return 'Erro na coleta';
-  if (et === 'qualificar' || et === 'graduar' || et === 'coletarMinima') return 'Erro na coleta mínima';
+  if (et === 'qualificar' || et === 'graduar') return 'Erro na qualificação';
+  // coleta_minima is what the catch of coletarMinima writes; coletarMinima stays mapped for a ficha stored with that value (none known).
+  if (et === 'coleta_minima' || et === 'coletarMinima') return 'Erro na coleta mínima';
   if (et.startsWith('sintetizar') || et.startsWith('sintese')) return 'Erro na síntese';
   if (et.startsWith('verificar') || et.startsWith('verificacao')) return 'Erro na verificação';
   return 'Erro no pipeline';

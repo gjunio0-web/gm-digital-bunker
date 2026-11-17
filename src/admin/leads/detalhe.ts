@@ -3,6 +3,7 @@
 // detail renders from Firestore in the hub and from fixtures in the local acceptance test. Firestore
 // timestamps are converted to Date by the data layer (dadosFicha.ts) before they reach this file.
 import { CARGO, CONF, ESTADO, QUAD, dataCurta, dataLonga, erroTxt, restanteTxt } from './regras';
+import { etapaUsavel } from './reexecutar';
 import {
   CHAMADA_CUSTO, CK_RES, DEDUCAO, DESTINO, ETAPA_COLETA, ETAPA_TEXTO, MAX_PORTE, MAX_TECNOLOGIA, PEND_TIPO, PORTA, PRAZO_DIAS,
   RETENCAO_CURTO, RETENCAO_MOTIVO, SO_NA_ANALISE, TECNOLOGIA, avisoTxt, linhaParcelas, modeloTxt, nomeRegra,
@@ -98,11 +99,13 @@ function pendenciasHTML(a: Analise): string {
 // ---------- Pipeline error (spec 05 §5.4) ----------
 // [title, state name, what did not happen, instruction]
 const INTERROMPIDA: Record<string, [string, string, string, string]> = {
+  'interrupcao:recebida': ['Recepção interrompida.', 'Recebida', 'sem que a coleta mínima começasse', 'Use "Reexecutar › Coleta mínima" para iniciar a coleta.'],
   'interrupcao:coletando': ['Coleta interrompida.', 'Coletando', 'sem concluir', 'Use "Reexecutar" para retomar as etapas que não terminaram.'],
   'interrupcao:coleta_minima': ['Coleta mínima interrompida.', 'Coleta mínima', 'sem concluir', 'Use "Reexecutar" para retomar as etapas da coleta mínima que não terminaram.'],
   'interrupcao:coletada': ['Síntese não iniciada.', 'Coletada', 'sem que a síntese começasse', 'Use "Reexecutar › Síntese" para gerar a análise.'],
   'interrupcao:sintetizando': ['Síntese interrompida.', 'Sintetizando', 'sem concluir', 'Use "Reexecutar › Síntese" para gerar a análise de novo.'],
 };
+const ETAPAS_ERRO_EMAIL = ['email_confirmacao', 'email_aviso'];
 export function erroHTML(d: DadosFicha): string {
   const e = d.f.erro;
   if (!e || !e.etapa) return '';
@@ -113,9 +116,11 @@ export function erroHTML(d: DadosFicha): string {
     return `<div class="panel"><h3>Erro no pipeline</h3><ul class="pend"><li class="esc"><p class="pt">${esc(erroTxt(e))}</p>` +
       `<p class="tr"><strong>${it[0]}</strong> A ficha ficou em ${it[1]} por mais de ${esc(min)} minutos ${it[2]}, e o pipeline a marcou como parada em ${esc(quandoFrase(parada?.em))}. ${esc(it[3])}</p></li></ul></div>`;
   }
+  // Old fichas whose recepção e-mail failure was stored as erro (no longer written, spec 01 v0.42): Reexecutar has no target for them.
+  const semAlvo = ETAPAS_ERRO_EMAIL.includes(e.etapa);
   return `<div class="panel"><h3>Erro no pipeline</h3><ul class="pend"><li class="esc"><p class="pt">${esc(erroTxt(e))}</p>` +
     (e.mensagem ? `<p class="tr">${esc(e.mensagem)}</p>` : '') +
-    '<p class="cs">Use "Reexecutar" para repetir a etapa; a análise segue a partir dela.</p></li></ul></div>';
+    (semAlvo ? '' : '<p class="cs">Use "Reexecutar" para repetir a etapa; a análise segue a partir dela.</p>') + '</li></ul></div>';
 }
 
 // ---------- Received ficha ----------
@@ -153,11 +158,7 @@ export function guardaDetalheTxt(f: Obj): string {
  * Usable stage (spec 03 v1.17, C5; same rule as the pipeline): concluida, or falhou with preservado of the whole
  * stage. pendente and executando never show content, even when the document still carries the old text.
  */
-export function etapaUsavel(e: Obj | undefined): boolean {
-  if (!e) return false;
-  if (e.status === 'concluida') return true;
-  return e.status === 'falhou' && Array.isArray(e.preservado?.blocos) && e.preservado.blocos.includes('etapa');
-}
+export { etapaUsavel };
 /** Timestamps arrive as Date; an ISO text is accepted too. */
 const dataDe = (x: unknown): Date | null => {
   const d = x instanceof Date ? x : typeof x === 'string' ? new Date(x) : null;
@@ -311,7 +312,7 @@ const STATUS: Record<string, string> = { concluida: 'concluída', falhou: 'falho
 const statusTxt = (s: unknown) => STATUS[String(s)] ?? String(s ?? '');
 const ASSUNTO: Record<string, string> = { problema: 'mensagem com problema', ambos: 'com problema e ferramenta', ferramenta: 'só com ferramenta', nenhum: 'sem problema nem ferramenta' };
 const DESTINO_TRIAGEM: Record<string, string> = { coletando: 'análise completa', resposta_breve: 'resposta breve', descartada: 'descartada', qualificada: 'aguardando liberação' };
-const ALVO_REEXECUCAO: Record<string, string> = { sintese: 'Síntese', qualificacao: 'Qualificação' };
+const ALVO_REEXECUCAO: Record<string, string> = { sintese: 'Síntese', qualificacao: 'Qualificação', coleta_minima: 'Coleta mínima' };
 const ACOES: Record<string, (x: Obj) => string> = {
   aprovada: () => 'Aprovada',
   // acaoAdmin writes editada {secao, baseadaEm, versao}, reexecucao {alvos} and porta_decidida {de, para}. Older events may
@@ -343,6 +344,8 @@ export function eventoTxt(ev: Evento, d: DadosFicha): string | null {
   const x = ev.detalhe ?? {};
   switch (ev.tipo) {
     case 'recebida': return 'Recebida';
+    // email_falhou (spec 05 §5.4; written by receberFicha, one per destination that failed): no chip and no error block.
+    case 'email_falhou': return x.destino === 'interessado' || x.destino === 'administrador' ? `E-mail não enviado · ${x.destino}` : 'E-mail não enviado';
     case 'coleta_minima': {
       const et = Object.entries((x.etapas ?? {}) as Obj);
       return 'Coleta mínima' + (et.length ? ' · ' + et.map(([k, v]) => `${ETAPA_COLETA[k] ?? k}: ${statusTxt(v)}`).join('; ') : '');
@@ -391,10 +394,18 @@ export function eventoTxt(ev: Evento, d: DadosFicha): string | null {
   }
 }
 const ETAPAS_SINTESE: [string, string][] = [['enquadrar', 'Enquadramento'], ['preparar_conversa', 'Preparação da conversa'], ['montar_analise', 'Montagem da análise']];
+// Reminder shown in muted below an email_falhou event (texts approved by Gon, 17/11/2026; spec 05 §5.4).
+const NOTA_EMAIL: Record<string, string> = {
+  interessado: 'A confirmação de recebimento não chegou a ele; não há reenvio automático, e a resposta é manual.',
+  administrador: 'O aviso de ficha nova não chegou; não há reenvio automático.',
+};
+export function eventoNota(ev: Evento): string | null {
+  return ev.tipo === 'email_falhou' ? NOTA_EMAIL[(ev.detalhe as Obj | undefined)?.destino] ?? null : null;
+}
 function pipelineHTML(d: DadosFicha): string {
   const itens = d.eventos.map((ev) => [ev, eventoTxt(ev, d)] as const).filter(([, t]) => t !== null);
   let h = '<div class="panel"><h3>Pipeline de análise</h3>' + (itens.length
-    ? '<ol class="steps">' + itens.map(([ev, t]) => `<li><span class="t">${esc(quando(ev.em))}</span><span>${esc(t)}</span></li>`).join('') + '</ol>'
+    ? '<ol class="steps">' + itens.map(([ev, t]) => { const nota = eventoNota(ev); return `<li><span class="t">${esc(quando(ev.em))}</span><span>${esc(t)}${nota ? `<br><span class="mut">${esc(nota)}</span>` : ''}</span></li>`; }).join('') + '</ol>'
     : '<p class="empty">Nenhum evento registrado.</p>');
   const s = d.f.sinteseEmCurso;
   if (d.f.estado === 'sintetizando' && s) {

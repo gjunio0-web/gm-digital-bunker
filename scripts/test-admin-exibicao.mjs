@@ -41,6 +41,34 @@ try {
   assert.equal(erro('interrupcao:sintetizando'),
     bloco('Erro na síntese · interrompida', 'Síntese interrompida.', 'Sintetizando', 'sem concluir', 'Use &quot;Reexecutar › Síntese&quot; para gerar a análise de novo.'));
 
+  // B (spec 05 §5.2; Gon, 17/11/2026): chip texts of qualificar/graduar, coleta_minima, the recepção interruption and coletarMinima
+  assert.equal(erroTxt({ etapa: 'qualificar' }), 'Erro na qualificação');
+  assert.equal(erroTxt({ etapa: 'graduar' }), 'Erro na qualificação');
+  assert.equal(erroTxt({ etapa: 'coleta_minima' }), 'Erro na coleta mínima');
+  assert.equal(erroTxt({ etapa: 'coletarMinima' }), 'Erro na coleta mínima'); // kept for a ficha stored with that value
+  assert.equal(erroTxt({ etapa: 'interrupcao:recebida' }), 'Erro na recepção · interrompida');
+  assert.equal(erroTxt({ etapa: 'interrupcao:coleta_minima' }), 'Erro na coleta mínima · interrompida'); // the suffix stays only on the interruption
+  assert.equal(erroTxt({ etapa: 'verificar.email' }), 'Erro na verificação');
+  assert.equal(erroTxt({ etapa: 'empresa_futura' }), 'Erro no pipeline');
+  assert.equal(erroTxt({ etapa: '' }), 'Erro no pipeline');
+  assert.equal(erro('interrupcao:recebida'),
+    bloco('Erro na recepção · interrompida', 'Recepção interrompida.', 'Recebida', 'sem que a coleta mínima começasse', 'Use &quot;Reexecutar › Coleta mínima&quot; para iniciar a coleta.'));
+
+  // C: erro of the recepção e-mails (old fichas): chip "Erro no pipeline", the message stays, the "Reexecutar" sentence goes
+  const FRASE = 'Use "Reexecutar" para repetir a etapa; a análise segue a partir dela.'; // as the code writes it (not escaped)
+  const comMsg = (etapa, mensagem) => erroHTML({ f: { erro: { etapa, mensagem } }, eventos: [], analises: [], coleta: {} });
+  for (const etapa of ['email_confirmacao', 'email_aviso']) {
+    assert.equal(erroTxt({ etapa }), 'Erro no pipeline');
+    assert.equal(comMsg(etapa, 'smtp fora do ar'),
+      '<div class="panel"><h3>Erro no pipeline</h3><ul class="pend"><li class="esc"><p class="pt">Erro no pipeline</p><p class="tr">smtp fora do ar</p></li></ul></div>');
+    assert.ok(!comMsg(etapa, 'x').includes('Reexecutar'));
+  }
+  // The other erros keep the sentence
+  for (const etapa of ['qualificar', 'graduar', 'coleta_minima', 'coletar', 'sintetizar', 'verificar.email', 'empresa_futura']) {
+    assert.ok(comMsg(etapa, 'falhou').includes(`<p class="cs">${FRASE}</p>`), etapa);
+  }
+  assert.ok(comMsg('qualificar', 'falhou').includes('<p class="tr">falhou</p>'));
+
   // Without the parada event the block still renders
   assert.ok(erroHTML({ f: { erro: { etapa: 'interrupcao:coletada' } }, eventos: [], analises: [], coleta: {} }).includes('mais de ? minutos sem que a síntese começasse'));
   // No erro: nothing

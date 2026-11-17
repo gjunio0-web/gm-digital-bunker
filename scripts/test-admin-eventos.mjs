@@ -32,6 +32,37 @@ try {
   assert.equal(txt('reexecucao', { alvos: 'setor' }), 'Reexecução');
   assert.equal(txt('reexecucao', { alvos: [null, 3, ''] }), 'Reexecução');
 
+  // reexecucao with the new target and the unchanged label of Síntese (also used in Coletando)
+  assert.equal(txt('reexecucao', { alvos: ['coleta_minima'] }), 'Reexecução · Coleta mínima');
+  assert.equal(txt('reexecucao', { alvos: ['coleta_minima'], apenasLimpouErro: true }), 'Reexecução · Coleta mínima (só limpou o erro)');
+
+  // parada in Recebida (vigiar covers it since spec 01 v0.40)
+  assert.equal(txt('parada', { estado: 'recebida', minutos: 45 }), 'Ficha parada · Recebida sem avanço por 45 minutos');
+
+  // email_falhou: one event per destination, label plus the muted reminder (spec 05 §5.4; texts approved by Gon, 17/11/2026)
+  const { eventoNota } = await import(pathToFileURL(out).href);
+  assert.equal(txt('email_falhou', { destino: 'interessado' }), 'E-mail não enviado · interessado');
+  assert.equal(txt('email_falhou', { destino: 'administrador' }), 'E-mail não enviado · administrador');
+  assert.equal(txt('email_falhou', {}), 'E-mail não enviado');
+  assert.equal(txt('email_falhou', undefined), 'E-mail não enviado');
+  assert.equal(txt('email_falhou', { destino: 'outro' }), 'E-mail não enviado');
+  const nota = (detalhe, tipo = 'email_falhou') => eventoNota({ em: null, tipo, detalhe });
+  assert.equal(nota({ destino: 'interessado' }), 'A confirmação de recebimento não chegou a ele; não há reenvio automático, e a resposta é manual.');
+  assert.equal(nota({ destino: 'administrador' }), 'O aviso de ficha nova não chegou; não há reenvio automático.');
+  assert.equal(nota({}), null);
+  assert.equal(nota(undefined), null);
+  assert.equal(nota({ destino: 'outro' }), null);
+  assert.equal(nota({ destino: 'interessado' }, 'parada'), null);
+  // In the timeline: two events (both failed) show both labels with their own reminder, in the same list; no error chip or block
+  const dd = { id: 'x', f: { estado: 'coleta_minima' }, coleta: {}, analises: [],
+    eventos: [{ em: new Date(Date.UTC(2026, 10, 17, 15, 0)), tipo: 'email_falhou', detalhe: { destino: 'interessado' } },
+              { em: new Date(Date.UTC(2026, 10, 17, 15, 0)), tipo: 'email_falhou', detalhe: { destino: 'administrador' } }] };
+  const { corpoHTML } = await import(pathToFileURL(out).href);
+  const h = corpoHTML(dd, null, new Date(Date.UTC(2026, 10, 17, 16, 0)));
+  assert.ok(h.includes('E-mail não enviado · interessado<br><span class="mut">A confirmação de recebimento'));
+  assert.ok(h.includes('E-mail não enviado · administrador<br><span class="mut">O aviso de ficha nova'));
+  assert.ok(!h.includes('Erro no pipeline'));
+
   // porta_decidida
   assert.equal(txt('porta_decidida', { de: 'projeto', para: 'conselho' }), 'Porta decidida · Projeto → Conselho');
   assert.equal(txt('porta_decidida', { de: null, para: 'workshop' }), 'Porta decidida · Workshop');
