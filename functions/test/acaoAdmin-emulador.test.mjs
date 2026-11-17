@@ -7,7 +7,7 @@ import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { deleteApp, initializeApp } from 'firebase-admin/app';
+import { deleteApp, getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { executaAcao, ErroAcao } from '../lib/acaoAdmin.js';
 import { diaDeSaoPaulo } from '../lib/graduar.js';
@@ -666,11 +666,14 @@ test('limpaControle: old daily counters are summed into metricas.retidasTeto of 
 
 // ---- ficha in qualificada with lead AND erro.etapa = graduar (Hub question of 17/11/2026) ----
 // Documents what happens today; it does not assert that this is the desired behavior. See the notes in each test.
+// The lib code (graduaTriagem, retomarTriagem) calls getFirestore() on the default app; this file uses a named app.
+const garanteAppPadrao = () => { if (!getApps().some((a) => a.name === '[DEFAULT]')) initializeApp({ projectId: PROJETO }); };
 const leadDeTeste = { momento: 'triagem', quadrante: 'Q2', grau: 'B', pontos: 55, destino: 'analise', versaoPesos: 'p1', modificadores: {}, acao: { prazoEm: null }, calculadoEm: ts('2026-11-16T12:10:00Z') };
 
 test('lead + erro graduar: reexecutar qualificacao only clears erro; lead and state stay, retomarTriagem and graduaTriagem do nothing', async () => {
   const { deveRetomar } = await import('../lib/retomarTriagem.js');
   const { graduaTriagem } = await import('../lib/graduar.js');
+  garanteAppPadrao();
   const erro = { etapa: 'graduar', mensagem: 'graduar: ficha changed meanwhile', em: ts('2026-11-16T12:30:00Z') };
   const id = await criaFicha({ estado: 'qualificada', ...camposDeColeta, lead: leadDeTeste, erro });
   const antes = (await db.doc(`fichas/${id}`).get()).data();
@@ -702,6 +705,7 @@ test('lead + erro graduar: reexecutar qualificacao only clears erro; lead and st
 
 test('lead + erro graduar: two concurrent retomarTriagem runs on the same ficha (race hypothesis), repeated 5 times', async (t) => {
   const { retomarTriagem } = await import('../lib/retomarTriagem.js');
+  garanteAppPadrao();
   await garanteMetodo();
   const anterior = process.env.FUNCTIONS_EMULATOR;
   process.env.FUNCTIONS_EMULATOR = 'true'; // no secrets read, as in the emulator
