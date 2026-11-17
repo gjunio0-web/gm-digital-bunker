@@ -703,7 +703,7 @@ test('lead + erro graduar: reexecutar qualificacao only clears erro; lead and st
   assert.deepEqual(await tiposDe(id), ['reexecucao']);
 });
 
-test('lead + erro graduar: two concurrent retomarTriagem runs on the same ficha (race hypothesis), repeated 5 times', async (t) => {
+test('two concurrent retomarTriagem runs on the same ficha (duplicated delivery), repeated 5 times: no erro is recorded (spec 01 v0.39)', async (t) => {
   const { retomarTriagem } = await import('../lib/retomarTriagem.js');
   garanteAppPadrao();
   await garanteMetodo();
@@ -722,13 +722,43 @@ test('lead + erro graduar: two concurrent retomarTriagem runs on the same ficha 
       const f = (await db.doc(`fichas/${id}`).get()).data();
       const triadas = (await tiposDe(id)).filter((x) => x === 'triada').length;
       resumo.push({ lead: Boolean(f.lead), erro: f.erro?.etapa ?? null, mensagem: f.erro?.mensagem ?? null, triadas, estado: f.estado });
-      // Invariants that must hold either way: the triagem was recorded exactly once and lead exists.
+      // Spec 01 v0.39: the loser's catch finds the ficha past the step and records nothing.
       assert.ok(f.lead, `round ${i}: lead`);
       assert.equal(triadas, 1, `round ${i}: triada events`);
+      assert.equal(f.erro ?? null, null, `round ${i}: no erro on a ficha whose triagem the other run concluded`);
     }
   } finally {
     if (anterior === undefined) delete process.env.FUNCTIONS_EMULATOR; else process.env.FUNCTIONS_EMULATOR = anterior;
   }
   console.log('[race] rounds:', JSON.stringify(resumo));
   t.diagnostic(`rounds with lead + erro: ${resumo.filter((x) => x.lead && x.erro).length} of ${resumo.length}`);
+});
+
+// ---- gravaErro (spec 01 v0.39): an erro of a triagem step is recorded only where the step runs ----
+test('gravaErro: graduar and qualificar are recorded only in the state where the step runs', async () => {
+  const { gravaErro } = await import('../lib/erroTriagem.js');
+  garanteAppPadrao();
+  const le = async (id) => (await db.doc(`fichas/${id}`).get()).data();
+  const casos = [
+    // [estado, lead, etapa, expected result]
+    ['qualificada', undefined, 'graduar', true],
+    ['qualificada', leadDeTeste, 'graduar', false],
+    ['resposta_breve', leadDeTeste, 'graduar', false],
+    ['coletando', leadDeTeste, 'graduar', false],
+    ['coleta_minima', undefined, 'qualificar', true],
+    ['qualificada', undefined, 'qualificar', false],
+    ['coletando', leadDeTeste, 'qualificar', false],
+    ['coleta_minima', undefined, 'coleta_minima', true], // other steps keep the plain write
+    ['qualificada', leadDeTeste, 'coleta_minima', true],
+  ];
+  for (const [estado, lead, etapa, esperado] of casos) {
+    const id = await criaFicha({ estado, ...camposDeColeta, ...(lead ? { lead } : {}) });
+    const gravou = await gravaErro(db.doc(`fichas/${id}`), etapa, 'falha de teste');
+    const f = await le(id);
+    assert.equal(gravou, esperado, `${estado} lead=${Boolean(lead)} ${etapa}`);
+    assert.equal(f.erro?.etapa ?? null, esperado ? etapa : null, `${estado} ${etapa}: erro`);
+    if (esperado) assert.equal(f.erro.mensagem, 'falha de teste');
+    assert.deepEqual(await tiposDe(id), [], 'no event is written for an erro');
+  }
+  assert.equal(await gravaErro(db.doc('fichas/nao-existe-erro'), 'graduar', 'x'), false); // a missing ficha records nothing
 });

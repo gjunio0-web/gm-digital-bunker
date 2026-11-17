@@ -19,6 +19,7 @@ import { roda, type Contexto, type DocAnterior } from './coleta/motor.js';
 import { anteriorDe } from './coleta/preservacao.js';
 import { mesDe } from './qualificar.js';
 import { concluiTriagem } from './triagem.js';
+import { gravaErro } from './erroTriagem.js';
 import type { Normalizado, Original } from './validacao.js';
 
 type Ficha = { estado?: string; erro?: unknown } | undefined;
@@ -130,7 +131,7 @@ export const retomarColetaMinima = onDocumentUpdated(
     } catch (e) {
       const mensagem = String((e as Error)?.message ?? e).slice(0, 500);
       logger.error('retomarColetaMinima failed', { id, etapa, mensagem });
-      await ref.update({ erro: { etapa, mensagem, em: Timestamp.now() } }).catch(() => undefined);
+      await gravaErro(ref, etapa, mensagem);
     }
   },
 );

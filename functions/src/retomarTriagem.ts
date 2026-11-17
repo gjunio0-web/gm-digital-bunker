@@ -5,13 +5,14 @@
 // graduaTriagem (estado and estadoEm inside a transaction), so a second delivery does nothing.
 import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getFirestore } from 'firebase-admin/firestore';
 import { APOLLO_API_KEY, CLAUDE_API_KEY, REGIAO, SMTP2GO_API_KEY } from './config.js';
 import { lePipeline } from './pipeline.js';
 import { noEmulador } from './claude.js';
 import { ETAPAS_MINIMAS } from './coleta/etapas.js';
 import { etapaUsavel } from './coleta/preservacao.js';
 import { concluiTriagem } from './triagem.js';
+import { gravaErro } from './erroTriagem.js';
 
 type Ficha = { estado?: string; erro?: unknown; lead?: unknown } | undefined;
 
@@ -49,7 +50,7 @@ export const retomarTriagem = onDocumentUpdated(
     } catch (e) {
       const mensagem = String((e as Error)?.message ?? e).slice(0, 500);
       logger.error('retomarTriagem failed', { id, etapa, mensagem });
-      await ref.update({ erro: { etapa, mensagem, em: Timestamp.now() } }).catch(() => undefined);
+      await gravaErro(ref, etapa, mensagem);
     }
   },
 );

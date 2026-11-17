@@ -17,6 +17,7 @@ import { ETAPAS_MINIMAS, orcamentoBuscas } from './coleta/etapas.js';
 import { roda, type Contexto } from './coleta/motor.js';
 import { mesDe } from './qualificar.js';
 import { concluiTriagem } from './triagem.js';
+import { gravaErro } from './erroTriagem.js';
 import type { Normalizado, Original } from './validacao.js';
 
 export const coletarMinima = onDocumentCreated(
@@ -101,7 +102,7 @@ export const coletarMinima = onDocumentCreated(
     } catch (e) {
       const mensagem = String((e as Error)?.message ?? e).slice(0, 500);
       logger.error('coletarMinima failed', { id, etapa, mensagem });
-      await ref.update({ erro: { etapa, mensagem, em: Timestamp.now() } }).catch(() => undefined);
+      await gravaErro(ref, etapa, mensagem);
     }
   },
 );
