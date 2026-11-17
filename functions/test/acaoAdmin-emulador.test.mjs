@@ -663,3 +663,68 @@ test('limpaControle: old daily counters are summed into metricas.retidasTeto of 
   for (const c of ['analises-2026-10-17', 'analises-2026-11-15', 'outro-documento']) await db.doc(`controle/${c}`).delete();
   await db.doc('metricas/2026-08').delete();
 });
+
+// ---- ficha in qualificada with lead AND erro.etapa = graduar (Hub question of 17/11/2026) ----
+// Documents what happens today; it does not assert that this is the desired behavior. See the notes in each test.
+const leadDeTeste = { momento: 'triagem', quadrante: 'Q2', grau: 'B', pontos: 55, destino: 'analise', versaoPesos: 'p1', modificadores: {}, acao: { prazoEm: null }, calculadoEm: ts('2026-11-16T12:10:00Z') };
+
+test('lead + erro graduar: reexecutar qualificacao only clears erro; lead and state stay, retomarTriagem and graduaTriagem do nothing', async () => {
+  const { deveRetomar } = await import('../lib/retomarTriagem.js');
+  const { graduaTriagem } = await import('../lib/graduar.js');
+  const erro = { etapa: 'graduar', mensagem: 'graduar: ficha changed meanwhile', em: ts('2026-11-16T12:30:00Z') };
+  const id = await criaFicha({ estado: 'qualificada', ...camposDeColeta, lead: leadDeTeste, erro });
+  const antes = (await db.doc(`fichas/${id}`).get()).data();
+  const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['qualificacao'] } });
+  const depois = (await db.doc(`fichas/${id}`).get()).data();
+  console.log('[lead+erro] action status', r.status, JSON.stringify(r.resultado ?? r.erro));
+  console.log('[lead+erro] after action: estado', depois.estado, 'erro', JSON.stringify(depois.erro), 'lead kept', JSON.stringify(depois.lead) === JSON.stringify(antes.lead), 'estadoEm advanced', depois.estadoEm.toMillis() > antes.estadoEm.toMillis());
+  assert.equal(r.status, 200);
+  assert.equal(depois.estado, 'qualificada');
+  assert.equal(depois.erro, null);
+  assert.deepEqual(depois.lead, antes.lead);
+  assert.ok(depois.estadoEm.toMillis() > antes.estadoEm.toMillis());
+  assert.deepEqual((await eventos(id)).map((e) => [e.tipo, e.detalhe]), [['reexecucao', { alvos: ['qualificacao'] }]]);
+
+  // Trigger condition: with lead present it does not fire; the same transition without lead would.
+  assert.equal(deveRetomar(antes, depois), null);
+  assert.equal(deveRetomar(antes, { ...depois, lead: undefined }), 'graduar');
+  // graduaTriagem returns null before touching the pipeline when lead exists (second argument is not read).
+  assert.equal(await graduaTriagem(db.doc(`fichas/${id}`), {}), null);
+
+  // Whatever the deployed retomarTriagem did with the update, the ficha must be unchanged after a wait.
+  await espera(4000);
+  const fim = (await db.doc(`fichas/${id}`).get()).data();
+  assert.equal(fim.erro, null);
+  assert.equal(fim.estadoEm.toMillis(), depois.estadoEm.toMillis());
+  assert.deepEqual(fim.lead, antes.lead);
+  assert.deepEqual(await tiposDe(id), ['reexecucao']);
+});
+
+test('lead + erro graduar: two concurrent retomarTriagem runs on the same ficha (race hypothesis), repeated 5 times', async (t) => {
+  const { retomarTriagem } = await import('../lib/retomarTriagem.js');
+  await garanteMetodo();
+  const anterior = process.env.FUNCTIONS_EMULATOR;
+  process.env.FUNCTIONS_EMULATOR = 'true'; // no secrets read, as in the emulator
+  const resumo = [];
+  try {
+    for (let i = 0; i < 5; i++) {
+      const id = await criaFicha({ estado: 'qualificada', ...camposDeColeta, erro: null });
+      await etapaDoc(id, 'empresa_digital', concluida);
+      await etapaDoc(id, 'empresa_registro', concluida);
+      const dados = (await db.doc(`fichas/${id}`).get()).data();
+      const evento = { params: { id }, data: { before: { data: () => ({ ...dados, erro: { etapa: 'graduar', mensagem: 'x', em: ts('2026-11-16T12:30:00Z') } }) }, after: { data: () => dados } } };
+      await Promise.all([retomarTriagem.run(evento), retomarTriagem.run(evento)]);
+      await espera(500);
+      const f = (await db.doc(`fichas/${id}`).get()).data();
+      const triadas = (await tiposDe(id)).filter((x) => x === 'triada').length;
+      resumo.push({ lead: Boolean(f.lead), erro: f.erro?.etapa ?? null, mensagem: f.erro?.mensagem ?? null, triadas, estado: f.estado });
+      // Invariants that must hold either way: the triagem was recorded exactly once and lead exists.
+      assert.ok(f.lead, `round ${i}: lead`);
+      assert.equal(triadas, 1, `round ${i}: triada events`);
+    }
+  } finally {
+    if (anterior === undefined) delete process.env.FUNCTIONS_EMULATOR; else process.env.FUNCTIONS_EMULATOR = anterior;
+  }
+  console.log('[race] rounds:', JSON.stringify(resumo));
+  t.diagnostic(`rounds with lead + erro: ${resumo.filter((x) => x.lead && x.erro).length} of ${resumo.length}`);
+});
