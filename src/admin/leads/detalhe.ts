@@ -4,7 +4,7 @@
 // timestamps are converted to Date by the data layer (dadosFicha.ts) before they reach this file.
 import { CARGO, CONF, ESTADO, QUAD, dataCurta, dataLonga, erroTxt, restanteTxt } from './regras';
 import {
-  CK_RES, DEDUCAO, DESTINO, ETAPA_COLETA, ETAPA_TEXTO, MAX_PORTE, MAX_TECNOLOGIA, PEND_TIPO, PORTA, PRAZO_DIAS,
+  CHAMADA_CUSTO, CK_RES, DEDUCAO, DESTINO, ETAPA_COLETA, ETAPA_TEXTO, MAX_PORTE, MAX_TECNOLOGIA, PEND_TIPO, PORTA, PRAZO_DIAS,
   RETENCAO_CURTO, RETENCAO_MOTIVO, SO_NA_ANALISE, TECNOLOGIA, avisoTxt, linhaParcelas, modeloTxt, nomeRegra,
   parcelaTxt, porteTxt, respostaTxt, secaoDoLocal, secaoTxt,
 } from './rotulos';
@@ -380,7 +380,7 @@ export function eventoTxt(ev: Evento, d: DadosFicha): string | null {
     case 'teto_diario': return `Análise adiada · teto diário de ${x.teto} análises atingido em ${diaTxt(x.dia)}`;
     case 'retencao_liberada':
       return `Retenção liberada · ${x.modo === 'manual' ? 'manual' : 'automática'}` + (x.motivo ? ` (${RETENCAO_CURTO[x.motivo] ?? x.motivo})` : '');
-    case 'custo_sem_preco': return `Custo não estimado · ${x.chamada} (${x.modelo}) sem preço na tabela`;
+    case 'custo_sem_preco': return `Custo não estimado · ${CHAMADA_CUSTO[x.chamada] ?? x.chamada} (${x.modelo}) sem preço na tabela`;
     default: return ACOES[ev.tipo] ? ACOES[ev.tipo](x) : ev.tipo;
   }
 }

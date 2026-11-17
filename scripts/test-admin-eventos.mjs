@@ -57,6 +57,14 @@ try {
   assert.equal(ce({ etapa: 'empresa_digital', status: 'concluida', preservado: [] }), 'Coleta · Presença digital: concluída, confiança alta');
   assert.equal(ce({ etapa: 'empresa_pessoas', status: 'falhou' }), 'Coleta · Pessoas: falhou');
 
+  // custo_sem_preco: call identifier in Portuguese, unknown identifier as it comes (spec 05 §5.4)
+  const cs = (chamada) => txt('custo_sem_preco', { chamada, modelo: 'claude-x-1' });
+  for (const [id, nome] of [['qualificar', 'Qualificação'], ['empresa_digital', 'Presença digital'], ['empresa_registro', 'Registro'],
+    ['empresa_pessoas', 'Pessoas'], ['empresa_noticias', 'Notícias'], ['setor', 'Setor'], ['mercado', 'Mercado']]) {
+    assert.equal(cs(id), `Custo não estimado · ${nome} (claude-x-1) sem preço na tabela`);
+  }
+  assert.equal(cs('empresa_futura'), 'Custo não estimado · empresa_futura (claude-x-1) sem preço na tabela');
+
   console.log('test-admin-eventos: ok');
 } finally {
   rmSync(dir, { recursive: true, force: true });

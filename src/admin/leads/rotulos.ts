@@ -53,6 +53,9 @@ export const ETAPA_COLETA: Record<string, string> = {
   empresa_noticias: 'Notícias', setor: 'Setor', mercado: 'Mercado',
 };
 
+/** Call identifiers of the ficha event custo_sem_preco: qualificar plus the collection stages (spec 05 §5.4). */
+export const CHAMADA_CUSTO: Record<string, string> = { qualificar: 'Qualificação', ...ETAPA_COLETA };
+
 // ---------- Qualification parcels (spec 04, section 7) ----------
 export const PORTE: Record<string, string> = {
   demais_ate_500: '"Demais" até 500 funcionários', epp_com_crescimento: 'EPP com sinal de crescimento',
