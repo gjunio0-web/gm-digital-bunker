@@ -173,12 +173,15 @@ test('mandarParaAnalise from resposta_breve: coletando, destinoAlterado, 90-day 
   const dia = diaDeSaoPaulo(new Date());
   await db.doc(`controle/analises-${dia}`).delete();
   await db.doc('config/pipeline').set({ maxAnalisesPorDia: 0 }, { merge: true }); // a ceiling of 0 cuts every automatic one
-  const id = await criaFicha({ estado: 'resposta_breve', lead: { destino: 'encerrar', destinoAlterado: false }, expurgoEm: ts('2026-12-01T12:00:00Z') });
+  const id = await criaFicha({ estado: 'resposta_breve', lead: { destino: 'encerrar', destinoAlterado: false, acao: { prazoDiasUteis: 2, prazoEm: ts('2026-11-18T12:00:00Z') } }, expurgoEm: ts('2026-12-01T12:00:00Z') });
   const r = await chama(admin.token, { fichaId: id, acao: 'mandarParaAnalise' });
   assert.equal(r.status, 200);
   assert.equal(r.resultado.estado, 'coletando');
   const f = (await db.doc(`fichas/${id}`).get()).data();
   assert.equal(f.lead.destinoAlterado, true);
+  // The triagem deadline of the Declinar ficha is cleared (the hub must not show it while the analysis runs).
+  assert.equal(f.lead.acao.prazoEm, null);
+  assert.equal(f.lead.acao.prazoDiasUteis, 2);
   assert.equal(f.expurgoEm.toMillis(), ts('2026-11-16T12:00:00Z').toMillis() + 90 * DIA_MS);
   assert.ok((await tiposDe(id)).includes('destino_alterado'));
   assert.equal((await db.doc(`controle/analises-${dia}`).get()).data().n, 1);
@@ -189,12 +192,13 @@ test('mandarParaAnalise from a held qualificada: retencao_liberada manual, reten
   await db.doc(`controle/analises-${dia}`).delete();
   await db.doc('config/pipeline').set({ maxAnalisesPorDia: 0 }, { merge: true });
   for (const motivo of ['teto_diario', 'auto_desligada']) {
-    const id = await criaFicha({ estado: 'qualificada', lead: { destino: 'convidar', destinoAlterado: false }, retencao: { motivo, desde: Timestamp.now(), liberacaoPrevista: null } });
+    const id = await criaFicha({ estado: 'qualificada', lead: { destino: 'convidar', destinoAlterado: false, acao: { prazoDiasUteis: 2, prazoEm: null } }, retencao: { motivo, desde: Timestamp.now(), liberacaoPrevista: null } });
     const r = await chama(admin.token, { fichaId: id, acao: 'mandarParaAnalise' });
     assert.equal(r.resultado.estado, 'coletando');
     const f = (await db.doc(`fichas/${id}`).get()).data();
     assert.equal(f.retencao, null);
     assert.equal(f.lead.destinoAlterado, false);
+    assert.equal(f.lead.acao.prazoEm, null); // born null for a held ficha; the action leaves it as it is
     const ev = (await eventos(id)).find((e) => e.tipo === 'retencao_liberada');
     assert.deepEqual(ev.detalhe, { motivo, modo: 'manual' });
     assert.ok(!(await tiposDe(id)).includes('destino_alterado'));

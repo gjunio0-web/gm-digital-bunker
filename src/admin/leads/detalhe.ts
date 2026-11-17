@@ -261,11 +261,25 @@ const STATUS: Record<string, string> = { concluida: 'concluída', falhou: 'falho
 const statusTxt = (s: unknown) => STATUS[String(s)] ?? String(s ?? '');
 const ASSUNTO: Record<string, string> = { problema: 'mensagem com problema', ambos: 'com problema e ferramenta', ferramenta: 'só com ferramenta', nenhum: 'sem problema nem ferramenta' };
 const DESTINO_TRIAGEM: Record<string, string> = { coletando: 'análise completa', resposta_breve: 'resposta breve', descartada: 'descartada', qualificada: 'aguardando liberação' };
+const ALVO_REEXECUCAO: Record<string, string> = { sintese: 'Síntese', qualificacao: 'Qualificação' };
 const ACOES: Record<string, (x: Obj) => string> = {
   aprovada: () => 'Aprovada',
-  editada: (x) => `Editada · ${x.versao ?? ''}`.trim(),
-  reexecucao: (x) => `Reexecução · ${ETAPA_COLETA[x.etapa] ?? (x.etapa === 'sintese' ? 'Síntese' : x.etapa ?? '')}`,
-  porta_decidida: (x) => `Porta decidida · ${PORTA[x.porta] ?? x.porta ?? ''}`,
+  // acaoAdmin writes editada {secao, baseadaEm, versao}, reexecucao {alvos} and porta_decidida {de, para}. Older events may
+  // lack the fields: each label then falls back to plain text without a gap, and never throws.
+  editada: (x) => {
+    const secao = typeof x.secao === 'string' && x.secao ? secaoTxt(x.secao) : '';
+    const versao = typeof x.versao === 'string' ? x.versao : '';
+    return ['Editada', secao && versao ? `${secao} → ${versao}` : secao || versao].filter(Boolean).join(' · ');
+  },
+  reexecucao: (x) => {
+    const alvos = (Array.isArray(x.alvos) ? x.alvos : []).filter((a: unknown) => typeof a === 'string' && a).map((a: string) => ALVO_REEXECUCAO[a] ?? ETAPA_COLETA[a] ?? a);
+    return alvos.length ? `Reexecução · ${alvos.join(', ')}` : 'Reexecução';
+  },
+  porta_decidida: (x) => {
+    const nome = (p: unknown) => (typeof p === 'string' && p ? PORTA[p] ?? p : '');
+    const de = nome(x.de), para = nome(x.para);
+    return ['Porta decidida', de && para ? `${de} → ${para}` : para].filter(Boolean).join(' · ');
+  },
   resposta_enviada: () => 'Resposta enviada',
   arquivada: () => 'Arquivada',
   destino_alterado: () => 'Destino alterado · análise completa',

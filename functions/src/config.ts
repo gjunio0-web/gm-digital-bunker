@@ -8,7 +8,8 @@ export const REGIAO = 'southamerica-east1';
 // Origins allowed to post the form, per Firebase project. A project not listed accepts no origin.
 export const ORIGENS_POR_PROJETO: Record<string, readonly string[]> = {
   'gmdb-qualidade': ['https://quality-env--gm-digital-bunker.netlify.app', 'http://localhost:4321'],
-  'gmdb-producao': ['https://gmdigitalbunker.com.br'],
+  // The site is served on both the bare domain and www (confirmed by Gon, 16/11/2026): a call from www would fail CORS otherwise.
+  'gmdb-producao': ['https://gmdigitalbunker.com.br', 'https://www.gmdigitalbunker.com.br'],
 };
 
 // Base URL of the admin hub per Firebase project (spec 05, section 2): the ficha link in the second

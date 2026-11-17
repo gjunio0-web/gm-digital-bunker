@@ -273,7 +273,9 @@ export async function executaAcao(
           // The score does not change; back to the 90-day retention rule (never shorter than it already is).
           const normal = (f.recebidaEm as Timestamp).toMillis() + p.prazoGuardaDias * DIA_MS;
           const atual = (f.expurgoEm as Timestamp | undefined)?.toMillis() ?? 0;
-          tx.update(ref, { estado: 'coletando', estadoEm: em, 'lead.destinoAlterado': true, expurgoEm: Timestamp.fromMillis(Math.max(normal, atual)) });
+          // prazoEm goes back to null: the triagem deadline of a Declinar ficha no longer applies, and the first graduar of the
+          // analysis and confiancaFinal set the deadline of the analysis (spec 01, rule of prazoEm). A held ficha needs no reset: its prazoEm is born null.
+          tx.update(ref, { estado: 'coletando', estadoEm: em, 'lead.destinoAlterado': true, 'lead.acao.prazoEm': null, expurgoEm: Timestamp.fromMillis(Math.max(normal, atual)) });
           evento(tx, ref, uid, em, 'destino_alterado', { estadoAnterior: 'resposta_breve', destino: f.lead?.destino ?? null });
         } else {
           // A held ficha: leaving the retention is not a disagreement with the triagem (lead.destinoAlterado stays).
