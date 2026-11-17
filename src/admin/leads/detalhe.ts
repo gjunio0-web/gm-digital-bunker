@@ -149,28 +149,72 @@ export function guardaDetalheTxt(f: Obj): string {
   const resp = f.estado === 'respondida' && isDate(f.respondidaEm) ? `, contados da resposta em ${dataCurta(f.respondidaEm)}` : '';
   return `até ${dataLonga(f.expurgoEm)}` + (dias !== null && dias < 90 ? ` (${dias} dias${motivo})` : dias !== null ? ` (${dias} dias${resp})` : '');
 }
-function fichaRecebidaHTML(d: DadosFicha): string {
+/**
+ * Usable stage (spec 03 v1.17, C5; same rule as the pipeline): concluida, or falhou with preservado of the whole
+ * stage. pendente and executando never show content, even when the document still carries the old text.
+ */
+export function etapaUsavel(e: Obj | undefined): boolean {
+  if (!e) return false;
+  if (e.status === 'concluida') return true;
+  return e.status === 'falhou' && Array.isArray(e.preservado?.blocos) && e.preservado.blocos.includes('etapa');
+}
+/** Timestamps arrive as Date; an ISO text is accepted too. */
+const dataDe = (x: unknown): Date | null => {
+  const d = x instanceof Date ? x : typeof x === 'string' ? new Date(x) : null;
+  return d && !isNaN(d.getTime()) ? d : null;
+};
+export function fichaRecebidaHTML(d: DadosFicha): string {
   const f = d.f, o = f.original ?? {};
   const porta = f.portaDecidida ? `<dt>Porta</dt><dd>${esc(PORTA[f.portaDecidida] ?? f.portaDecidida)} (decidida)</dd>` : '';
   const msg = o.mensagem ? `<p class="msg">"${esc(o.mensagem)}"</p>` : '<p class="msg">Sem mensagem.</p>';
   return '<div class="panel"><h3>Ficha recebida</h3><dl class="kv">' +
     `<dt>E-mail</dt><dd>${esc(o.email ?? '–')}</dd><dt>Site</dt><dd>${esc(o.site || 'não informado')}</dd>` +
-    `<dt>CNPJ</dt><dd>${esc(cnpjTxt(d.coleta.empresa_registro))}</dd><dt>Origem</dt><dd>${esc(f.origem?.pagina || '–')}</dd>` +
+    `<dt>CNPJ</dt><dd>${esc(cnpjTxt(etapaUsavel(d.coleta.empresa_registro) ? d.coleta.empresa_registro : undefined))}</dd><dt>Origem</dt><dd>${esc(f.origem?.pagina || '–')}</dd>` +
     `<dt>Guarda</dt><dd>${esc(guardaDetalheTxt(f))}</dd>${porta}</dl>${msg}</div>`;
 }
 
 // ---------- People (spec 03, section 5) ----------
 const FONTE: Record<string, string> = { formulario: 'Formulário', hunter: 'Hunter', busca: 'Busca pública' };
-function pessoasHTML(d: DadosFicha): string {
-  const s = d.coleta.empresa_pessoas?.status === 'concluida' ? d.coleta.empresa_pessoas?.conteudo?.signatario : null;
+export function pessoasHTML(d: DadosFicha): string {
+  const et = d.coleta.empresa_pessoas;
+  const s = etapaUsavel(et) ? et?.conteudo?.signatario : null;
+  // Whole stage failed this run and the previous content was kept (spec 05 §5.4)
+  const anterior = et?.status === 'falhou' && etapaUsavel(et);
   const linhas: [string, string, string][] = s?.cargoFontes?.length
     ? s.cargoFontes.map((x: Obj) => [FONTE[x.fonte] ?? String(x.fonte ?? ''), x.cargo ?? 'não encontrado', [x.senioridade, x.empresaAtual].filter(Boolean).join(' · ') || '–'])
     : [['Formulário', CARGO[d.f.original?.cargo] ?? String(d.f.original?.cargo ?? '–'), '–']];
+  const desdeP = dataDe(et?.preservado?.desde);
   const nota = !s ? 'A etapa Pessoas ainda não rodou: só o cargo do formulário. Trajetória profissional não coletada.'
-    : (s.divergenciaCargo ? `Divergência entre as fontes: ${s.divergenciaCargo}.` : 'Sem divergência entre as fontes.') + ' Trajetória profissional não coletada.';
+    : [
+      anterior ? `Dado anterior: a etapa Pessoas falhou nesta execução e o conteúdo da execução de ${desdeP ? dataLonga(desdeP) : 'data desconhecida'} foi mantido.` : '',
+      s.divergenciaCargo ? `Divergência entre as fontes: ${s.divergenciaCargo}.` : anterior ? '' : 'Sem divergência entre as fontes.',
+      'Trajetória profissional não coletada.',
+    ].filter(Boolean).join(' ');
   return '<div class="panel"><h3>Pessoas</h3><table class="ptable"><thead><tr><th>Fonte</th><th>Cargo</th><th>Senioridade · empresa</th></tr></thead><tbody>' +
     linhas.map((r) => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join('') +
     `</tbody></table><p class="help">${esc(nota.replace(/\.\./g, '.'))}</p></div>`;
+}
+
+// ---------- Previous collection data (spec 05 §5.4; spec 01 coleta/{etapa}.preservado) ----------
+const BLOCO_PRESERVADO: Record<string, string> = { apollo: 'Apollo', instagram: 'Instagram', etapa: 'etapa inteira' };
+export function preservadoHTML(d: DadosFicha): string {
+  const conhecidas = Object.keys(ETAPA_COLETA);
+  const chaves = [...conhecidas, ...Object.keys(d.coleta).filter((k) => !conhecidas.includes(k)).sort()];
+  const linhas = chaves.filter((k) => {
+    const p = d.coleta[k]?.preservado;
+    return p && typeof p === 'object';
+  }).map((k) => {
+    const p = d.coleta[k].preservado;
+    const blocos = (Array.isArray(p.blocos) ? p.blocos : []).filter((b: unknown) => typeof b === 'string' && b)
+      .map((b: string) => BLOCO_PRESERVADO[b] ?? b);
+    const desde = dataDe(p.desde), falhouEm = dataDe(p.falhouEm);
+    const cabeca = (blocos.length ? `<strong>${esc(cap(juntar(blocos)))}</strong> · ` : '') + `anterior, de ${esc(desde ? dataLonga(desde) : 'data desconhecida')}`;
+    const motivo = [typeof p.falha === 'string' && p.falha ? esc(p.falha) : '', falhouEm ? `falha em ${esc(quandoFrase(falhouEm))}` : ''].filter(Boolean).join(' · ');
+    return `<dt>${esc(ETAPA_COLETA[k] ?? k)}</dt><dd>${cabeca}${motivo ? `<br><span class="cs">${motivo}</span>` : ''}</dd>`;
+  });
+  if (!linhas.length) return '';
+  return '<div class="panel"><h3>Dado da coleta anterior</h3><p class="help" style="margin-top:0">Estes dados vêm de uma consulta anterior; a nova consulta falhou ou não foi feita.</p>' +
+    `<dl class="kv">${linhas.join('')}</dl></div>`;
 }
 
 // ---------- Preliminary assessment (spec 05 §5.5) ----------
@@ -315,7 +359,8 @@ export function eventoTxt(ev: Evento, d: DadosFicha): string | null {
       const nome = ETAPA_COLETA[x.etapa] ?? x.etapa;
       if (x.parte) return `Coleta · ${nome} (${x.parte === 'instagram' ? 'Instagram' : x.parte}): ${statusTxt(x.status)}`;
       const conf = x.status === 'concluida' ? d.coleta[x.etapa]?.confianca?.grau : null;
-      return `Coleta · ${nome}: ${statusTxt(x.status)}${conf ? `, confiança ${CONF[conf as keyof typeof CONF] ?? conf}` : ''}`;
+      const anterior = Array.isArray(x.preservado) && x.preservado.length ? ' · dado anterior' : '';
+      return `Coleta · ${nome}: ${statusTxt(x.status)}${conf ? `, confiança ${CONF[conf as keyof typeof CONF] ?? conf}` : ''}${anterior}`;
     }
     case 'graduada':
       return `Análise · enquadramento concluído → ${QUAD[x.quadrante as keyof typeof QUAD] ?? x.quadrante}, grau ${x.grau}, ${x.pontos} pontos` +
@@ -397,7 +442,7 @@ export function corpoHTML(d: DadosFicha, escolhida: string | null, hoje: Date): 
     h += `<div class="ver">${seletorHTML('aVer', 'Versão da análise', d.analises.map((x) => [x.id, x.id, versaoDesc(x)]), a!.id)}<span>nova versão a cada reexecução ou edição; as anteriores ficam guardadas</span></div>`;
   }
   h += '<div class="detail"><div style="display:flex;flex-direction:column;gap:var(--space-6);min-width:0">' +
-    (a ? pendenciasHTML(a) : '') + erroHTML(d) + fichaRecebidaHTML(d) + pessoasHTML(d) + avaliacaoHTML(d, a) +
+    (a ? pendenciasHTML(a) : '') + erroHTML(d) + fichaRecebidaHTML(d) + pessoasHTML(d) + preservadoHTML(d) + avaliacaoHTML(d, a) +
     '</div><div style="display:flex;flex-direction:column;gap:var(--space-6);min-width:0">' +
     qualificacaoHTML(d.f, atual, hoje) + pipelineHTML(d) + diagnosticoHTML(a, d.analises) + '</div></div>';
   return h;

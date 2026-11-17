@@ -45,6 +45,64 @@ try {
   assert.ok(erroHTML({ f: { erro: { etapa: 'interrupcao:coletada' } }, eventos: [], analises: [], coleta: {} }).includes('mais de ? minutos sem que a síntese começasse'));
   // No erro: nothing
   assert.equal(erroHTML({ f: {}, eventos: [], analises: [], coleta: {} }), '');
+
+  // ---- Previous collection data (spec 05 §5.4) ----
+  const { preservadoHTML, pessoasHTML, fichaRecebidaHTML, etapaUsavel } = await bundle('src/admin/leads/detalhe.ts', 'detalhe2.mjs');
+  const dt = (...a) => new Date(Date.UTC(...a));
+  const ficha = (coleta) => ({ id: 'x', f: { original: { cargo: 'diretor' } }, eventos: [], analises: [], coleta });
+  const NOTA = '<p class="help" style="margin-top:0">Estes dados vêm de uma consulta anterior; a nova consulta falhou ou não foi feita.</p>';
+  const painel = (linhas) => `<div class="panel"><h3>Dado da coleta anterior</h3>${NOTA}<dl class="kv">${linhas}</dl></div>`;
+
+  // Without preservado: no block
+  assert.equal(preservadoHTML(ficha({ empresa_digital: { status: 'concluida' }, empresa_pessoas: { status: 'concluida' } })), '');
+  assert.equal(preservadoHTML(ficha({})), '');
+
+  // Blocks (Apollo) and whole stage, in stage order; dates in São Paulo time (09:12 local = 12:12 UTC)
+  const digital = { status: 'concluida', preservado: { blocos: ['apollo'], desde: dt(2026, 9, 30, 15), falhouEm: dt(2026, 10, 5, 12, 12), falha: 'Apollo: resposta HTTP 503' } };
+  const pessoas = { status: 'falhou', conteudo: { signatario: { cargoFontes: [{ fonte: 'hunter', cargo: 'Logistics Director', senioridade: 'director', empresaAtual: 'Porto Seco Armazéns' }] } },
+    preservado: { blocos: ['etapa'], desde: dt(2026, 9, 30, 15), falhouEm: dt(2026, 10, 5, 12, 14), falha: 'resposta HTTP 500 da base profissional (Hunter)' } };
+  assert.equal(preservadoHTML(ficha({ empresa_pessoas: pessoas, empresa_digital: digital })), painel(
+    '<dt>Presença digital</dt><dd><strong>Apollo</strong> · anterior, de 30/out/2026<br><span class="cs">Apollo: resposta HTTP 503 · falha em 5/nov/2026 às 09:12</span></dd>' +
+    '<dt>Pessoas</dt><dd><strong>Etapa inteira</strong> · anterior, de 30/out/2026<br><span class="cs">resposta HTTP 500 da base profissional (Hunter) · falha em 5/nov/2026 às 09:14</span></dd>'));
+
+  // Two blocks in one stage; text of falha is escaped and shown as recorded
+  const dois = { status: 'concluida', preservado: { blocos: ['apollo', 'instagram'], desde: dt(2026, 9, 30, 15), falhouEm: dt(2026, 10, 5, 12, 12), falha: 'Apollo: <b>x</b>' } };
+  assert.ok(preservadoHTML(ficha({ empresa_digital: dois })).includes('<strong>Apollo e Instagram</strong> · anterior, de 30/out/2026<br><span class="cs">Apollo: &lt;b&gt;x&lt;/b&gt; · falha em'));
+
+  // Odd data never throws: no blocos, no dates, ISO text dates
+  assert.ok(preservadoHTML(ficha({ setor: { status: 'concluida', preservado: {} } })).includes('<dt>Setor</dt><dd>anterior, de data desconhecida</dd>'));
+  assert.ok(preservadoHTML(ficha({ setor: { status: 'concluida', preservado: { blocos: ['etapa'], desde: '2026-10-30T15:00:00.000Z', falhouEm: 'x' } } })).includes('Etapa inteira</strong> · anterior, de 30/out/2026</dd>'));
+  assert.equal(preservadoHTML(ficha({ setor: { status: 'concluida', preservado: null } })), '');
+
+  // Usable stage
+  assert.equal(etapaUsavel({ status: 'concluida' }), true);
+  assert.equal(etapaUsavel({ status: 'falhou', preservado: { blocos: ['etapa'] } }), true);
+  assert.equal(etapaUsavel({ status: 'falhou', preservado: { blocos: ['apollo'] } }), false);
+  assert.equal(etapaUsavel({ status: 'falhou' }), false);
+  assert.equal(etapaUsavel({ status: 'pendente', preservado: { blocos: ['etapa'] }, conteudo: {} }), false);
+  assert.equal(etapaUsavel({ status: 'executando', preservado: { blocos: ['etapa'] } }), false);
+  assert.equal(etapaUsavel(undefined), false);
+
+  // Pessoas: whole-stage preserved shows the old content with the "Dado anterior" note
+  const ptxt = (e) => pessoasHTML(ficha({ empresa_pessoas: e }));
+  assert.ok(ptxt(pessoas).includes('<td>Hunter</td><td>Logistics Director</td><td>director · Porto Seco Armazéns</td>'));
+  assert.ok(ptxt(pessoas).includes('Dado anterior: a etapa Pessoas falhou nesta execução e o conteúdo da execução de 30/out/2026 foi mantido. Trajetória profissional não coletada.'));
+  // concluida without preservado: unchanged note; pendente/executando with old content: no content
+  assert.ok(ptxt({ status: 'concluida', conteudo: pessoas.conteudo }).includes('Sem divergência entre as fontes. Trajetória profissional não coletada.'));
+  for (const status of ['pendente', 'executando']) {
+    const h = ptxt({ ...pessoas, status });
+    assert.ok(!h.includes('Hunter') && h.includes('A etapa Pessoas ainda não rodou'));
+  }
+  // falhou with a block-only preservado is not usable
+  assert.ok(ptxt({ ...pessoas, preservado: { blocos: ['apollo'] } }).includes('A etapa Pessoas ainda não rodou'));
+
+  // Ficha recebida: CNPJ read only from a usable Registro stage
+  const reg = { conteudo: { escolhido: { cnpj: '12345678000190' }, confirmado: true, origemCnpj: 'site' } };
+  const cnpj = (e) => fichaRecebidaHTML({ ...ficha({ empresa_registro: e }), f: { original: {}, origem: {} } });
+  assert.ok(cnpj({ status: 'concluida', ...reg }).includes('12.345.678/0001-90'));
+  assert.ok(cnpj({ status: 'falhou', ...reg, preservado: { blocos: ['etapa'] } }).includes('12.345.678/0001-90'));
+  for (const status of ['pendente', 'executando']) assert.ok(cnpj({ status, ...reg }).includes('a confirmar na primeira conversa'));
+
   console.log('test-admin-exibicao: ok');
 } finally {
   rmSync(dir, { recursive: true, force: true });

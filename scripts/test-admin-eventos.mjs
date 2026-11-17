@@ -48,6 +48,15 @@ try {
   assert.equal(txt('editada', undefined), 'Editada');
   assert.equal(txt('editada', { secao: 3, versao: null }), 'Editada');
 
+  // coleta_etapa: "dado anterior" only when detalhe.preservado is not empty (spec 05 §5.4)
+  const dc = { ...d, coleta: { empresa_digital: { confianca: { grau: 'alta' } } } };
+  const ce = (detalhe) => eventoTxt({ em: null, tipo: 'coleta_etapa', detalhe }, dc);
+  assert.equal(ce({ etapa: 'empresa_digital', status: 'concluida', preservado: ['apollo'] }), 'Coleta · Presença digital: concluída, confiança alta · dado anterior');
+  assert.equal(ce({ etapa: 'empresa_pessoas', status: 'falhou', preservado: ['etapa'] }), 'Coleta · Pessoas: falhou · dado anterior');
+  assert.equal(ce({ etapa: 'empresa_digital', status: 'concluida' }), 'Coleta · Presença digital: concluída, confiança alta');
+  assert.equal(ce({ etapa: 'empresa_digital', status: 'concluida', preservado: [] }), 'Coleta · Presença digital: concluída, confiança alta');
+  assert.equal(ce({ etapa: 'empresa_pessoas', status: 'falhou' }), 'Coleta · Pessoas: falhou');
+
   console.log('test-admin-eventos: ok');
 } finally {
   rmSync(dir, { recursive: true, force: true });
