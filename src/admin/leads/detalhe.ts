@@ -96,12 +96,14 @@ function pendenciasHTML(a: Analise): string {
 }
 
 // ---------- Pipeline error (spec 05 §5.4) ----------
-const INTERROMPIDA: Record<string, [string, string, string]> = {
-  'interrupcao:coletando': ['Coleta interrompida.', 'Coletando', 'Use "Reexecutar" para retomar as etapas que não terminaram.'],
-  'interrupcao:coleta_minima': ['Coleta mínima interrompida.', 'Coleta mínima', 'Use "Reexecutar" para retomar as etapas da coleta mínima que não terminaram.'],
-  'interrupcao:sintetizando': ['Síntese interrompida.', 'Sintetizando', 'Use "Reexecutar › Síntese" para gerar a análise de novo.'],
+// [title, state name, what did not happen, instruction]
+const INTERROMPIDA: Record<string, [string, string, string, string]> = {
+  'interrupcao:coletando': ['Coleta interrompida.', 'Coletando', 'sem concluir', 'Use "Reexecutar" para retomar as etapas que não terminaram.'],
+  'interrupcao:coleta_minima': ['Coleta mínima interrompida.', 'Coleta mínima', 'sem concluir', 'Use "Reexecutar" para retomar as etapas da coleta mínima que não terminaram.'],
+  'interrupcao:coletada': ['Síntese não iniciada.', 'Coletada', 'sem que a síntese começasse', 'Use "Reexecutar › Síntese" para gerar a análise.'],
+  'interrupcao:sintetizando': ['Síntese interrompida.', 'Sintetizando', 'sem concluir', 'Use "Reexecutar › Síntese" para gerar a análise de novo.'],
 };
-function erroHTML(d: DadosFicha): string {
+export function erroHTML(d: DadosFicha): string {
   const e = d.f.erro;
   if (!e || !e.etapa) return '';
   const it = INTERROMPIDA[e.etapa];
@@ -109,7 +111,7 @@ function erroHTML(d: DadosFicha): string {
     const parada = d.eventos.filter((x) => x.tipo === 'parada').pop();
     const min = parada?.detalhe?.minutos ?? '?';
     return `<div class="panel"><h3>Erro no pipeline</h3><ul class="pend"><li class="esc"><p class="pt">${esc(erroTxt(e))}</p>` +
-      `<p class="tr"><strong>${it[0]}</strong> A ficha ficou em ${it[1]} por mais de ${esc(min)} minutos sem concluir, e o pipeline a marcou como parada em ${esc(quandoFrase(parada?.em))}. ${esc(it[2])}</p></li></ul></div>`;
+      `<p class="tr"><strong>${it[0]}</strong> A ficha ficou em ${it[1]} por mais de ${esc(min)} minutos ${it[2]}, e o pipeline a marcou como parada em ${esc(quandoFrase(parada?.em))}. ${esc(it[3])}</p></li></ul></div>`;
   }
   return `<div class="panel"><h3>Erro no pipeline</h3><ul class="pend"><li class="esc"><p class="pt">${esc(erroTxt(e))}</p>` +
     (e.mensagem ? `<p class="tr">${esc(e.mensagem)}</p>` : '') +

@@ -65,6 +65,7 @@ export function erroTxt(e: { etapa: string }): string {
   const et = e.etapa || '';
   if (et === 'interrupcao:coleta_minima') return 'Erro na coleta mínima · interrompida';
   if (et === 'interrupcao:coletando') return 'Erro na coleta · interrompida';
+  if (et === 'interrupcao:coletada') return 'Erro na síntese · não iniciada';
   if (et === 'interrupcao:sintetizando') return 'Erro na síntese · interrompida';
   if (ETAPA_COLETA[et]) return 'Erro na coleta · ' + ETAPA_COLETA[et];
   if (et === 'coletar' || et === 'coleta') return 'Erro na coleta';
