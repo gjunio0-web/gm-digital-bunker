@@ -15,7 +15,8 @@ import { SECOES_MODELO, TITULOS, secaoS0, type SecaoModelo } from './sintese.js'
 import { CARGOS_ROTULO } from './textos.generated.js';
 import { diaDeSaoPaulo } from './graduar.js';
 import { lePipeline } from './pipeline.js';
-import { ETAPAS } from './coleta/etapas.js';
+import { ETAPAS, ETAPAS_MINIMAS } from './coleta/etapas.js';
+import { etapasUsaveis } from './coleta/preservacao.js';
 
 export const ACOES = ['aprovar', 'editar', 'reexecutar', 'portaDecidida', 'respostaEnviada', 'mandarParaAnalise', 'arquivar'] as const;
 export type Acao = (typeof ACOES)[number];
@@ -76,7 +77,7 @@ export function validaEstado(acao: Acao, f: { estado: string; erro?: unknown; re
   switch (acao) {
     case 'aprovar': ok = estado === 'analise_pronta' || estado === 'analise_com_pendencias'; break;
     case 'editar': ok = ESTADOS_ANALISADA.includes(estado); break;
-    case 'reexecutar': ok = ESTADOS_ANALISADA.includes(estado) || ((ESTADOS_LONGOS.includes(estado) || estado === 'coletada' || estado === 'qualificada') && erro); break;
+    case 'reexecutar': ok = ESTADOS_ANALISADA.includes(estado) || ((ESTADOS_LONGOS.includes(estado) || estado === 'coletada' || estado === 'qualificada' || estado === 'recebida') && erro); break;
     case 'portaDecidida': ok = ESTADOS_ANALISADA.includes(estado) || estado === 'respondida'; break;
     case 'respostaEnviada': ok = estado === 'aprovada'; break;
     case 'mandarParaAnalise': ok = estado === 'resposta_breve' || (estado === 'qualificada' && Boolean(f.retencao)); break;
@@ -88,22 +89,28 @@ export function validaEstado(acao: Acao, f: { estado: string; erro?: unknown; re
 // `alvo` of reexecutar (spec 01 v0.30, 4.1, item 3). Checks the shape (non-empty list, no repetition, known values,
 // sintese and qualificacao only alone) and, for those two, the states where they are valid. Returns the kind of
 // request; a list of collection stages is only shape-checked here.
-export const ALVOS = ['sintese', 'qualificacao', ...ETAPAS] as const;
-export function validaAlvo(alvo: unknown, f: { estado: string; erro?: { etapa?: string } | null }): { tipo: 'sintese' | 'qualificacao' | 'coleta'; alvos: string[] } {
+export const ALVOS = ['sintese', 'qualificacao', 'coleta_minima', ...ETAPAS] as const;
+export function validaAlvo(alvo: unknown, f: { estado: string; erro?: { etapa?: string } | null }): { tipo: 'sintese' | 'qualificacao' | 'coleta' | 'recebida'; alvos: string[] } {
   const invalido = () => new ErroAcao('parametro_invalido', { campo: 'alvo' });
   if (!Array.isArray(alvo) || alvo.length === 0 || alvo.some((v) => typeof v !== 'string' || !(ALVOS as readonly string[]).includes(v))) throw invalido();
   const alvos = alvo as string[];
   if (new Set(alvos).size !== alvos.length) throw invalido();
-  const exclusivo = alvos.includes('sintese') || alvos.includes('qualificacao');
+  const exclusivo = alvos.includes('sintese') || alvos.includes('qualificacao') || alvos.includes('coleta_minima');
   if (exclusivo && alvos.length > 1) throw invalido();
   if (alvos[0] === 'sintese') {
-    if (!(ESTADOS_ANALISADA.includes(f.estado) || ((f.estado === 'sintetizando' || f.estado === 'coletada') && f.erro))) throw invalido();
+    // coletando with erro is valid here too (spec 01 v0.41); whether every stage is usable is checked in the transaction.
+    if (!(ESTADOS_ANALISADA.includes(f.estado) || ((f.estado === 'sintetizando' || f.estado === 'coletada' || f.estado === 'coletando') && f.erro))) throw invalido();
     return { tipo: 'sintese', alvos };
   }
   if (alvos[0] === 'qualificacao') {
-    const etapa = f.erro?.etapa;
-    if (!((f.estado === 'coleta_minima' && etapa === 'qualificar') || (f.estado === 'qualificada' && etapa === 'graduar'))) throw invalido();
+    // coleta_minima with erro of any etapa (spec 01 v0.41): the usable minimal stages are checked in the transaction.
+    if (!((f.estado === 'coleta_minima' && f.erro) || (f.estado === 'qualificada' && f.erro?.etapa === 'graduar'))) throw invalido();
     return { tipo: 'qualificacao', alvos };
+  }
+  if (alvos[0] === 'coleta_minima') {
+    // recebida with erro (spec 01 v0.41): the collection restarts from the beginning (retomarRecebida).
+    if (!(f.estado === 'recebida' && f.erro)) throw invalido();
+    return { tipo: 'recebida', alvos };
   }
   // Collection stages (spec 01 v0.33, 4.1, item 3; spec 05, 5.7): in the analysed states any of the six; with erro in
   // coleta_minima only the two minimal stages; with erro in coletando any of the six. With erro in the synthesis phase
@@ -124,6 +131,13 @@ export function validaStatusColeta(alvos: string[], f: { estado: string }, statu
     if (!st) throw invalido();
     if (!ESTADOS_ANALISADA.includes(f.estado) && !['falhou', 'pendente', 'executando'].includes(st)) throw invalido();
   }
+}
+
+// Reads the stage documents inside the transaction and refuses (parametro_invalido, alvo) unless every one is usable.
+// Reads only: it must run before the first write of the transaction.
+async function exigeEtapasUsaveis(tx: Transaction, ref: DocumentReference, etapas: readonly string[]): Promise<void> {
+  const docs = await Promise.all(etapas.map((e) => tx.get(ref.collection('coleta').doc(e))));
+  if (!etapasUsaveis(docs.map((d) => d.data() ?? {}))) throw new ErroAcao('parametro_invalido', { campo: 'alvo' });
 }
 
 export const PORTAS = ['projeto', 'conselho', 'workshop', 'combinacao', 'nenhuma'] as const;
@@ -241,6 +255,16 @@ export async function executaAcao(
         // Re-checked on the data read inside the transaction (vigiar can set erro without touching estadoEm).
         validaEstado('reexecutar', f);
         const { tipo, alvos } = validaAlvo(parametros.alvo, f);
+        // spec 01 v0.41: a coleta_minima ficha whose erro is not the qualificar one needs both minimal stages usable (the
+        // erro of qualificar comes after them by construction); a coletando ficha needs all six before the synthesis.
+        if (tipo === 'qualificacao' && f.estado === 'coleta_minima' && (f.erro as { etapa?: string } | null | undefined)?.etapa !== 'qualificar') await exigeEtapasUsaveis(tx, ref, ETAPAS_MINIMAS);
+        if (tipo === 'sintese' && f.estado === 'coletando') await exigeEtapasUsaveis(tx, ref, ETAPAS);
+        if (tipo === 'recebida') {
+          // The ficha stays in recebida; erro goes to null and retomarRecebida starts the collection again.
+          tx.update(ref, { estadoEm: em, erro: null });
+          evento(tx, ref, uid, em, 'reexecucao', { alvos });
+          return { ok: true, estado: 'recebida', analiseAtual: f.analiseAtual ?? null };
+        }
         if (tipo === 'coleta') {
           // Stage documents are read before any write. They go to pendente keeping their content (the previous data
           // that coletar reads and preserves); coletar (or retomarColetaMinima in coleta_minima) takes over.

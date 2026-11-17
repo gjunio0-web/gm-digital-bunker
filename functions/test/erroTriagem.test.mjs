@@ -25,7 +25,7 @@ test('erroCabe: other steps are not restricted; a missing ficha records nothing'
 });
 
 test('the three triagem handlers record erro through gravaErro, never by a direct write', () => {
-  for (const f of ['coletarMinima', 'retomarTriagem', 'retomarColetaMinima']) {
+  for (const f of ['coletaMinimaCorpo', 'retomarTriagem', 'retomarColetaMinima']) {
     const src = readFileSync(new URL(`../src/${f}.ts`, import.meta.url), 'utf8');
     assert.match(src, /await gravaErro\(ref, etapa, mensagem\)/, f);
     assert.doesNotMatch(src, /ref\.update\(\{ erro:/, f);

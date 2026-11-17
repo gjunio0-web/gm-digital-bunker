@@ -4,6 +4,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { triagemPodeSeguir } from '../lib/retomarTriagem.js';
 import { deveRetomarColeta } from '../lib/retomarColetaMinima.js';
+import { deveRetomarRecebida } from '../lib/retomarRecebida.js';
+import { etapasUsaveis } from '../lib/coleta/preservacao.js';
+import { paradas } from '../lib/vigiar.js';
 import { ACOES, ErroAcao, paraHttpsError, validaAlvo, validaEstado, validaStatusColeta } from '../lib/acaoAdmin.js';
 import { deveRetomar } from '../lib/retomarTriagem.js';
 import { deveSintetizar } from '../lib/sintetizar.js';
@@ -22,7 +25,7 @@ function esperado(acao, estado, { erro, retencao }) {
   const ok = {
     aprovar: ['analise_pronta', 'analise_com_pendencias'].includes(estado),
     editar: ANALISADA.includes(estado),
-    reexecutar: ANALISADA.includes(estado) || (erro && [...LONGOS, 'coletada', 'qualificada'].includes(estado)),
+    reexecutar: ANALISADA.includes(estado) || (erro && [...LONGOS, 'coletada', 'qualificada', 'recebida'].includes(estado)), // recebida with erro: spec 01 v0.41
     portaDecidida: [...ANALISADA, 'respondida'].includes(estado),
     respostaEnviada: estado === 'aprovada',
     mandarParaAnalise: estado === 'resposta_breve' || (estado === 'qualificada' && retencao),
@@ -89,21 +92,63 @@ test('validaAlvo: shape (non-empty list, no repetition, known values) and sintes
   assert.deepEqual(validaAlvo(['setor', 'mercado'], f), { tipo: 'coleta', alvos: ['setor', 'mercado'] });
 });
 
-test('validaAlvo: sintese only in the analysed states and in sintetizando with erro; qualificacao only with erro.etapa qualificar / graduar', () => {
+test('validaAlvo: sintese in the analysed states and with erro in sintetizando, coletada and coletando; qualificacao in coleta_minima with any erro and in qualificada with graduar (spec 01 v0.41)', () => {
   const erro = (etapa) => ({ etapa });
   for (const estado of ['analise_pronta', 'analise_com_pendencias', 'aprovada']) assert.equal(validaAlvo(['sintese'], { estado, erro: null }).tipo, 'sintese');
-  assert.equal(validaAlvo(['sintese'], { estado: 'sintetizando', erro: erro('sintetizar') }).tipo, 'sintese');
-  assert.equal(validaAlvo(['sintese'], { estado: 'coletada', erro: erro('interrupcao:coletada') }).tipo, 'sintese');
-  assert.equal(validaAlvo(['sintese'], { estado: 'coletada', erro: erro('sintetizar') }).tipo, 'sintese');
-  for (const f of [{ estado: 'sintetizando', erro: null }, { estado: 'coletada', erro: null }, { estado: 'coletando', erro: erro('coletar') }, { estado: 'coleta_minima', erro: erro('qualificar') }, { estado: 'qualificada', erro: erro('graduar') }]) {
+  for (const [estado, etapa] of [['sintetizando', 'sintetizar'], ['coletada', 'interrupcao:coletada'], ['coletada', 'sintetizar'], ['coletando', 'coletar'], ['coletando', 'interrupcao:coletando']]) {
+    assert.equal(validaAlvo(['sintese'], { estado, erro: erro(etapa) }).tipo, 'sintese', `${estado} ${etapa}`);
+  }
+  for (const f of [{ estado: 'sintetizando', erro: null }, { estado: 'coletada', erro: null }, { estado: 'coletando', erro: null }, { estado: 'coleta_minima', erro: erro('qualificar') }, { estado: 'qualificada', erro: erro('graduar') }, { estado: 'recebida', erro: erro('coleta_minima') }]) {
     assert.equal(campoDe(() => validaAlvo(['sintese'], f)), 'parametro_invalido:alvo', JSON.stringify(f));
   }
-  assert.equal(validaAlvo(['qualificacao'], { estado: 'coleta_minima', erro: erro('qualificar') }).tipo, 'qualificacao');
+  for (const etapa of ['qualificar', 'coleta_minima', 'interrupcao:coleta_minima', 'graduar']) {
+    assert.equal(validaAlvo(['qualificacao'], { estado: 'coleta_minima', erro: erro(etapa) }).tipo, 'qualificacao', etapa);
+  }
   assert.equal(validaAlvo(['qualificacao'], { estado: 'qualificada', erro: erro('graduar') }).tipo, 'qualificacao');
   for (const f of [
-    { estado: 'coleta_minima', erro: erro('coleta_minima') }, { estado: 'coleta_minima', erro: erro('graduar') }, { estado: 'qualificada', erro: erro('qualificar') },
-    { estado: 'coleta_minima', erro: erro('interrupcao:coleta_minima') }, { estado: 'analise_pronta', erro: null }, { estado: 'qualificada', erro: null },
+    { estado: 'coleta_minima', erro: null }, { estado: 'qualificada', erro: erro('qualificar') }, { estado: 'qualificada', erro: null },
+    { estado: 'analise_pronta', erro: null }, { estado: 'recebida', erro: erro('coleta_minima') }, { estado: 'coletando', erro: erro('coletar') },
   ]) assert.equal(campoDe(() => validaAlvo(['qualificacao'], f)), 'parametro_invalido:alvo', JSON.stringify(f));
+});
+
+test('validaAlvo: coleta_minima only alone and only in recebida with erro (spec 01 v0.41)', () => {
+  const erro = { etapa: 'coleta_minima' };
+  assert.deepEqual(validaAlvo(['coleta_minima'], { estado: 'recebida', erro }), { tipo: 'recebida', alvos: ['coleta_minima'] });
+  for (const f of [{ estado: 'recebida', erro: null }, { estado: 'coleta_minima', erro }, { estado: 'coletando', erro }, { estado: 'arquivada', erro }]) {
+    assert.equal(campoDe(() => validaAlvo(['coleta_minima'], f)), 'parametro_invalido:alvo', JSON.stringify(f));
+  }
+  for (const ruim of [['coleta_minima', 'setor'], ['coleta_minima', 'sintese'], ['coleta_minima', 'qualificacao']]) {
+    assert.equal(campoDe(() => validaAlvo(ruim, { estado: 'recebida', erro })), 'parametro_invalido:alvo', JSON.stringify(ruim));
+  }
+  assert.equal(campoDe(() => validaAlvo(['empresa_digital'], { estado: 'recebida', erro })), 'parametro_invalido:alvo'); // no stage document yet
+});
+
+test('etapasUsaveis: concluida, nao_aplicavel or preserved whole; a missing document, pendente, executando or falhou alone are not', () => {
+  const c = { status: 'concluida' };
+  assert.equal(etapasUsaveis([c, c, c, c, c, c]), true);
+  assert.equal(etapasUsaveis([c, { status: 'falhou', preservado: { blocos: ['etapa'] } }]), true);
+  assert.equal(etapasUsaveis([c, { status: 'nao_aplicavel' }]), true);
+  assert.equal(etapasUsaveis([c, {}]), false);
+  assert.equal(etapasUsaveis([c, { status: 'falhou', preservado: { blocos: ['apollo'] } }]), false);
+  for (const status of ['pendente', 'executando', 'falhou']) assert.equal(etapasUsaveis([c, { status }]), false, status);
+});
+
+test('deveRetomarRecebida: erro filled to null while the ficha is still in recebida only', () => {
+  const erro = { etapa: 'coleta_minima' };
+  assert.equal(deveRetomarRecebida({ estado: 'recebida', erro }, { estado: 'recebida', erro: null }), true);
+  assert.equal(deveRetomarRecebida({ estado: 'recebida', erro: null }, { estado: 'recebida', erro: null }), false);
+  assert.equal(deveRetomarRecebida({ estado: 'recebida', erro }, { estado: 'recebida', erro }), false);
+  assert.equal(deveRetomarRecebida({ estado: 'coleta_minima', erro }, { estado: 'coleta_minima', erro: null }), false);
+  assert.equal(deveRetomarRecebida({ estado: 'recebida', erro }, { estado: 'coleta_minima', erro: null }), false);
+  assert.equal(deveRetomarRecebida(undefined, { estado: 'recebida', erro: null }), false);
+  assert.equal(deveRetomarRecebida({ estado: 'recebida', erro }, undefined), false);
+});
+
+test('vigiar paradas: recebida counts as in progress, without erro and beyond the deadline only (spec 01 v0.41)', () => {
+  const agora = new Date('2026-11-17T15:00:00Z');
+  const ficha = (id, estado, minutosAtras, erro = null) => ({ id, estado, estadoEm: new Date(agora.getTime() - minutosAtras * 60_000), erro });
+  const lista = paradas([ficha('a', 'recebida', 45), ficha('b', 'recebida', 10), ficha('c', 'recebida', 45, { etapa: 'x' }), ficha('d', 'coleta_minima', 45), ficha('e', 'qualificada', 600)], agora, 30);
+  assert.deepEqual(lista.map((f) => f.id), ['a', 'd']);
 });
 
 test('deveRetomar: only when erro goes from filled to null, in coleta_minima or in qualificada without lead', () => {

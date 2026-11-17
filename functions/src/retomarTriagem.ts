@@ -10,7 +10,7 @@ import { APOLLO_API_KEY, CLAUDE_API_KEY, REGIAO, SMTP2GO_API_KEY } from './confi
 import { lePipeline } from './pipeline.js';
 import { noEmulador } from './claude.js';
 import { ETAPAS_MINIMAS } from './coleta/etapas.js';
-import { etapaUsavel } from './coleta/preservacao.js';
+import { etapasUsaveis } from './coleta/preservacao.js';
 import { concluiTriagem } from './triagem.js';
 import { gravaErro } from './erroTriagem.js';
 
@@ -27,7 +27,7 @@ export function deveRetomar(antes: Ficha, depois: Ficha): 'qualificar' | 'gradua
 // The triagem can go on when every minimal stage is concluida or nao_aplicavel, or usable (falhou with the whole stage
 // preserved; spec 01 v0.33). A stage pendente, executando or falhou without preservado makes it give up.
 export function triagemPodeSeguir(etapas: { status?: unknown; preservado?: { blocos?: unknown } | null }[]): boolean {
-  return etapas.every((d) => ['concluida', 'nao_aplicavel'].includes(d.status as string) || etapaUsavel(d));
+  return etapasUsaveis(etapas);
 }
 
 export const retomarTriagem = onDocumentUpdated(

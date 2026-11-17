@@ -579,7 +579,9 @@ test('reexecutar qualificacao: with erro.etapa qualificar (coleta_minima) and gr
   }
 });
 
-test('reexecutar qualificacao: other erro.etapa, other states and a combination are parametro_invalido', async () => {
+// Since spec 01 v0.41 a coleta_minima ficha accepts qualificacao with any erro.etapa, but only with both minimal stages usable;
+// here there are no stage documents, so the first two cases are still refused (the stage rule is tested further down).
+test('reexecutar qualificacao: without usable stage documents, in qualificada with another etapa and in a combination it is parametro_invalido', async () => {
   const casos = [
     [{ estado: 'coleta_minima', erro: { etapa: 'coleta_minima' } }, ['qualificacao']],
     [{ estado: 'coleta_minima', erro: { etapa: 'interrupcao:coleta_minima' } }, ['qualificacao']],
@@ -782,6 +784,133 @@ test('graduar failure in qualificada without lead: erro is recorded, acaoAdmin c
   assert.equal(tipos.filter((x) => x === 'triada').length, 1);
   assert.equal(tipos.filter((x) => x === 'reexecucao').length, 1);
   assert.deepEqual((await eventos(id)).find((e) => e.tipo === 'reexecucao').detalhe, { alvos: ['qualificacao'] }, 'no lead at the time: not "apenasLimpouErro"');
+});
+
+// ---- spec 01 v0.41: every state with erro has at least one valid target of reexecutar ----
+const erroDe = (etapa) => ({ etapa, mensagem: 'x', em: ts('2026-11-16T12:30:00Z') });
+const MENSAGEM_CURTA = 'Queremos sair das planilhas com apoio de um conselho.';
+// A ficha in recebida that no creation trigger touches: it is created in another state and moved afterwards.
+async function criaFichaRecebida(campos) {
+  const id = await criaFicha({ estado: 'arquivada', ...camposDeColeta, ...campos });
+  await db.doc(`fichas/${id}`).update({ 'original.mensagem': MENSAGEM_CURTA, estado: 'recebida' });
+  return id;
+}
+
+test('reexecutar qualificacao (coleta_minima, v0.41): interrupcao and coleta_minima with both minimal stages usable redo the triagem; one stage pendente is refused', async () => {
+  await garanteMetodo();
+  const inteira = { ...falhou, preservado: { blocos: ['etapa'] } };
+  for (const [etapa, registro] of [['interrupcao:coleta_minima', concluida], ['coleta_minima', inteira]]) {
+    const id = await criaFicha({ estado: 'coleta_minima', ...camposDeColeta, erro: erroDe(etapa) });
+    await db.doc(`fichas/${id}`).update({ 'original.mensagem': MENSAGEM_CURTA });
+    await etapaDoc(id, 'empresa_digital', concluida);
+    await etapaDoc(id, 'empresa_registro', registro);
+    const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['qualificacao'] } });
+    assert.equal(r.status, 200, etapa);
+    const f = await ate(async () => { const d = (await db.doc(`fichas/${id}`).get()).data(); return d.lead ? d : null; });
+    assert.ok(f, `${etapa}: the triagem ran again and wrote the lead`);
+    assert.equal(f.erro ?? null, null, etapa);
+    const tipos = await tiposDe(id);
+    assert.equal(tipos.filter((x) => x === 'triada').length, 1, etapa);
+    assert.deepEqual((await eventos(id)).find((e) => e.tipo === 'reexecucao').detalhe, { alvos: ['qualificacao'] }, etapa);
+  }
+  for (const pendente of [{ status: 'pendente' }, undefined]) {
+    const id = await criaFicha({ estado: 'coleta_minima', ...camposDeColeta, erro: erroDe('interrupcao:coleta_minima') });
+    await etapaDoc(id, 'empresa_digital', concluida);
+    if (pendente) await etapaDoc(id, 'empresa_registro', pendente);
+    const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['qualificacao'] } });
+    assert.equal(codigo(r), 'parametro_invalido', JSON.stringify(pendente));
+    const f = (await db.doc(`fichas/${id}`).get()).data();
+    assert.equal(f.erro.etapa, 'interrupcao:coleta_minima');
+    assert.deepEqual(await tiposDe(id), []);
+  }
+});
+
+test('reexecutar sintese (coletando, v0.41): erro with the six stages usable goes to coletada; a stage not usable or missing refuses it', async () => {
+  const id = await criaFicha({ estado: 'coletando', ...camposDeColeta, erro: erroDe('interrupcao:coletando') });
+  for (const e of ETAPAS_COLETA) await etapaDoc(id, e, concluida);
+  const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['sintese'] } });
+  assert.equal(r.status, 200);
+  assert.equal(r.resultado.estado, 'coletada');
+  assert.deepEqual((await eventos(id)).find((e) => e.tipo === 'reexecucao').detalhe, { alvos: ['sintese'] });
+  // A stage that failed without preserved data, a pendente one and a missing document each refuse sintese.
+  for (const [rotulo, doc] of [['falhou', falhou], ['pendente', { status: 'pendente' }], ['sem documento', null]]) {
+    const outra = await criaFicha({ estado: 'coletando', ...camposDeColeta, erro: erroDe('interrupcao:coletando') });
+    for (const e of ETAPAS_COLETA.slice(0, 5)) await etapaDoc(outra, e, concluida);
+    if (doc) await etapaDoc(outra, 'mercado', doc);
+    const n = await chama(admin.token, { fichaId: outra, acao: 'reexecutar', parametros: { alvo: ['sintese'] } });
+    assert.equal(codigo(n), 'parametro_invalido', rotulo);
+    const f = (await db.doc(`fichas/${outra}`).get()).data();
+    assert.equal(f.estado, 'coletando', rotulo);
+    assert.equal(f.erro.etapa, 'interrupcao:coletando', rotulo);
+    assert.deepEqual(await tiposDe(outra), [], rotulo);
+  }
+});
+
+test('reexecutar coleta_minima (recebida, v0.41): erro is cleared, retomarRecebida starts the collection again; without erro or with another alvo it is refused', async () => {
+  await garanteMetodo();
+  const id = await criaFichaRecebida({ erro: erroDe('coleta_minima') });
+  const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['coleta_minima'] } });
+  assert.equal(r.status, 200);
+  assert.equal(r.resultado.estado, 'recebida');
+  const f = await ate(async () => { const d = (await db.doc(`fichas/${id}`).get()).data(); return d.estado !== 'recebida' && d.lead ? d : null; });
+  assert.ok(f, 'the ficha left recebida after the collection and the triagem ran');
+  assert.equal(f.erro ?? null, null);
+  const tipos = await tiposDe(id);
+  console.log('[recebida] events', JSON.stringify(tipos), 'estado', f.estado);
+  for (const t of ['reexecucao', 'coleta_minima', 'triada']) assert.equal(tipos.filter((x) => x === t).length, 1, t);
+  assert.deepEqual((await eventos(id)).find((e) => e.tipo === 'reexecucao').detalhe, { alvos: ['coleta_minima'] });
+
+  const semErro = await criaFichaRecebida({ erro: null });
+  assert.equal(codigo(await chama(admin.token, { fichaId: semErro, acao: 'reexecutar', parametros: { alvo: ['coleta_minima'] } })), 'acao_invalida_no_estado');
+  const comErro = await criaFichaRecebida({ erro: erroDe('coleta_minima') });
+  for (const alvo of [['empresa_digital'], ['sintese'], ['qualificacao'], ['coleta_minima', 'setor']]) {
+    assert.equal(codigo(await chama(admin.token, { fichaId: comErro, acao: 'reexecutar', parametros: { alvo } })), 'parametro_invalido', JSON.stringify(alvo));
+  }
+  const fim = (await db.doc(`fichas/${comErro}`).get()).data();
+  assert.equal(fim.estado, 'recebida');
+  assert.equal(fim.erro.etapa, 'coleta_minima');
+  assert.deepEqual(await tiposDe(comErro), []);
+});
+
+test('executaColetaMinima: two simultaneous runs on a ficha in recebida (duplicated delivery) collect once', async () => {
+  const { executaColetaMinima } = await import('../lib/coletaMinimaCorpo.js');
+  garanteAppPadrao();
+  await garanteMetodo();
+  const anterior = process.env.FUNCTIONS_EMULATOR;
+  process.env.FUNCTIONS_EMULATOR = 'true';
+  try {
+    const id = await criaFichaRecebida({ erro: null });
+    await Promise.all([executaColetaMinima(id), executaColetaMinima(id)]);
+    await espera(500);
+    const tipos = await tiposDe(id);
+    const f = (await db.doc(`fichas/${id}`).get()).data();
+    console.log('[recebida x2] events', JSON.stringify(tipos), 'estado', f.estado);
+    assert.equal(tipos.filter((x) => x === 'coleta_minima').length, 1);
+    assert.equal(tipos.filter((x) => x === 'triada').length, 1);
+    assert.equal(f.erro ?? null, null);
+    assert.ok(f.lead);
+  } finally {
+    if (anterior === undefined) delete process.env.FUNCTIONS_EMULATOR; else process.env.FUNCTIONS_EMULATOR = anterior;
+  }
+});
+
+test('vigiar: a ficha stopped in recebida gets erro interrupcao:recebida and the parada event, and reexecutar coleta_minima is the way out', async () => {
+  const { marcaParadas } = await import('../lib/vigiar.js');
+  const agora = new Date();
+  const antiga = Timestamp.fromDate(new Date(agora.getTime() - 3 * 3_600_000));
+  const parada = await criaFichaRecebida({ erro: null });
+  await db.doc(`fichas/${parada}`).update({ estadoEm: antiga });
+  const recente = await criaFichaRecebida({ erro: null });
+  const comErro = await criaFichaRecebida({ erro: erroDe('coleta_minima') });
+  await db.doc(`fichas/${comErro}`).update({ estadoEm: antiga });
+  const lista = await marcaParadas(agora, db, 30);
+  assert.ok(lista.some((x) => x.estado === 'recebida'), 'the notice lists the ficha');
+  assert.equal((await db.doc(`fichas/${parada}`).get()).data().erro.etapa, 'interrupcao:recebida');
+  assert.deepEqual((await eventos(parada)).filter((e) => e.tipo === 'parada').map((e) => e.detalhe.estado), ['recebida']);
+  assert.equal((await db.doc(`fichas/${recente}`).get()).data().erro ?? null, null);
+  assert.equal((await db.doc(`fichas/${comErro}`).get()).data().erro.etapa, 'coleta_minima', 'a ficha that already has erro is left alone');
+  const r = await chama(admin.token, { fichaId: parada, acao: 'reexecutar', parametros: { alvo: ['coleta_minima'] } });
+  assert.equal(r.status, 200);
 });
 
 // ---- gravaErro (spec 01 v0.39): an erro of a triagem step is recorded only where the step runs ----

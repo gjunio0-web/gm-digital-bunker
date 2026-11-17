@@ -1,7 +1,7 @@
 // vigiar – every 30 minutes (phase 6, item 3c; decision of Gon, 8/11/2026; spec 01 v0.25, item 4.2):
 // 1. releases the fichas held by the daily ceiling (retencao.motivo teto_diario) whose liberacaoPrevista has
 //    passed, oldest retencao.desde first, counting each one in the ceiling of the new day (spec 01, section 3);
-// 2. fichas in coleta_minima, coletando, coletada or sintetizando
+// 2. fichas in recebida, coleta_minima, coletando, coletada or sintetizando
 // (the verification runs with the ficha still in sintetizando) without an error and with estadoEm older than
 // config/pipeline.prazoParadaMin get erro {etapa: "interrupcao:<estado>"} and the "parada" event, and one e-mail
 // lists them. Nothing is run again by itself. It also covers events dropped with maxInstances and retry false
@@ -15,7 +15,7 @@ import { lePipeline } from './pipeline.js';
 import { avisoParadas } from './email.js';
 
 // coletada is a passing state, but sintetizar can die before claiming it: any ficha stopped there is a failure (spec 01 v0.30, 4.2).
-export const ESTADOS_EM_CURSO = ['coleta_minima', 'coletando', 'coletada', 'sintetizando'] as const;
+export const ESTADOS_EM_CURSO = ['recebida', 'coleta_minima', 'coletando', 'coletada', 'sintetizando'] as const;
 
 // Fichas stopped beyond the deadline; filtered in code (few fichas in progress), so no composite index.
 export function paradas(fichas: { id: string; estado: string; estadoEm: Date; erro: unknown }[], agora: Date, prazoMin: number) {
