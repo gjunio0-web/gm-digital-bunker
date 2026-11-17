@@ -18,8 +18,9 @@ export const viradaDoDia = (dia: string) => Timestamp.fromMillis(Date.parse(`${d
 
 // Daily ceiling (phase 6, item 4; decision of Gon, 8/11/2026): config/pipeline.maxAnalisesPorDia fichas a day go
 // from the triagem to coletando; beyond it the ficha stays in qualificada with a teto_diario event. Counted in
-// controle/analises-{aaaa-mm-dd}, inside the triagem transaction; the first ficha over the ceiling asks for the
-// notice (avisarTeto), once a day. A ficha kept in qualificada gets `retencao` (spec 01, section 2 and 4.2.1):
+// controle/analises-{aaaa-mm-dd}, inside the triagem transaction; every ficha over the ceiling asks for the
+// notice (avisarTeto) until concluiTriagem marks `avisado` after a successful send (spec 01 v0.39, option A: two
+// fichas over the ceiling at the same moment may send two e-mails; a failed send is tried again by the next one). A ficha kept in qualificada gets `retencao` (spec 01, section 2 and 4.2.1):
 // auto_desligada (autoAnalisar off) is tested first, then teto_diario; vigiar releases the second kind.
 export async function graduaTriagem(ref: DocumentReference, p: Pipeline): Promise<{ lead: Lead; estado: string; avisarTeto: { teto: number; dia: string } | null } | null> {
   const db = getFirestore();
@@ -54,7 +55,7 @@ export async function graduaTriagem(ref: DocumentReference, p: Pipeline): Promis
         estadoFinal = 'qualificada';
         retencao = { motivo: 'teto_diario', desde: agora, liberacaoPrevista: viradaDoDia(dia) };
         if (!conta.avisado) avisarTeto = { teto: p.maxAnalisesPorDia ?? 0, dia };
-        tx.set(contador, { dia, retidas: FieldValue.increment(1), avisado: true, atualizadoEm: agora }, { merge: true });
+        tx.set(contador, { dia, retidas: FieldValue.increment(1), atualizadoEm: agora }, { merge: true });
         tx.create(ref.collection('eventos').doc(), { em: agora, ator: { tipo: 'sistema', id: 'graduar' }, tipo: 'teto_diario', detalhe: { teto: p.maxAnalisesPorDia, dia } });
       } else {
         tx.set(contador, { dia, n: FieldValue.increment(1), atualizadoEm: agora }, { merge: true });

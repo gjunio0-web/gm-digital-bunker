@@ -762,3 +762,63 @@ test('gravaErro: graduar and qualificar are recorded only in the state where the
   }
   assert.equal(await gravaErro(db.doc('fichas/nao-existe-erro'), 'graduar', 'x'), false); // a missing ficha records nothing
 });
+
+// ---- daily-ceiling notice (spec 01 v0.39, option A): avisado only after a successful send ----
+test('enviaAvisoTeto: a failed send does not mark avisado; a successful one does; it never throws', async () => {
+  const { enviaAvisoTeto } = await import('../lib/triagem.js');
+  garanteAppPadrao();
+  const dia = '2099-01-01';
+  const ref = db.doc(`controle/analises-${dia}`);
+  await ref.delete().catch(() => {});
+  try {
+    assert.equal(await enviaAvisoTeto('k', 3, dia, async () => { throw new Error('smtp down'); }), false);
+    assert.notEqual((await ref.get()).data()?.avisado, true);
+    assert.equal(await enviaAvisoTeto('k', 3, dia, async () => {}), true);
+    assert.equal((await ref.get()).data().avisado, true);
+  } finally {
+    await ref.delete().catch(() => {});
+  }
+});
+
+test('ceiling notice: graduaTriagem does not write avisado; after a failed send the next ficha over the ceiling asks again; after a successful one none does', async () => {
+  const { qualifica } = await import('../lib/qualificar.js');
+  const { graduaTriagem, diaDeSaoPaulo: dia } = await import('../lib/graduar.js');
+  const { enviaAvisoTeto } = await import('../lib/triagem.js');
+  const { lePipeline } = await import('../lib/pipeline.js');
+  garanteAppPadrao();
+  await garanteMetodo();
+  const hoje = dia(new Date());
+  const contador = db.doc(`controle/analises-${hoje}`);
+  const anterior = process.env.FUNCTIONS_EMULATOR;
+  process.env.FUNCTIONS_EMULATOR = 'true'; // qualificar without the model, as in the emulator
+  try {
+    await contador.set({ dia: hoje, n: 5 }); // the day is at the ceiling of 5
+    const p = { ...(await lePipeline()), maxAnalisesPorDia: 5, autoAnalisar: true };
+    // A ficha that left the coleta mínima and is classified, then goes through graduaTriagem like the handlers do.
+    const triada = async () => {
+      const id = await criaFicha({ estado: 'coleta_minima', ...camposDeColeta });
+      await etapaDoc(id, 'empresa_digital', concluida);
+      await etapaDoc(id, 'empresa_registro', concluida);
+      await db.doc(`fichas/${id}`).update({ 'original.mensagem': 'Queremos sair das planilhas com apoio de um conselho.' });
+      const ref = db.doc(`fichas/${id}`);
+      await qualifica(ref, p, '');
+      const g = await graduaTriagem(ref, p);
+      assert.ok(g, 'graduaTriagem ran');
+      assert.equal(g.estado, 'qualificada', `held by the ceiling (quadrante ${g.lead.quadrante}); the fixture must reach coletando`);
+      return g;
+    };
+    const a = await triada();
+    assert.ok(a.avisarTeto, 'the first ficha over the ceiling asks for the notice');
+    assert.notEqual((await contador.get()).data().avisado, true, 'the transaction no longer writes avisado');
+    assert.equal(await enviaAvisoTeto('k', 5, hoje, async () => { throw new Error('smtp down'); }), false);
+    const b = await triada();
+    assert.ok(b.avisarTeto, 'after a failed send the next ficha over the ceiling asks again');
+    assert.equal(await enviaAvisoTeto('k', 5, hoje, async () => {}), true);
+    const c = await triada();
+    assert.equal(c.avisarTeto, null, 'after a successful send nobody asks again that day');
+    assert.equal((await contador.get()).data().avisado, true);
+  } finally {
+    if (anterior === undefined) delete process.env.FUNCTIONS_EMULATOR; else process.env.FUNCTIONS_EMULATOR = anterior;
+    await contador.delete().catch(() => {});
+  }
+});

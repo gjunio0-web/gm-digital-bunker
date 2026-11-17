@@ -1,7 +1,7 @@
 // Triagem tail shared by coletarMinima (first pass) and retomarTriagem (re-run asked by acaoAdmin):
 // qualificar (optional) → graduar (triagem), then the daily-ceiling notice when graduar asks for it.
 import { logger } from 'firebase-functions';
-import type { DocumentReference } from 'firebase-admin/firestore';
+import { getFirestore, type DocumentReference } from 'firebase-admin/firestore';
 import type { Pipeline } from './config.js';
 import { avisoTeto } from './email.js';
 import { noEmulador } from './claude.js';
@@ -19,9 +19,22 @@ export async function concluiTriagem(
   }
   marca('graduar');
   const g = await graduaTriagem(ref, p);
-  if (g?.avisarTeto) {
-    await avisoTeto(noEmulador() ? '' : chaves.smtp, g.avisarTeto.teto, g.avisarTeto.dia).catch((e) =>
-      logger.error('triagem: ceiling notice failed', { id, mensagem: String((e as Error)?.message ?? e).slice(0, 300) }));
-  }
+  if (g?.avisarTeto) await enviaAvisoTeto(noEmulador() ? '' : chaves.smtp, g.avisarTeto.teto, g.avisarTeto.dia, avisoTeto, id);
   return { decisao, g };
+}
+
+// Daily-ceiling notice (spec 01 v0.39): `avisado` in controle/analises-{dia} is written only after the e-mail went out,
+// so a failed send is tried again by the next ficha over the ceiling. Never throws: a failure here must not put an erro
+// on the ficha whose triagem is already done. `envio` is injectable for the tests.
+export async function enviaAvisoTeto(
+  chave: string, teto: number, dia: string, envio: (chave: string, teto: number, dia: string) => Promise<void> = avisoTeto, id = '',
+): Promise<boolean> {
+  try {
+    await envio(chave, teto, dia);
+    await getFirestore().collection('controle').doc(`analises-${dia}`).set({ avisado: true }, { merge: true });
+    return true;
+  } catch (e) {
+    logger.error('triagem: ceiling notice failed', { id, mensagem: String((e as Error)?.message ?? e).slice(0, 300) });
+    return false;
+  }
 }
