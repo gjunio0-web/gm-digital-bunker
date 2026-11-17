@@ -38,6 +38,7 @@ export async function executaColetaMinima(id: string): Promise<void> {
     const agora = Timestamp.now();
     let ficou = false;
     await db.runTransaction(async (tx) => {
+      ficou = false; // reset on every attempt: a retried transaction must not keep the flag of an attempt that did not commit
       const atual = (await tx.get(ref)).data();
       if (!atual || atual.estado !== 'recebida' || !(atual.estadoEm as Timestamp).isEqual(f.estadoEm as Timestamp)) return;
       ficou = true;

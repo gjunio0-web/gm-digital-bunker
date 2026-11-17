@@ -57,6 +57,7 @@ export const coletar = onDocumentUpdated(
       let buscasMinima = 0;
       let anterior: Partial<Record<Etapa, DocAnterior>> = {};
       await db.runTransaction(async (tx) => {
+        ficou = false; // reset on every attempt: a retried transaction must not keep the flag of an attempt that did not commit
         aRodar = [];
         anterior = {};
         const f = (await tx.get(ref)).data();

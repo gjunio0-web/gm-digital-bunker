@@ -59,6 +59,7 @@ export const sintetizar = onDocumentUpdated(
       let ficou = false;
       let parametros: ParametrosSintese | null = null;
       await db.runTransaction(async (tx) => {
+        ficou = false; // reset on every attempt: a retried transaction must not keep the flag of an attempt that did not commit
         const f = (await tx.get(ref)).data();
         if (!f || f.estado !== 'coletada' || !(f.estadoEm as Timestamp).isEqual(depois.estadoEm as Timestamp)) return;
         ficou = true;

@@ -329,7 +329,8 @@ test('reexecutar (coleta_minima com erro): the pending minimal stage is redone b
   assert.deepEqual(r.resultado, { ok: true, estado: 'coleta_minima', analiseAtual: 'v1' });
   const f = await ate(async () => {
     const d = (await db.doc(`fichas/${id}`).get()).data();
-    return d.estado !== 'coleta_minima' || d.erro ? d : null;
+    // qualificar moves the ficha out of coleta_minima before graduar writes the lead: wait for the lead (or an erro).
+    return d.lead || d.erro ? d : null;
   });
   assert.ok(f, 'the ficha left coleta_minima');
   assert.equal(f.erro ?? null, null);
@@ -786,6 +787,97 @@ test('graduar failure in qualificada without lead: erro is recorded, acaoAdmin c
   assert.deepEqual((await eventos(id)).find((e) => e.tipo === 'reexecucao').detalhe, { alvos: ['qualificacao'] }, 'no lead at the time: not "apenasLimpouErro"');
 });
 
+// ---- gravaErro (spec 01 v0.39): an erro of a triagem step is recorded only where the step runs ----
+test('gravaErro: graduar and qualificar are recorded only in the state where the step runs', async () => {
+  const { gravaErro } = await import('../lib/erroTriagem.js');
+  garanteAppPadrao();
+  const le = async (id) => (await db.doc(`fichas/${id}`).get()).data();
+  const casos = [
+    // [estado, lead, etapa, expected result]
+    ['qualificada', undefined, 'graduar', true],
+    ['qualificada', leadDeTeste, 'graduar', false],
+    ['resposta_breve', leadDeTeste, 'graduar', false],
+    ['coletando', leadDeTeste, 'graduar', false],
+    ['coleta_minima', undefined, 'qualificar', true],
+    ['qualificada', undefined, 'qualificar', false],
+    ['coletando', leadDeTeste, 'qualificar', false],
+    ['coleta_minima', undefined, 'coleta_minima', true], // other steps keep the plain write
+    ['qualificada', leadDeTeste, 'coleta_minima', true],
+  ];
+  for (const [estado, lead, etapa, esperado] of casos) {
+    const id = await criaFicha({ estado, ...camposDeColeta, ...(lead ? { lead } : {}) });
+    const gravou = await gravaErro(db.doc(`fichas/${id}`), etapa, 'falha de teste');
+    const f = await le(id);
+    assert.equal(gravou, esperado, `${estado} lead=${Boolean(lead)} ${etapa}`);
+    assert.equal(f.erro?.etapa ?? null, esperado ? etapa : null, `${estado} ${etapa}: erro`);
+    if (esperado) assert.equal(f.erro.mensagem, 'falha de teste');
+    assert.deepEqual(await tiposDe(id), [], 'no event is written for an erro');
+  }
+  assert.equal(await gravaErro(db.doc('fichas/nao-existe-erro'), 'graduar', 'x'), false); // a missing ficha records nothing
+});
+
+// ---- daily-ceiling notice (spec 01 v0.39, option A): avisado only after a successful send ----
+test('enviaAvisoTeto: a failed send does not mark avisado; a successful one does; it never throws', async () => {
+  const { enviaAvisoTeto } = await import('../lib/triagem.js');
+  garanteAppPadrao();
+  const dia = '2099-01-01';
+  const ref = db.doc(`controle/analises-${dia}`);
+  await ref.delete().catch(() => {});
+  try {
+    assert.equal(await enviaAvisoTeto('k', 3, dia, async () => { throw new Error('smtp down'); }), false);
+    assert.notEqual((await ref.get()).data()?.avisado, true);
+    assert.equal(await enviaAvisoTeto('k', 3, dia, async () => {}), true);
+    assert.equal((await ref.get()).data().avisado, true);
+  } finally {
+    await ref.delete().catch(() => {});
+  }
+});
+
+test('ceiling notice: graduaTriagem does not write avisado; after a failed send the next ficha over the ceiling asks again; after a successful one none does', async () => {
+  const { qualifica } = await import('../lib/qualificar.js');
+  const { graduaTriagem, diaDeSaoPaulo: dia } = await import('../lib/graduar.js');
+  const { enviaAvisoTeto } = await import('../lib/triagem.js');
+  const { lePipeline } = await import('../lib/pipeline.js');
+  garanteAppPadrao();
+  await garanteMetodo();
+  const hoje = dia(new Date());
+  const contador = db.doc(`controle/analises-${hoje}`);
+  const anterior = process.env.FUNCTIONS_EMULATOR;
+  process.env.FUNCTIONS_EMULATOR = 'true'; // qualificar without the model, as in the emulator
+  try {
+    await contador.set({ dia: hoje, n: 5 }); // the day is at the ceiling of 5
+    const p = { ...(await lePipeline()), maxAnalisesPorDia: 5, autoAnalisar: true };
+    // A ficha that left the coleta mínima and is classified, then goes through graduaTriagem like the handlers do.
+    const triada = async () => {
+      const id = await criaFicha({ estado: 'coleta_minima', ...camposDeColeta });
+      await etapaDoc(id, 'empresa_digital', concluida);
+      await etapaDoc(id, 'empresa_registro', concluida);
+      await db.doc(`fichas/${id}`).update({ 'original.mensagem': 'Queremos sair das planilhas com apoio de um conselho.' });
+      const ref = db.doc(`fichas/${id}`);
+      await qualifica(ref, p, '');
+      const g = await graduaTriagem(ref, p);
+      assert.ok(g, 'graduaTriagem ran');
+      assert.equal(g.estado, 'qualificada', `held by the ceiling (quadrante ${g.lead.quadrante}); the fixture must reach coletando`);
+      return g;
+    };
+    const a = await triada();
+    assert.ok(a.avisarTeto, 'the first ficha over the ceiling asks for the notice');
+    assert.notEqual((await contador.get()).data().avisado, true, 'the transaction no longer writes avisado');
+    assert.equal(await enviaAvisoTeto('k', 5, hoje, async () => { throw new Error('smtp down'); }), false);
+    const b = await triada();
+    assert.ok(b.avisarTeto, 'after a failed send the next ficha over the ceiling asks again');
+    assert.equal(await enviaAvisoTeto('k', 5, hoje, async () => {}), true);
+    const c = await triada();
+    assert.equal(c.avisarTeto, null, 'after a successful send nobody asks again that day');
+    assert.equal((await contador.get()).data().avisado, true);
+  } finally {
+    if (anterior === undefined) delete process.env.FUNCTIONS_EMULATOR; else process.env.FUNCTIONS_EMULATOR = anterior;
+    await contador.delete().catch(() => {});
+  }
+});
+
+// The tests below start real pipelines in the emulator; they stay at the end so that no later test shares the daily ceiling
+// counter or the fichas still in flight with them.
 // ---- spec 01 v0.41: every state with erro has at least one valid target of reexecutar ----
 const erroDe = (etapa) => ({ etapa, mensagem: 'x', em: ts('2026-11-16T12:30:00Z') });
 const MENSAGEM_CURTA = 'Queremos sair das planilhas com apoio de um conselho.';
@@ -898,11 +990,9 @@ test('vigiar: a ficha stopped in recebida gets erro interrupcao:recebida and the
   const { marcaParadas } = await import('../lib/vigiar.js');
   const agora = new Date();
   const antiga = Timestamp.fromDate(new Date(agora.getTime() - 3 * 3_600_000));
-  const parada = await criaFichaRecebida({ erro: null });
-  await db.doc(`fichas/${parada}`).update({ estadoEm: antiga });
-  const recente = await criaFichaRecebida({ erro: null });
-  const comErro = await criaFichaRecebida({ erro: erroDe('coleta_minima') });
-  await db.doc(`fichas/${comErro}`).update({ estadoEm: antiga });
+  const parada = await criaFichaRecebida({ erro: null, estadoEm: antiga });
+  const recente = await criaFichaRecebida({ erro: null, estadoEm: Timestamp.now() }); // criaFicha's default estadoEm is a past fixed date
+  const comErro = await criaFichaRecebida({ erro: erroDe('coleta_minima'), estadoEm: antiga });
   const lista = await marcaParadas(agora, db, 30);
   assert.ok(lista.some((x) => x.estado === 'recebida'), 'the notice lists the ficha');
   assert.equal((await db.doc(`fichas/${parada}`).get()).data().erro.etapa, 'interrupcao:recebida');
@@ -913,91 +1003,32 @@ test('vigiar: a ficha stopped in recebida gets erro interrupcao:recebida and the
   assert.equal(r.status, 200);
 });
 
-// ---- gravaErro (spec 01 v0.39): an erro of a triagem step is recorded only where the step runs ----
-test('gravaErro: graduar and qualificar are recorded only in the state where the step runs', async () => {
-  const { gravaErro } = await import('../lib/erroTriagem.js');
-  garanteAppPadrao();
-  const le = async (id) => (await db.doc(`fichas/${id}`).get()).data();
+test('enviaEmailsDaFicha (v0.42): each failed e-mail becomes one email_falhou event with its destino, never an erro; the ficha keeps its state and vigiar still marks a real stop', async () => {
+  const { enviaEmailsDaFicha } = await import('../lib/receberFicha.js');
+  const { marcaParadas } = await import('../lib/vigiar.js');
+  const ok = async () => undefined;
+  const falha = async () => { throw new Error('smtp fora do ar'); };
   const casos = [
-    // [estado, lead, etapa, expected result]
-    ['qualificada', undefined, 'graduar', true],
-    ['qualificada', leadDeTeste, 'graduar', false],
-    ['resposta_breve', leadDeTeste, 'graduar', false],
-    ['coletando', leadDeTeste, 'graduar', false],
-    ['coleta_minima', undefined, 'qualificar', true],
-    ['qualificada', undefined, 'qualificar', false],
-    ['coletando', leadDeTeste, 'qualificar', false],
-    ['coleta_minima', undefined, 'coleta_minima', true], // other steps keep the plain write
-    ['qualificada', leadDeTeste, 'coleta_minima', true],
+    [{ confirmacao: ok, aviso: ok }, []],
+    [{ confirmacao: falha, aviso: ok }, ['interessado']],
+    [{ confirmacao: ok, aviso: falha }, ['administrador']],
+    [{ confirmacao: falha, aviso: falha }, ['interessado', 'administrador']],
   ];
-  for (const [estado, lead, etapa, esperado] of casos) {
-    const id = await criaFicha({ estado, ...camposDeColeta, ...(lead ? { lead } : {}) });
-    const gravou = await gravaErro(db.doc(`fichas/${id}`), etapa, 'falha de teste');
-    const f = await le(id);
-    assert.equal(gravou, esperado, `${estado} lead=${Boolean(lead)} ${etapa}`);
-    assert.equal(f.erro?.etapa ?? null, esperado ? etapa : null, `${estado} ${etapa}: erro`);
-    if (esperado) assert.equal(f.erro.mensagem, 'falha de teste');
-    assert.deepEqual(await tiposDe(id), [], 'no event is written for an erro');
-  }
-  assert.equal(await gravaErro(db.doc('fichas/nao-existe-erro'), 'graduar', 'x'), false); // a missing ficha records nothing
-});
-
-// ---- daily-ceiling notice (spec 01 v0.39, option A): avisado only after a successful send ----
-test('enviaAvisoTeto: a failed send does not mark avisado; a successful one does; it never throws', async () => {
-  const { enviaAvisoTeto } = await import('../lib/triagem.js');
-  garanteAppPadrao();
-  const dia = '2099-01-01';
-  const ref = db.doc(`controle/analises-${dia}`);
-  await ref.delete().catch(() => {});
-  try {
-    assert.equal(await enviaAvisoTeto('k', 3, dia, async () => { throw new Error('smtp down'); }), false);
-    assert.notEqual((await ref.get()).data()?.avisado, true);
-    assert.equal(await enviaAvisoTeto('k', 3, dia, async () => {}), true);
-    assert.equal((await ref.get()).data().avisado, true);
-  } finally {
-    await ref.delete().catch(() => {});
-  }
-});
-
-test('ceiling notice: graduaTriagem does not write avisado; after a failed send the next ficha over the ceiling asks again; after a successful one none does', async () => {
-  const { qualifica } = await import('../lib/qualificar.js');
-  const { graduaTriagem, diaDeSaoPaulo: dia } = await import('../lib/graduar.js');
-  const { enviaAvisoTeto } = await import('../lib/triagem.js');
-  const { lePipeline } = await import('../lib/pipeline.js');
-  garanteAppPadrao();
-  await garanteMetodo();
-  const hoje = dia(new Date());
-  const contador = db.doc(`controle/analises-${hoje}`);
-  const anterior = process.env.FUNCTIONS_EMULATOR;
-  process.env.FUNCTIONS_EMULATOR = 'true'; // qualificar without the model, as in the emulator
-  try {
-    await contador.set({ dia: hoje, n: 5 }); // the day is at the ceiling of 5
-    const p = { ...(await lePipeline()), maxAnalisesPorDia: 5, autoAnalisar: true };
-    // A ficha that left the coleta mínima and is classified, then goes through graduaTriagem like the handlers do.
-    const triada = async () => {
-      const id = await criaFicha({ estado: 'coleta_minima', ...camposDeColeta });
-      await etapaDoc(id, 'empresa_digital', concluida);
-      await etapaDoc(id, 'empresa_registro', concluida);
-      await db.doc(`fichas/${id}`).update({ 'original.mensagem': 'Queremos sair das planilhas com apoio de um conselho.' });
-      const ref = db.doc(`fichas/${id}`);
-      await qualifica(ref, p, '');
-      const g = await graduaTriagem(ref, p);
-      assert.ok(g, 'graduaTriagem ran');
-      assert.equal(g.estado, 'qualificada', `held by the ceiling (quadrante ${g.lead.quadrante}); the fixture must reach coletando`);
-      return g;
-    };
-    const a = await triada();
-    assert.ok(a.avisarTeto, 'the first ficha over the ceiling asks for the notice');
-    assert.notEqual((await contador.get()).data().avisado, true, 'the transaction no longer writes avisado');
-    assert.equal(await enviaAvisoTeto('k', 5, hoje, async () => { throw new Error('smtp down'); }), false);
-    const b = await triada();
-    assert.ok(b.avisarTeto, 'after a failed send the next ficha over the ceiling asks again');
-    assert.equal(await enviaAvisoTeto('k', 5, hoje, async () => {}), true);
-    const c = await triada();
-    assert.equal(c.avisarTeto, null, 'after a successful send nobody asks again that day');
-    assert.equal((await contador.get()).data().avisado, true);
-  } finally {
-    if (anterior === undefined) delete process.env.FUNCTIONS_EMULATOR; else process.env.FUNCTIONS_EMULATOR = anterior;
-    await contador.delete().catch(() => {});
+  const antiga = Timestamp.fromDate(new Date(Date.now() - 3 * 3_600_000));
+  for (const [envios, esperado] of casos) {
+    const id = await criaFicha({ estado: 'coleta_minima', ...camposDeColeta, estadoEm: antiga });
+    const ref = db.doc(`fichas/${id}`);
+    const original = (await ref.get()).data().original;
+    const falhas = await enviaEmailsDaFicha(ref, 'chave', original, null, new Date(), envios);
+    assert.deepEqual(falhas, esperado);
+    const evs = (await eventos(id)).filter((e) => e.tipo === 'email_falhou');
+    assert.deepEqual(evs.map((e) => e.detalhe.destino).sort(), [...esperado].sort(), JSON.stringify(esperado));
+    assert.ok(evs.every((e) => e.ator.id === 'receberFicha'));
+    const f = (await ref.get()).data();
+    assert.equal(f.erro ?? null, null, 'no erro on the ficha');
+    assert.equal(f.estado, 'coleta_minima');
+    // The stop of a ficha with an e-mail failure is still caught by vigiar (it ignores only fichas with erro).
+    await marcaParadas(new Date(), db, 30);
+    assert.equal((await ref.get()).data().erro?.etapa, 'interrupcao:coleta_minima', JSON.stringify(esperado));
   }
 });

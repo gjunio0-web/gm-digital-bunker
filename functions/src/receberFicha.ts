@@ -1,14 +1,14 @@
 // receberFicha – receives the contact form (spec 01, sections 2 and 4).
 // Validates, applies the honeypot and the limits per e-mail and per IP hash, writes fichas/{id}
 // in state "recebida" with its "recebida" event, then sends the confirmation and the notice.
-// An e-mail failure never undoes the write: it is recorded in the ficha's erro field.
+// An e-mail failure never undoes the write: it becomes an "email_falhou" event (spec 01 v0.42), never an erro.
 import { createHash } from 'node:crypto';
 import { onRequest } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions';
-import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore, Timestamp, type DocumentReference } from 'firebase-admin/firestore';
 import { DIA_MS, IP_HASH_SALT, ORIGENS_POR_PROJETO, REGIAO, SMTP2GO_API_KEY } from './config.js';
 import { lePipeline } from './pipeline.js';
-import { ehRobo, ipDe, valida } from './validacao.js';
+import { ehRobo, ipDe, valida, type Original } from './validacao.js';
 import { aviso, confirmacao } from './email.js';
 import { mesDe } from './mes.js';
 
@@ -16,6 +16,31 @@ const HORA_MS = 60 * 60 * 1000;
 
 const projeto = () => process.env.GCLOUD_PROJECT ?? '';
 const origensPermitidas = () => ORIGENS_POR_PROJETO[projeto()] ?? [];
+
+// The two senders, injectable so a test can make one fail (in the emulator the real ones always succeed).
+export type EnviosDeEmail = { confirmacao: typeof confirmacao; aviso: typeof aviso };
+
+// Sends the confirmation to the person and the notice to the administrator. Each failure is logged and recorded as an
+// "email_falhou" event with detalhe {destino} (one event per destination that failed); the ficha gets no erro and keeps
+// its state, and nothing is sent again. Never throws. Returns the destinations that failed.
+export async function enviaEmailsDaFicha(
+  ref: DocumentReference, chave: string, original: Original, pagina: string | null, recebidaEm: Date, envios: EnviosDeEmail = { confirmacao, aviso },
+): Promise<('interessado' | 'administrador')[]> {
+  const destinos = ['interessado', 'administrador'] as const;
+  const resultados = await Promise.allSettled([
+    envios.confirmacao(chave, original.email, original.lang),
+    envios.aviso(chave, ref.id, original, pagina, recebidaEm),
+  ]);
+  const falhas: ('interessado' | 'administrador')[] = [];
+  for (const [i, x] of resultados.entries()) {
+    if (x.status !== 'rejected') continue;
+    falhas.push(destinos[i]);
+    logger.error('E-mail failed', { id: ref.id, destino: destinos[i], motivo: String((x.reason as Error)?.message ?? x.reason).slice(0, 300) });
+    await ref.collection('eventos').doc().create({ em: Timestamp.now(), ator: { tipo: 'sistema', id: 'receberFicha' }, tipo: 'email_falhou', detalhe: { destino: destinos[i] } })
+      .catch((e) => logger.error('email_falhou event not written', { id: ref.id, destino: destinos[i], motivo: String((e as Error)?.message ?? e).slice(0, 200) }));
+  }
+  return falhas;
+}
 
 const hashIp = (sal: string, ip: string) => createHash('sha256').update(`${sal}:${ip}`).digest('hex');
 
@@ -114,26 +139,8 @@ export const receberFicha = onRequest(
       await db.collection('metricas').doc(mesDe(agora.toDate())).set({ recebidas: FieldValue.increment(1), atualizadoEm: agora }, { merge: true })
         .catch((e) => logger.error('metricas.recebidas not written', { id: ref.id, motivo: String((e as Error)?.message ?? e).slice(0, 200) }));
 
-      // E-mails after the write; a failure is recorded and does not change the response.
-      const chave = SMTP2GO_API_KEY.value();
-      const resultados = await Promise.allSettled([
-        confirmacao(chave, r.original.email, r.original.lang),
-        aviso(chave, ref.id, r.original, r.pagina, agora.toDate()),
-      ]);
-      const etapas = ['email_confirmacao', 'email_aviso'] as const;
-      const falhas = resultados.flatMap((x, i) =>
-        x.status === 'rejected' ? [{ etapa: etapas[i], motivo: String((x.reason as Error)?.message ?? x.reason) }] : [],
-      );
-      if (falhas.length) {
-        logger.error('E-mail failed', { id: ref.id, falhas });
-        await ref.update({
-          erro: {
-            etapa: falhas.map((f) => f.etapa).join(','),
-            mensagem: falhas.map((f) => f.motivo).join(' | ').slice(0, 500),
-            em: Timestamp.now(),
-          },
-        });
-      }
+      // E-mails after the write; a failure is recorded as an event and does not change the response.
+      await enviaEmailsDaFicha(ref, SMTP2GO_API_KEY.value(), r.original, r.pagina, agora.toDate());
 
       res.status(201).json({ id: ref.id });
     } catch (e) {

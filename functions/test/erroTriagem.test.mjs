@@ -31,3 +31,10 @@ test('the three triagem handlers record erro through gravaErro, never by a direc
     assert.doesNotMatch(src, /ref\.update\(\{ erro:/, f);
   }
 });
+
+test('receberFicha records an e-mail failure as the email_falhou event and never writes erro on the ficha (spec 01 v0.42)', () => {
+  const src = readFileSync(new URL('../src/receberFicha.ts', import.meta.url), 'utf8');
+  assert.ok(src.includes("tipo: 'email_falhou'"));
+  assert.ok(!/\berro:\s*\{/.test(src), 'no write of an erro object');
+  assert.ok(!src.includes('ref.update('), 'no update of the ficha after the e-mails');
+});
