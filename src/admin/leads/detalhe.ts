@@ -4,6 +4,7 @@
 // timestamps are converted to Date by the data layer (dadosFicha.ts) before they reach this file.
 import { CARGO, CONF, ESTADO, QUAD, dataCurta, dataLonga, erroTxt, restanteTxt } from './regras';
 import { etapaUsavel } from './reexecutar';
+import { acaoPrincipal, acoesDaBarra, type ItemBarra } from './acoes';
 import {
   CHAMADA_CUSTO, CK_RES, DEDUCAO, DESTINO, ETAPA_COLETA, ETAPA_TEXTO, MAX_PORTE, MAX_TECNOLOGIA, PEND_TIPO, PORTA, PRAZO_DIAS,
   RETENCAO_CURTO, RETENCAO_MOTIVO, SO_NA_ANALISE, TECNOLOGIA, avisoTxt, linhaParcelas, modeloTxt, nomeRegra,
@@ -451,10 +452,42 @@ function diagnosticoHTML(a: Analise | null, analises: Analise[]): string {
 export function versaoExibida(d: DadosFicha, escolhida: string | null): Analise | null {
   return d.analises.find((a) => a.id === escolhida) ?? d.analises.find((a) => a.id === d.f.analiseAtual) ?? d.analises[0] ?? null;
 }
-export function corpoHTML(d: DadosFicha, escolhida: string | null, hoje: Date): string {
+// ---------- Action bar (spec 05 §5.4 and §5.7; mock-up .actbar) ----------
+/** What the bar remembers between redraws: the call in flight, the alert text and the archive confirmation. */
+export interface UiBarra { aguardando: ItemBarra | null; erro: string | null; confirmando: boolean; apagarAgora: boolean }
+export const uiBarraVazia = (): UiBarra => ({ aguardando: null, erro: null, confirmando: false, apagarAgora: false });
+
+const ROTULO_ITEM: Record<ItemBarra, string> = {
+  mandar: 'Mandar para análise', aprovar: 'Aprovar análise', resposta: 'Marcar resposta enviada', editar: 'Editar análise',
+  porta: 'Decidir porta', reexecutar: 'Reexecutar', arquivar: 'Arquivar',
+};
+const GRUPOS_BARRA: ItemBarra[][] = [['mandar', 'aprovar', 'resposta', 'editar'], ['porta'], ['reexecutar'], ['arquivar']];
+const ESTADOS_LONGOS = ['coleta_minima', 'coletando', 'sintetizando'];
+
+export function barraHTML(d: DadosFicha, ui: UiBarra): string {
+  const itens = acoesDaBarra(d.f, d.coleta);
+  const aviso = ui.erro
+    ? `<div class="acaoerr" role="alert"><span>${esc(ui.erro)}</span><button class="btn text" type="button" data-act="fechar-aviso">Fechar aviso</button></div>`
+    : '';
+  if (!itens.length) {
+    const nota = d.f.estado === 'arquivada' ? 'Ficha arquivada: nenhuma ação disponível.'
+      : ESTADOS_LONGOS.includes(d.f.estado) ? 'A ficha está sendo processada: nenhuma ação disponível.' : '';
+    return (nota ? `<p class="toast" role="status">${nota}</p>` : '') + aviso;
+  }
+  const principal = acaoPrincipal(d.f.estado);
+  const botao = (i: ItemBarra) => {
+    const esperando = ui.aguardando === i;
+    return `<button class="btn ${i === principal ? 'primary' : 'secondary'}" type="button" data-act="${i}"${ui.aguardando ? ' disabled' : ''}>${esperando ? 'Aguarde…' : ROTULO_ITEM[i]}</button>`;
+  };
+  const grupos = GRUPOS_BARRA.map((g) => g.filter((i) => itens.includes(i))).filter((g) => g.length)
+    .map((g) => `<span class="grp">${g.map(botao).join('')}</span>`).join('<span class="sep" aria-hidden="true"></span>');
+  return `<div class="actbar" role="group" aria-label="Ações da ficha">${grupos}</div>${aviso}`;
+}
+
+export function corpoHTML(d: DadosFicha, escolhida: string | null, hoje: Date, ui?: UiBarra): string {
   const a = versaoExibida(d, escolhida);
   const atual = d.analises.find((x) => x.id === d.f.analiseAtual) ?? null;
-  let h = '';
+  let h = ui ? barraHTML(d, ui) : '';
   if (d.analises.length) {
     h += `<div class="ver">${seletorHTML('aVer', 'Versão da análise', d.analises.map((x) => [x.id, x.id, versaoDesc(x)]), a!.id)}<span>nova versão a cada reexecução ou edição; as anteriores ficam guardadas</span></div>`;
   }

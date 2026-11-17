@@ -3,6 +3,7 @@
 // (/admin/leads/{fichaId}/dossie) reads the current analysis; the actions arrive in phase 5.
 import { collection, getCountFromServer, query, where, type Firestore } from 'firebase/firestore';
 import type { ModuloContexto } from '../registro';
+import { consumirAvisoLista } from './acoes';
 import { ouvirFichas, versaoPesos } from './dados';
 import { renderDossie } from './dossie';
 import { renderFicha } from './ficha';
@@ -29,11 +30,14 @@ const esc = (s: string) =>
 
 export function render(alvo: HTMLElement, caminho: string, ctx: ModuloContexto): void | (() => void) {
   const partes = caminho.replace(/^\/admin\/leads\/?/, '').split('/').filter(Boolean);
-  if (partes.length === 1) return renderFicha(alvo, decodeURIComponent(partes[0]), ctx.db);
+  if (partes.length === 1) return renderFicha(alvo, decodeURIComponent(partes[0]), ctx.db, { chama: ctx.chamaAcao, ir: ctx.ir });
   if (partes.length === 2 && partes[1] === 'dossie') return renderDossie(alvo, decodeURIComponent(partes[0]), ctx.db);
   if (partes.length) return emConstrucao(alvo, partes);
 
   montarLista(alvo);
+  const aviso = consumirAvisoLista();
+  const avisoEl = alvo.querySelector<HTMLElement>('#listAviso');
+  if (avisoEl && aviso) { avisoEl.textContent = aviso; avisoEl.hidden = false; }
   const est: EstadoLista = { chave: 'quad', dir: 'desc' };
   let fichas: FichaVM[] = [];
   let carregou = false;

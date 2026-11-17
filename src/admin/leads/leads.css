@@ -437,3 +437,7 @@
 .adm .secp{bottom:0; border-radius:var(--radius-md) var(--radius-md) 0 0; padding-bottom:env(safe-area-inset-bottom,0px); transform:translateY(100%)}
 /* The row is a link to the ficha (real route, can open in a new tab); it keeps the text colours of its parts. */
 .adm a.row, .adm a.row:hover { color: inherit; text-decoration: none; }
+/* Alert of a refused action, next to the action bar (spec/05 §5.7.1): text in the page with role="alert", never a browser dialog */
+.adm .acaoerr{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:var(--space-2) var(--space-4); margin:calc(-1 * var(--space-3)) 0 var(--space-6);
+  padding:var(--space-3) var(--space-4); border:2px solid var(--ink); border-radius:var(--radius-sm); font:400 15px/1.5 var(--font-sans); color:var(--ink)}
+.adm .acaoerr span{min-width:0; overflow-wrap:anywhere}

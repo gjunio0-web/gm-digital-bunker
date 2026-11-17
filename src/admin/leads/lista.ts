@@ -24,6 +24,7 @@ export function montarLista(alvo: HTMLElement) {
       <p class="eyebrow">Módulo · 01</p>
       <h2 id="t-leads" tabindex="-1">Leads</h2>
       <p class="lead">Fichas por quadrante, grau, confiança e prazo de resposta, com o estado do pipeline em cada linha.</p>
+      <p class="toast" id="listAviso" role="status" hidden></p>
     </div>
     <div class="panel mapa">
       <details open>

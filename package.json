@@ -11,7 +11,8 @@
     "test:admin-acesso": "node scripts/test-admin-acesso.mjs",
     "test:admin-eventos": "node scripts/test-admin-eventos.mjs",
     "test:admin-exibicao": "node scripts/test-admin-exibicao.mjs",
-    "test:admin-reexecutar": "node scripts/test-admin-reexecutar.mjs"
+    "test:admin-reexecutar": "node scripts/test-admin-reexecutar.mjs",
+    "test:admin-acoes": "node scripts/test-admin-acoes.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",

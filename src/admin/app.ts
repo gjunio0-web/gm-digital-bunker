@@ -7,6 +7,8 @@ import {
   type User,
 } from 'firebase/auth';
 import { getFirestore, doc, getDoc, type Firestore } from 'firebase/firestore';
+import { getFunctions, httpsCallable, type Functions } from 'firebase/functions';
+import type { Acao, ChamaAcao } from './leads/acoes';
 import { verificarAcesso } from './acesso';
 import { voltarConsumido } from './historico';
 import { MODULOS, type Modulo } from './registro';
@@ -20,6 +22,14 @@ const erroLogin = $<HTMLParagraphElement>('login-erro');
 const entrarBtn = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
 
 let desmontar: void | (() => void);
+
+// Single entry of the admin actions (spec 05 §5.7.1; spec 01 §4.1): `acaoAdmin`, region southamerica-east1.
+// The answer {ok, estado, analiseAtual} only confirms; the screen follows the Firestore listeners.
+let chamaAcao: ChamaAcao = async () => { throw new Error('Firebase not initialised'); };
+function criarChamaAcao(funcoes: Functions): ChamaAcao {
+  const callable = httpsCallable<{ fichaId: string; acao: Acao; parametros: Record<string, unknown> }, { ok: boolean; estado?: string; analiseAtual?: string | null }>(funcoes, 'acaoAdmin');
+  return async (fichaId, acao, parametros = {}) => (await callable({ fichaId, acao, parametros })).data;
+}
 
 function mostrar(nome: keyof typeof vistas) {
   for (const [k, el] of Object.entries(vistas)) {
@@ -60,6 +70,7 @@ function iniciar(opcoes: FirebaseOptions) {
   const app = initializeApp(opcoes);
   const auth = getAuth(app);
   const db = getFirestore(app);
+  chamaAcao = criarChamaAcao(getFunctions(app, 'southamerica-east1'));
   void setPersistence(auth, browserLocalPersistence);
 
   const ir = (caminho: string) => {
@@ -158,7 +169,7 @@ function rotear(db: Firestore) {
   const modulo = MODULOS.find((m) => m.rota && (caminho === m.rota || caminho.startsWith(m.rota + '/')));
   if (modulo?.render) {
     mostrar('rota');
-    desmontar = modulo.render(vistas.rota, caminho, { db, ir: (c) => { history.pushState(null, '', c); rotear(db); } });
+    desmontar = modulo.render(vistas.rota, caminho, { db, chamaAcao, ir: (c) => { history.pushState(null, '', c); rotear(db); } });
     focarTitulo(vistas.rota);
     return;
   }

@@ -3,10 +3,14 @@
 import type { Firestore } from 'firebase/firestore';
 import * as leads from './leads';
 
+import type { ChamaAcao } from './leads/acoes';
+
 export interface ModuloContexto {
   db: Firestore;
   /** Navigates inside the hub (History API), without reloading the page. */
   ir: (caminho: string) => void;
+  /** Call of the `acaoAdmin` function (spec 05 §5.7.1). */
+  chamaAcao: ChamaAcao;
 }
 
 export interface Modulo {
