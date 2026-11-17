@@ -734,6 +734,56 @@ test('two concurrent retomarTriagem runs on the same ficha (duplicated delivery)
   t.diagnostic(`rounds with lead + erro: ${resumo.filter((x) => x.lead && x.erro).length} of ${resumo.length}`);
 });
 
+// End to end (decision of Gon, 17/11/2026): a real failure of graduar records erro in qualificada without lead,
+// Reexecutar > Qualificacao clears it through the callable, and the real retomarTriagem trigger redoes the triagem.
+test('graduar failure in qualificada without lead: erro is recorded, acaoAdmin clears it and the triagem is redone (one triada, lead, no erro)', async () => {
+  const { retomarTriagem } = await import('../lib/retomarTriagem.js');
+  garanteAppPadrao();
+  await garanteMetodo();
+  const ref = (id) => db.doc(`fichas/${id}`);
+  const antigo = { etapa: 'graduar', mensagem: 'x', em: ts('2026-11-16T12:30:00Z') };
+  // recebidaEm null makes graduaTriagem throw inside the step (the real failure path, no mocks).
+  const id = await criaFicha({ estado: 'qualificada', ...camposDeColeta, recebidaEm: null, erro: null });
+  await etapaDoc(id, 'empresa_digital', concluida);
+  await etapaDoc(id, 'empresa_registro', concluida);
+
+  // (i) the failure: the real handler runs and its catch records the erro
+  const anterior = process.env.FUNCTIONS_EMULATOR;
+  process.env.FUNCTIONS_EMULATOR = 'true';
+  try {
+    const dados = (await ref(id).get()).data();
+    await retomarTriagem.run({ params: { id }, data: { before: { data: () => ({ ...dados, erro: antigo }) }, after: { data: () => dados } } });
+  } finally {
+    if (anterior === undefined) delete process.env.FUNCTIONS_EMULATOR; else process.env.FUNCTIONS_EMULATOR = anterior;
+  }
+  const falhou = (await ref(id).get()).data();
+  console.log('[e2e] after the failure: estado', falhou.estado, 'erro.etapa', falhou.erro?.etapa, 'lead', Boolean(falhou.lead));
+  assert.equal(falhou.estado, 'qualificada');
+  assert.equal(falhou.erro?.etapa, 'graduar');
+  assert.equal(falhou.lead, undefined);
+  assert.deepEqual(await tiposDe(id), [], 'no triada yet');
+
+  // the cause is fixed (the ficha gets its date), without touching erro, so no trigger fires
+  await ref(id).update({ recebidaEm: ts('2026-11-16T12:00:00Z') });
+  await espera(1500);
+  assert.equal((await ref(id).get()).data().erro?.etapa, 'graduar', 'erro is still there until someone clears it');
+
+  // (ii) Reexecutar > Qualificacao through the callable clears it
+  const r = await chama(admin.token, { fichaId: id, acao: 'reexecutar', parametros: { alvo: ['qualificacao'] } });
+  assert.equal(r.status, 200);
+  assert.equal(r.resultado.ok, true);
+
+  // (iii) the real trigger redoes the triagem
+  const f = await ate(async () => { const d = (await ref(id).get()).data(); return d.lead ? d : null; });
+  assert.ok(f, 'graduar ran again and wrote the lead');
+  const tipos = await tiposDe(id);
+  console.log('[e2e] after reexecutar: estado', f.estado, 'erro', JSON.stringify(f.erro ?? null), 'eventos', JSON.stringify(tipos));
+  assert.equal(f.erro ?? null, null);
+  assert.equal(tipos.filter((x) => x === 'triada').length, 1);
+  assert.equal(tipos.filter((x) => x === 'reexecucao').length, 1);
+  assert.deepEqual((await eventos(id)).find((e) => e.tipo === 'reexecucao').detalhe, { alvos: ['qualificacao'] }, 'no lead at the time: not "apenasLimpouErro"');
+});
+
 // ---- gravaErro (spec 01 v0.39): an erro of a triagem step is recorded only where the step runs ----
 test('gravaErro: graduar and qualificar are recorded only in the state where the step runs', async () => {
   const { gravaErro } = await import('../lib/erroTriagem.js');
