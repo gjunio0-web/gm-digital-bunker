@@ -884,6 +884,9 @@ const MENSAGEM_CURTA = 'Queremos sair das planilhas com apoio de um conselho.';
 // A ficha in recebida that no creation trigger touches: it is created in another state and moved afterwards.
 async function criaFichaRecebida(campos) {
   const id = await criaFicha({ estado: 'arquivada', ...camposDeColeta, ...campos });
+  // The real coletarMinima (onCreate) is delivered a moment after the creation; if the ficha were already in recebida
+  // by then it would claim it and move it on. Let it see "arquivada" and do nothing first.
+  await espera(2000);
   await db.doc(`fichas/${id}`).update({ 'original.mensagem': MENSAGEM_CURTA, estado: 'recebida' });
   return id;
 }
