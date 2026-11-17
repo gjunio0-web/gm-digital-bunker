@@ -323,7 +323,9 @@ const ACOES: Record<string, (x: Obj) => string> = {
   },
   reexecucao: (x) => {
     const alvos = (Array.isArray(x.alvos) ? x.alvos : []).filter((a: unknown) => typeof a === 'string' && a).map((a: string) => ALVO_REEXECUCAO[a] ?? ETAPA_COLETA[a] ?? a);
-    return alvos.length ? `Reexecução · ${alvos.join(', ')}` : 'Reexecução';
+    // apenasLimpouErro: the triagem was already done and the action only cleared erro (spec 05 v1.34+; text approved by Gon, 17/11/2026).
+    const base = alvos.length ? `Reexecução · ${alvos.join(', ')}` : 'Reexecução';
+    return x.apenasLimpouErro === true ? `${base} (só limpou o erro)` : base;
   },
   porta_decidida: (x) => {
     const nome = (p: unknown) => (typeof p === 'string' && p ? PORTA[p] ?? p : '');

@@ -18,6 +18,10 @@ try {
 
   // reexecucao
   assert.equal(txt('reexecucao', { alvos: ['sintese'] }), 'Reexecução · Síntese');
+  assert.equal(txt('reexecucao', { alvos: ['qualificacao'], apenasLimpouErro: true }), 'Reexecução · Qualificação (só limpou o erro)');
+  assert.equal(txt('reexecucao', { alvos: ['qualificacao'], apenasLimpouErro: false }), 'Reexecução · Qualificação');
+  assert.equal(txt('reexecucao', { alvos: ['qualificacao'], apenasLimpouErro: 'sim' }), 'Reexecução · Qualificação'); // only the boolean true counts
+  assert.equal(txt('reexecucao', { apenasLimpouErro: true }), 'Reexecução (só limpou o erro)');
   assert.equal(txt('reexecucao', { alvos: ['qualificacao'] }), 'Reexecução · Qualificação');
   assert.equal(txt('reexecucao', { alvos: ['setor'] }), 'Reexecução · Setor');
   assert.equal(txt('reexecucao', { alvos: ['empresa_digital', 'empresa_registro', 'mercado'] }), 'Reexecução · Presença digital, Registro, Mercado');

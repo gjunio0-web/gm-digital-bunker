@@ -686,7 +686,7 @@ test('lead + erro graduar: reexecutar qualificacao only clears erro; lead and st
   assert.equal(depois.erro, null);
   assert.deepEqual(depois.lead, antes.lead);
   assert.ok(depois.estadoEm.toMillis() > antes.estadoEm.toMillis());
-  assert.deepEqual((await eventos(id)).map((e) => [e.tipo, e.detalhe]), [['reexecucao', { alvos: ['qualificacao'] }]]);
+  assert.deepEqual((await eventos(id)).map((e) => [e.tipo, e.detalhe]), [['reexecucao', { alvos: ['qualificacao'], apenasLimpouErro: true }]]); // spec 01 v0.39
 
   // Trigger condition: with lead present it does not fire; the same transition without lead would.
   assert.equal(deveRetomar(antes, depois), null);

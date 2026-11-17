@@ -257,7 +257,9 @@ export async function executaAcao(
         // sintetizar takes over; qualificacao keeps the state and retomarTriagem takes over (erro goes to null).
         if (tipo === 'sintese') tx.update(ref, { estado: 'coletada', estadoEm: em, erro: null });
         else tx.update(ref, { estadoEm: em, erro: null });
-        evento(tx, ref, uid, em, 'reexecucao', { alvos });
+        // qualificacao on a ficha that already has lead: the triagem is done, retomarTriagem does nothing, and the action
+        // only cleared erro (spec 01 v0.39); the event says so.
+        evento(tx, ref, uid, em, 'reexecucao', tipo === 'qualificacao' && f.lead ? { alvos, apenasLimpouErro: true } : { alvos });
         return { ok: true, estado: tipo === 'sintese' ? 'coletada' : f.estado, analiseAtual: f.analiseAtual ?? null };
       }
 
