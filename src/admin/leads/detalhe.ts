@@ -184,7 +184,11 @@ export function pessoasHTML(d: DadosFicha): string {
     ? s.cargoFontes.map((x: Obj) => [FONTE[x.fonte] ?? String(x.fonte ?? ''), x.cargo ?? 'não encontrado', [x.senioridade, x.empresaAtual].filter(Boolean).join(' · ') || '–'])
     : [['Formulário', CARGO[d.f.original?.cargo] ?? String(d.f.original?.cargo ?? '–'), '–']];
   const desdeP = dataDe(et?.preservado?.desde);
-  const nota = !s ? 'A etapa Pessoas ainda não rodou: só o cargo do formulário. Trajetória profissional não coletada.'
+  // No usable content: a stage that failed (without the whole previous stage kept) is not the same as one that never ran
+  const semConteudo = et?.status === 'falhou'
+    ? 'A etapa Pessoas falhou e não há dado anterior: só o cargo do formulário. Trajetória profissional não coletada.'
+    : 'A etapa Pessoas ainda não rodou: só o cargo do formulário. Trajetória profissional não coletada.';
+  const nota = !s ? semConteudo
     : [
       anterior ? `Dado anterior: a etapa Pessoas falhou nesta execução e o conteúdo da execução de ${desdeP ? dataLonga(desdeP) : 'data desconhecida'} foi mantido.` : '',
       s.divergenciaCargo ? `Divergência entre as fontes: ${s.divergenciaCargo}.` : anterior ? '' : 'Sem divergência entre as fontes.',

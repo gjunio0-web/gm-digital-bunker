@@ -93,8 +93,20 @@ try {
     const h = ptxt({ ...pessoas, status });
     assert.ok(!h.includes('Hunter') && h.includes('A etapa Pessoas ainda não rodou'));
   }
-  // falhou with a block-only preservado is not usable
-  assert.ok(ptxt({ ...pessoas, preservado: { blocos: ['apollo'] } }).includes('A etapa Pessoas ainda não rodou'));
+  // falhou without the whole stage kept: its own note, and only the form row (spec 05 §5.4)
+  const FALHOU = 'A etapa Pessoas falhou e não há dado anterior: só o cargo do formulário. Trajetória profissional não coletada.';
+  const AINDA = 'A etapa Pessoas ainda não rodou: só o cargo do formulário. Trajetória profissional não coletada.';
+  for (const e of [{ status: 'falhou' }, { status: 'falhou', conteudo: pessoas.conteudo }, { ...pessoas, preservado: { blocos: ['apollo'] } }, { ...pessoas, preservado: null }]) {
+    const h = ptxt(e);
+    assert.ok(h.includes(FALHOU) && !h.includes('Hunter') && !h.includes(AINDA), JSON.stringify(e).slice(0, 60));
+    assert.equal((h.match(/<tr><td>/g) ?? []).length, 1);
+  }
+  // never ran, absent document, not applicable or unknown status: the current note
+  for (const e of [{ status: 'pendente' }, { status: 'executando' }, undefined, { status: 'nao_aplicavel' }, { status: 'estranho' }, {}]) {
+    assert.ok(ptxt(e).includes(AINDA) && !ptxt(e).includes(FALHOU), JSON.stringify(e));
+  }
+  // falhou with the whole stage kept: previous content, note unchanged
+  assert.ok(ptxt(pessoas).includes('Dado anterior:') && !ptxt(pessoas).includes(FALHOU));
 
   // Ficha recebida: CNPJ read only from a usable Registro stage
   const reg = { conteudo: { escolhido: { cnpj: '12345678000190' }, confirmado: true, origemCnpj: 'site' } };
