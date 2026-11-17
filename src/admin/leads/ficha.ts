@@ -3,7 +3,7 @@
 // keeps it while the data arrives; the body is redrawn on every Firestore change, keeping the chosen analysis
 // version and the open accordions.
 import type { Firestore } from 'firebase/firestore';
-import { abertura, corpoHTML, esc, rascunhoTexto, uiBarraVazia, versaoExibida, type DadosFicha, type UiBarra } from './detalhe';
+import { abertura, corpoHTML, esc, portaDoSeletor, rascunhoTexto, uiBarraVazia, versaoExibida, type DadosFicha, type UiBarra } from './detalhe';
 import { ACAO_DO_ITEM, definirAvisoLista, tratarErroAcao, type ChamaAcao, type ItemBarra } from './acoes';
 import { ouvirFicha } from './dadosFicha';
 
@@ -29,6 +29,8 @@ export function montarFicha(alvo: HTMLElement): void {
 
 /** Draws the opening and the body; returns nothing. Exported for the local acceptance harness. */
 export function desenharFicha(alvo: HTMLElement, d: DadosFicha | null, est: EstadoFicha, hoje: Date): void {
+  // "Apagar agora" in flight: the ficha vanishing is the expected end, not an error; the answer takes the page to the list
+  if (!d && est.ui?.apagando) return;
   const ab = abertura(d);
   alvo.querySelector('#fEb')!.textContent = ab.eyebrow;
   alvo.querySelector('#t-rota')!.textContent = ab.titulo;
@@ -43,6 +45,7 @@ export function desenharFicha(alvo: HTMLElement, d: DadosFicha | null, est: Esta
 // Buttons that call the function straight away; the others open a control first (porta, reexecutar, editar, arquivar)
 const DIRETAS: ItemBarra[] = ['aprovar', 'resposta', 'mandar'];
 
+
 export function ligarFicha(alvo: HTMLElement, est: EstadoFicha, redesenhar: () => void, dados: () => DadosFicha | null, acoes?: ContextoAcoes & { id: string }): () => void {
   let vivo = true;
   /** One call at a time: the bar is disabled while it runs ("Aguarde…"); the answer only shows an error (spec 05 §5.7.1). */
@@ -50,10 +53,17 @@ export function ligarFicha(alvo: HTMLElement, est: EstadoFicha, redesenhar: () =
     const ui = est.ui;
     if (!acoes || !ui || ui.aguardando) return;
     const acao = ACAO_DO_ITEM[item];
-    ui.aguardando = item; ui.erro = null; redesenhar();
+    ui.aguardando = item; ui.erro = null;
+    ui.apagando = item === 'arquivar' && parametros.expurgoImediato === true;
+    redesenhar();
     try {
-      await acoes.chama(acoes.id, acao, parametros);
+      const resposta = await acoes.chama(acoes.id, acao, parametros);
+      if (resposta?.estado === 'apagada') {
+        if (vivo) { definirAvisoLista('Ficha apagada.'); acoes.ir('/admin/leads'); }
+        return;
+      }
     } catch (e) {
+      ui.apagando = false;
       const r = tratarErroAcao(e, acao);
       if (r.tipo === 'erro') {
         if (r.voltarLista) { if (vivo) { definirAvisoLista(r.texto); acoes.ir('/admin/leads'); } return; }
@@ -61,6 +71,7 @@ export function ligarFicha(alvo: HTMLElement, est: EstadoFicha, redesenhar: () =
       }
     }
     if (!vivo) return;
+    ui.apagando = false;
     ui.aguardando = null;
     redesenhar();
     alvo.querySelector<HTMLElement>(`[data-act="${item}"]`)?.focus({ preventScroll: true });
@@ -78,6 +89,8 @@ export function ligarFicha(alvo: HTMLElement, est: EstadoFicha, redesenhar: () =
     if (pick && alvo.contains(pick)) {
       const lista = document.getElementById(pick.getAttribute('aria-controls')!)!;
       if (pick.getAttribute('aria-expanded') === 'true') { fechar(pick); return; }
+      // Opening one selector closes the other (spec 05 §5.9)
+      alvo.querySelectorAll<HTMLElement>('.pick[aria-expanded="true"]').forEach(fechar);
       lista.hidden = false;
       pick.setAttribute('aria-expanded', 'true');
       if (!reduz) lista.animate([{ height: '0px', opacity: 0 }, { height: lista.scrollHeight + 'px', opacity: 1 }], { duration: DUR, easing: EASE });
@@ -89,9 +102,16 @@ export function ligarFicha(alvo: HTMLElement, est: EstadoFicha, redesenhar: () =
       const a = bt.dataset.act as ItemBarra | 'fechar-aviso';
       if (a === 'fechar-aviso') { est.ui.erro = null; redesenhar(); return; }
       if (DIRETAS.includes(a)) { void executar(a); return; }
+      const foca = (sel: string) => alvo.querySelector<HTMLElement>(sel)?.focus({ preventScroll: true });
+      if (a === 'porta') { void executar('porta', { porta: portaDoSeletor(dados()!, est.ui) }); return; }
+      if (a === ('apagar-agora' as string)) { est.ui.apagarAgora = (bt as unknown as HTMLInputElement).checked; redesenhar(); foca('[data-act="apagar-agora"]'); return; }
+      if (a === 'arquivar') { est.ui.confirmando = !est.ui.confirmando; redesenhar(); foca('[data-act="arquivar"]'); return; }
+      if (a === ('arquivar-ok' as string)) { est.ui.confirmando = false; void executar('arquivar', { expurgoImediato: est.ui.apagarAgora }); return; }
     }
     const opt = t.closest<HTMLElement>('.pk-opt');
     if (opt && alvo.contains(opt)) {
+      const campo = opt.closest('.pk')?.querySelector<HTMLElement>('.pick')?.id;
+      if (campo === 'aPorta' && est.ui) { est.ui.porta = opt.dataset.v ?? null; redesenhar(); alvo.querySelector<HTMLElement>('#aPorta')?.focus(); return; }
       est.versao = opt.dataset.v ?? null;
       redesenhar();
       alvo.querySelector<HTMLElement>('#aVer')?.focus();
@@ -131,7 +151,8 @@ export function ligarFicha(alvo: HTMLElement, est: EstadoFicha, redesenhar: () =
   const onTecla = (e: KeyboardEvent) => {
     if (e.key !== 'Escape') return;
     const b = alvo.querySelector<HTMLElement>('.pick[aria-expanded="true"]');
-    if (b) { fechar(b); b.focus(); }
+    if (b) { fechar(b); b.focus(); return; }
+    if (est.ui?.confirmando) { est.ui.confirmando = false; redesenhar(); alvo.querySelector<HTMLElement>('[data-act="arquivar"]')?.focus(); }
   };
   document.addEventListener('click', onClick);
   document.addEventListener('keydown', onTecla);

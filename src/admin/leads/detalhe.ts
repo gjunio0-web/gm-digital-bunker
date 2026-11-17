@@ -4,7 +4,7 @@
 // timestamps are converted to Date by the data layer (dadosFicha.ts) before they reach this file.
 import { CARGO, CONF, ESTADO, QUAD, dataCurta, dataLonga, erroTxt, restanteTxt } from './regras';
 import { etapaUsavel } from './reexecutar';
-import { acaoPrincipal, acoesDaBarra, type ItemBarra } from './acoes';
+import { acaoPrincipal, acoesDaBarra, opcoesPorta, portaInicial, type ItemBarra } from './acoes';
 import {
   CHAMADA_CUSTO, CK_RES, DEDUCAO, DESTINO, ETAPA_COLETA, ETAPA_TEXTO, MAX_PORTE, MAX_TECNOLOGIA, PEND_TIPO, PORTA, PRAZO_DIAS,
   RETENCAO_CURTO, RETENCAO_MOTIVO, SO_NA_ANALISE, TECNOLOGIA, avisoTxt, linhaParcelas, modeloTxt, nomeRegra,
@@ -454,8 +454,20 @@ export function versaoExibida(d: DadosFicha, escolhida: string | null): Analise 
 }
 // ---------- Action bar (spec 05 §5.4 and §5.7; mock-up .actbar) ----------
 /** What the bar remembers between redraws: the call in flight, the alert text and the archive confirmation. */
-export interface UiBarra { aguardando: ItemBarra | null; erro: string | null; confirmando: boolean; apagarAgora: boolean }
-export const uiBarraVazia = (): UiBarra => ({ aguardando: null, erro: null, confirmando: false, apagarAgora: false });
+export interface UiBarra {
+  aguardando: ItemBarra | null; erro: string | null;
+  /** Archive confirmation open, and the "apagar agora" box. */
+  confirmando: boolean; apagarAgora: boolean;
+  /** Door chosen in the selector (null: the initial one); `apagando`: an "apagar agora" call is running, so the ficha vanishing is the expected end. */
+  porta: string | null; apagando: boolean;
+}
+export const uiBarraVazia = (): UiBarra => ({ aguardando: null, erro: null, confirmando: false, apagarAgora: false, porta: null, apagando: false });
+
+/** Door the selector shows: the chosen one, else the decided one, else the probable one of the current analysis. */
+export function portaDoSeletor(d: DadosFicha, ui: UiBarra): string {
+  const atual = d.analises.find((x) => x.id === d.f.analiseAtual) ?? null;
+  return ui.porta ?? portaInicial(d.f.portaDecidida, atual?.d.enquadramento?.portaProvavel);
+}
 
 const ROTULO_ITEM: Record<ItemBarra, string> = {
   mandar: 'Mandar para análise', aprovar: 'Aprovar análise', resposta: 'Marcar resposta enviada', editar: 'Editar análise',
@@ -475,12 +487,23 @@ export function barraHTML(d: DadosFicha, ui: UiBarra): string {
     return (nota ? `<p class="toast" role="status">${nota}</p>` : '') + aviso;
   }
   const principal = acaoPrincipal(d.f.estado);
+  const off = ui.aguardando ? ' disabled' : '';
   const botao = (i: ItemBarra) => {
     const esperando = ui.aguardando === i;
-    return `<button class="btn ${i === principal ? 'primary' : 'secondary'}" type="button" data-act="${i}"${ui.aguardando ? ' disabled' : ''}>${esperando ? 'Aguarde…' : ROTULO_ITEM[i]}</button>`;
+    return `<button class="btn ${i === principal ? 'primary' : 'secondary'}" type="button" data-act="${i}"${off}>${esperando ? 'Aguarde…' : ROTULO_ITEM[i]}</button>`;
+  };
+  const atual = d.analises.find((x) => x.id === d.f.analiseAtual) ?? null;
+  const corpoGrupo = (i: ItemBarra) => {
+    if (i === 'porta') return seletorHTML('aPorta', 'Porta', opcoesPorta(atual?.d.enquadramento?.portaProvavel, combinacaoTxt(atual)), portaDoSeletor(d, ui)) + botao(i);
+    if (i === 'arquivar') {
+      const sim = ui.apagarAgora ? 'Sim, apagar agora' : 'Sim, arquivar';
+      return `<label class="chk"><input type="checkbox" data-act="apagar-agora"${ui.apagarAgora ? ' checked' : ''}${off}> apagar agora</label>${botao(i)}` +
+        (ui.confirmando ? `<span class="confirm">Confirmar? <button class="btn text" type="button" data-act="arquivar-ok"${off}>${sim}</button></span>` : '');
+    }
+    return botao(i);
   };
   const grupos = GRUPOS_BARRA.map((g) => g.filter((i) => itens.includes(i))).filter((g) => g.length)
-    .map((g) => `<span class="grp">${g.map(botao).join('')}</span>`).join('<span class="sep" aria-hidden="true"></span>');
+    .map((g) => `<span class="grp">${g.map(corpoGrupo).join('')}</span>`).join('<span class="sep" aria-hidden="true"></span>');
   return `<div class="actbar" role="group" aria-label="Ações da ficha">${grupos}</div>${aviso}`;
 }
 

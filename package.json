@@ -12,7 +12,8 @@
     "test:admin-eventos": "node scripts/test-admin-eventos.mjs",
     "test:admin-exibicao": "node scripts/test-admin-exibicao.mjs",
     "test:admin-reexecutar": "node scripts/test-admin-reexecutar.mjs",
-    "test:admin-acoes": "node scripts/test-admin-acoes.mjs"
+    "test:admin-acoes": "node scripts/test-admin-acoes.mjs",
+    "test:admin-acoes-dom": "node scripts/test-admin-acoes-dom.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",

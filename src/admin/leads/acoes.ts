@@ -54,6 +54,32 @@ export function acaoPrincipal(estado: string): ItemBarra | null {
   return estado === 'analise_pronta' || estado === 'analise_com_pendencias' ? 'aprovar' : estado === 'aprovada' ? 'resposta' : null;
 }
 
+// ---------- Decidir porta (spec 05 §5.7 and §5.9) ----------
+export const PORTAS = ['projeto', 'conselho', 'workshop', 'combinacao', 'nenhuma'] as const;
+const NOME_PORTA: Record<string, string> = { projeto: 'Projeto', conselho: 'Conselho', workshop: 'Workshop', combinacao: 'Combinação', nenhuma: 'Nenhuma' };
+const DESC_PORTA: Record<string, string> = {
+  projeto: 'Diagnóstico, plano diretor e plataforma própria, construída por módulos',
+  conselho: 'Conselho de IA por assinatura: decisões de tecnologia acompanhadas mês a mês',
+  workshop: 'Workshop "Quando é Melhor com IA", para a equipe decidir onde a IA rende',
+  combinacao: 'Duas portas em sequência, por exemplo workshop e depois conselho',
+  nenhuma: 'Sem porta comercial: resposta de cortesia ou encaminhamento',
+};
+
+/**
+ * Options of the door selector: value, name, short description. When the probable door is `combinacao`, the description of
+ * that option is the combination text of this ficha (spec 05 §5.4, "Combinação de portas"), not the generic example.
+ */
+export function opcoesPorta(provavel: string | null | undefined, combinacao: string | null | undefined): [string, string, string][] {
+  return PORTAS.map((p) => [p, NOME_PORTA[p], p === 'combinacao' && provavel === 'combinacao' && combinacao
+    ? combinacao.charAt(0).toUpperCase() + combinacao.slice(1) : DESC_PORTA[p]]);
+}
+
+/** Door selected when the selector opens: the door already decided, else the probable one, else "nenhuma" (never a silent default). */
+export function portaInicial(decidida: unknown, provavel: unknown): string {
+  const valida = (p: unknown): p is string => typeof p === 'string' && (PORTAS as readonly string[]).includes(p);
+  return valida(decidida) ? decidida : valida(provavel) ? provavel : 'nenhuma';
+}
+
 // ---------- Errors (spec 05 §5.7.1; texts approved by Gon, changed only by his decision) ----------
 export const TEXTO_ERRO: Record<string, string> = {
   nao_autenticado: 'Sua sessão expirou. Entre de novo.',

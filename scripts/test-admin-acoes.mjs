@@ -16,7 +16,7 @@ try {
   };
   const A = await carrega('src/admin/leads/acoes.ts', 'acoes.mjs');
   const D = await carrega('src/admin/leads/detalhe.ts', 'detalhe.mjs');
-  const { acoesDaBarra, acaoPrincipal, tratarErroAcao, ESTADO_PRODUZIDO, ACAO_DO_ITEM, TEXTO_ERRO, definirAvisoLista, consumirAvisoLista } = A;
+  const { opcoesPorta, portaInicial, PORTAS, acoesDaBarra, acaoPrincipal, tratarErroAcao, ESTADO_PRODUZIDO, ACAO_DO_ITEM, TEXTO_ERRO, definirAvisoLista, consumirAvisoLista } = A;
 
   const C = { status: 'concluida' };
   const ETAPAS = ['empresa_digital', 'empresa_registro', 'empresa_pessoas', 'empresa_noticias', 'setor', 'mercado'];
@@ -125,7 +125,7 @@ try {
   // Aguarde…: the running button says so and the whole bar is disabled
   const esp = barraHTML(ficha({ estado: 'analise_pronta' }), { ...uiBarraVazia(), aguardando: 'aprovar' });
   assert.ok(esp.includes('data-act="aprovar" disabled>Aguarde…<'));
-  assert.equal((esp.match(/ disabled>/g) ?? []).length, 5);
+  assert.equal((esp.match(/ disabled>/g) ?? []).length, 6); // five buttons and the "apagar agora" box
   assert.ok(!barraHTML(ficha({ estado: 'analise_pronta' }), uiBarraVazia()).includes('disabled'));
   // Alert next to the bar, escaped, with a way to close it
   const al = barraHTML(ficha({ estado: 'aprovada' }), { ...uiBarraVazia(), erro: 'Texto <b>x</b>' });
@@ -143,6 +143,36 @@ try {
   const com = corpoHTML(d, null, hoje, uiBarraVazia());
   assert.ok(com.indexOf('class="actbar"') >= 0 && com.indexOf('class="actbar"') < com.indexOf('class="ver"'));
   assert.ok(!corpoHTML(d, null, hoje).includes('actbar'));
+
+  // ---- Door selector (spec 05 §5.7, Decidir porta; §5.9) ----
+  assert.deepEqual(PORTAS, ['projeto', 'conselho', 'workshop', 'combinacao', 'nenhuma']);
+  const op = opcoesPorta('projeto', null);
+  assert.deepEqual(op.map((o) => o[0]), [...PORTAS]);
+  assert.deepEqual(op.map((o) => o[1]), ['Projeto', 'Conselho', 'Workshop', 'Combinação', 'Nenhuma']);
+  assert.equal(op[3][2], 'Duas portas em sequência, por exemplo workshop e depois conselho');
+  assert.equal(opcoesPorta('combinacao', 'workshop seguido de conselho')[3][2], 'Workshop seguido de conselho');
+  assert.equal(opcoesPorta('combinacao', 'Combinação (não detalhada)')[3][2], 'Combinação (não detalhada)');
+  assert.equal(opcoesPorta('projeto', 'workshop seguido de conselho')[3][2], op[3][2], 'texto da combinação só quando a porta provável é combinação');
+  assert.equal(opcoesPorta('combinacao', null)[3][2], op[3][2]);
+  assert.equal(portaInicial(undefined, 'workshop'), 'workshop');
+  assert.equal(portaInicial('conselho', 'workshop'), 'conselho');
+  assert.equal(portaInicial('invalida', 'workshop'), 'workshop');
+  assert.equal(portaInicial(null, null), 'nenhuma');
+  assert.equal(portaInicial(undefined, 'xyz'), 'nenhuma');
+  const { portaDoSeletor } = D;
+  const dd = { f: { analiseAtual: 'v1' }, analises: [{ id: 'v1', d: { enquadramento: { portaProvavel: 'conselho' } } }] };
+  assert.equal(portaDoSeletor(dd, uiBarraVazia()), 'conselho');
+  assert.equal(portaDoSeletor(dd, { ...uiBarraVazia(), porta: 'workshop' }), 'workshop');
+  assert.equal(portaDoSeletor({ ...dd, f: { analiseAtual: 'v1', portaDecidida: 'projeto' } }, uiBarraVazia()), 'projeto');
+  // Bar HTML: door group and archive group
+  const hp = barraHTML({ ...dd, id: 'x', f: { estado: 'respondida', analiseAtual: 'v1' }, eventos: [], coleta: {} }, uiBarraVazia());
+  assert.ok(hp.includes('id="aPorta"') && hp.includes('data-value="conselho"') && hp.includes('data-act="porta"'));
+  assert.ok(hp.includes('<input type="checkbox" data-act="apagar-agora"> apagar agora</label>'));
+  assert.ok(!hp.includes('class="confirm"'));
+  const conf = barraHTML({ ...dd, id: 'x', f: { estado: 'respondida', analiseAtual: 'v1' }, eventos: [], coleta: {} }, { ...uiBarraVazia(), confirmando: true });
+  assert.ok(conf.includes('Confirmar? <button class="btn text" type="button" data-act="arquivar-ok">Sim, arquivar</button>'));
+  const apag = barraHTML({ ...dd, id: 'x', f: { estado: 'respondida', analiseAtual: 'v1' }, eventos: [], coleta: {} }, { ...uiBarraVazia(), confirmando: true, apagarAgora: true });
+  assert.ok(apag.includes('data-act="apagar-agora" checked') && apag.includes('>Sim, apagar agora<'));
 
   console.log('test-admin-acoes: ok');
 } finally {
