@@ -10,6 +10,7 @@ import { getFirestore, doc, getDoc, type Firestore } from 'firebase/firestore';
 import { getFunctions, httpsCallable, type Functions } from 'firebase/functions';
 import type { Acao, ChamaAcao } from './leads/acoes';
 import { verificarAcesso } from './acesso';
+import { mesmoUsuarioRoteado } from './sessao';
 import { voltarConsumido } from './historico';
 import { MODULOS, type Modulo } from './registro';
 
@@ -22,6 +23,8 @@ const erroLogin = $<HTMLParagraphElement>('login-erro');
 const entrarBtn = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
 
 let desmontar: void | (() => void);
+// Uid of the user the shell has already routed: a re-emission for the same user must not remount the view (see ./sessao)
+let uidRoteado: string | null = null;
 
 // Single entry of the admin actions (spec 05 §5.7.1; spec 01 §4.1): `acaoAdmin`, region southamerica-east1.
 // The answer {ok, estado, analiseAtual} only confirms; the screen follows the Firestore listeners.
@@ -120,8 +123,10 @@ function iniciar(opcoes: FirebaseOptions) {
 
   onAuthStateChanged(auth, async (user) => {
     if (!user) return semSessao();
+    if (mesmoUsuarioRoteado(uidRoteado, user.uid)) return;
     const acesso = await verificarAcesso(() => lerPapel(db, user));
     if (acesso === 'sem-acesso') {
+      uidRoteado = null;
       await signOut(auth);
       erroLogin.textContent = 'Esta conta não tem acesso à administração.';
       erroLogin.hidden = false;
@@ -141,10 +146,12 @@ function iniciar(opcoes: FirebaseOptions) {
     form.reset();
     erroLogin.hidden = true;
     sairBtn.hidden = false;
+    uidRoteado = user.uid;
     rotear(db);
   });
 
   function semSessao() {
+    uidRoteado = null;
     if (typeof desmontar === 'function') desmontar();
     desmontar = undefined;
     sairBtn.hidden = true;
