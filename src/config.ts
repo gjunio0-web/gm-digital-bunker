@@ -7,8 +7,8 @@ export const EMAIL_CONTATO = 'contato@gmdigitalbunker.com.br';
 // Contact form backend: the receberFicha function (spec 01), one Firebase project per environment.
 // Production builds post to gmdb-producao, every other build to gmdb-qualidade.
 // FORMULARIO_EM_PRODUCAO switches the form off in production only (fields disabled, with notice and
-// e-mail). It stays false until receberFicha is deployed in gmdb-producao and Gon asks to switch.
-const FORMULARIO_EM_PRODUCAO = false;
+// e-mail). On: receberFicha deployed in gmdb-producao with the hub release, requested by Gon (2026-11-18).
+const FORMULARIO_EM_PRODUCAO = true;
 export const FORMULARIO_ATIVO = EM_PRODUCAO ? FORMULARIO_EM_PRODUCAO : true;
 export const FUNCAO_RECEBER_FICHA = EM_PRODUCAO
   ? 'https://southamerica-east1-gmdb-producao.cloudfunctions.net/receberFicha'
