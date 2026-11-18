@@ -82,7 +82,7 @@ const CARGOS = ['owner', 'ceo', 'director', 'manager', 'specialist', 'external',
   .form [aria-invalid="true"] { border: 2px solid var(--ink); }
   .form__erro { margin: 0; font-weight: 600; font-size: 15px; color: var(--ink); }
   .form__ajuda { margin: 0; font-size: 15px; color: var(--muted); }
-  .form__alert { padding: 16px 20px; border: 2px solid var(--ink); border-radius: var(--radius-md); font-weight: 600; color: var(--ink); }
+  .form__alert { overflow-wrap: anywhere; padding: 16px 20px; border: 2px solid var(--ink); border-radius: var(--radius-md); font-weight: 600; color: var(--ink); }
   .form__aviso { margin: 0; padding: 16px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); font-size: 15px; line-height: 1.5; }
   .form__foot { display: flex; flex-direction: column; gap: 16px; padding-top: 8px; }
   .form__foot .btn { align-self: flex-start; min-height: 48px; padding: 0 24px; font-size: 17px; }
@@ -160,7 +160,8 @@ const CARGOS = ['owner', 'ceo', 'director', 'manager', 'specialist', 'external',
             const a = document.createElement('a');
             a.href = `mailto:${form.dataset.email}`;
             a.textContent = form.dataset.email || '';
-            resumo.append(a, '.');
+            // No trailing period: glued to the unbreakable address it overflowed the box on narrow screens
+            resumo.append(a);
           }
           resumo.focus();
         }
