@@ -3,7 +3,7 @@
 // detail renders from Firestore in the hub and from fixtures in the local acceptance test. Firestore
 // timestamps are converted to Date by the data layer (dadosFicha.ts) before they reach this file.
 import { CARGO, CONF, ESTADO, QUAD, dataCurta, dataLonga, erroTxt, restanteTxt } from './regras';
-import { etapaUsavel } from './reexecutar';
+import { alvosReexecutar, etapaUsavel, marcadasValidas, NOTA_REEXECUTAR, valorCampo } from './reexecutar';
 import { acaoPrincipal, acoesDaBarra, opcoesPorta, portaInicial, type ItemBarra } from './acoes';
 import {
   CHAMADA_CUSTO, CK_RES, DEDUCAO, DESTINO, ETAPA_COLETA, ETAPA_TEXTO, MAX_PORTE, MAX_TECNOLOGIA, PEND_TIPO, PORTA, PRAZO_DIAS,
@@ -460,8 +460,10 @@ export interface UiBarra {
   confirmando: boolean; apagarAgora: boolean;
   /** Door chosen in the selector (null: the initial one); `apagando`: an "apagar agora" call is running, so the ficha vanishing is the expected end. */
   porta: string | null; apagando: boolean;
+  /** Reexecutar: what was ticked (null: nothing chosen yet) and whether the list is open (it stays open while ticking). */
+  reex: string[] | null; reexAberto: boolean;
 }
-export const uiBarraVazia = (): UiBarra => ({ aguardando: null, erro: null, confirmando: false, apagarAgora: false, porta: null, apagando: false });
+export const uiBarraVazia = (): UiBarra => ({ aguardando: null, erro: null, confirmando: false, apagarAgora: false, porta: null, apagando: false, reex: null, reexAberto: false });
 
 /** Door the selector shows: the chosen one, else the decided one, else the probable one of the current analysis. */
 export function portaDoSeletor(d: DadosFicha, ui: UiBarra): string {
@@ -475,6 +477,25 @@ const ROTULO_ITEM: Record<ItemBarra, string> = {
 };
 const GRUPOS_BARRA: ItemBarra[][] = [['mandar', 'aprovar', 'resposta', 'editar'], ['porta'], ['reexecutar'], ['arquivar']];
 const ESTADOS_LONGOS = ['coleta_minima', 'coletando', 'sintetizando'];
+
+/** Options of the Reexecutar selector for this ficha: the single source of the rule is `alvosReexecutar`. */
+export const opcoesReexecutar = (d: DadosFicha) => alvosReexecutar(d.f.estado, d.f.erro, d.coleta);
+/** What is ticked now in the Reexecutar selector. */
+export const marcadasReexecutar = (d: DadosFicha, ui: UiBarra) => marcadasValidas(opcoesReexecutar(d), ui.reex);
+
+const CAIXA = '<svg class="pk-ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+/** Multiple-choice selector (spec 05 §5.9, variant): the list stays open while ticking; the state lives in the page, not in the DOM. */
+export function seletorMultiploHTML(id: string, rotulo: string, d: DadosFicha, ui: UiBarra): string {
+  const opcoes = opcoesReexecutar(d);
+  const marcadas = marcadasValidas(opcoes, ui.reex);
+  return `<div class="pk pk-multi"><button class="pick" type="button" id="${id}" aria-expanded="${ui.reexAberto}" aria-controls="${id}-l">` +
+    `<span class="pk-lb">${esc(rotulo)}</span><span class="pk-val">${esc(valorCampo(opcoes, marcadas))}</span>${CHEV}</button>` +
+    `<div class="pk-drop" id="${id}-l"${ui.reexAberto ? '' : ' hidden'}><ul class="pk-opts" role="group" aria-label="${esc(rotulo)}">` +
+    opcoes.map((o) => `<li><button class="pk-opt" type="button" role="checkbox" aria-checked="${marcadas.includes(o.alvo)}"${o.rodaJunto ? ' aria-disabled="true"' : ''} data-v="${esc(o.alvo)}">` +
+      `<span class="pk-box">${CAIXA}</span><span class="pk-n">${esc(o.rotulo)}</span>${o.rodaJunto ? '<span class="pk-lock">roda junto: nunca terminou</span>' : ''}` +
+      `${o.descricao ? `<span class="pk-d">${esc(o.descricao)}</span>` : ''}</button></li>`).join('') +
+    `</ul></div><p class="pk-note">${esc(NOTA_REEXECUTAR)}</p></div>`;
+}
 
 export function barraHTML(d: DadosFicha, ui: UiBarra): string {
   const itens = acoesDaBarra(d.f, d.coleta);
@@ -495,6 +516,11 @@ export function barraHTML(d: DadosFicha, ui: UiBarra): string {
   const atual = d.analises.find((x) => x.id === d.f.analiseAtual) ?? null;
   const corpoGrupo = (i: ItemBarra) => {
     if (i === 'porta') return seletorHTML('aPorta', 'Porta', opcoesPorta(atual?.d.enquadramento?.portaProvavel, combinacaoTxt(atual)), portaDoSeletor(d, ui)) + botao(i);
+    if (i === 'reexecutar') {
+      const nenhuma = marcadasReexecutar(d, ui).length === 0;
+      return seletorMultiploHTML('aReex', 'Reexecutar', d, ui) +
+        `<button class="btn secondary" type="button" data-act="reexecutar"${off || (nenhuma ? ' disabled' : '')}>${ui.aguardando === i ? 'Aguarde…' : ROTULO_ITEM[i]}</button>`;
+    }
     if (i === 'arquivar') {
       const sim = ui.apagarAgora ? 'Sim, apagar agora' : 'Sim, arquivar';
       return `<label class="chk"><input type="checkbox" data-act="apagar-agora"${ui.apagarAgora ? ' checked' : ''}${off}> apagar agora</label>${botao(i)}` +

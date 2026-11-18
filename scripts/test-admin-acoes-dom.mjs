@@ -173,6 +173,58 @@ try {
   await page.waitForFunction(() => window.idas.length === 2);
   assert.equal(await page.evaluate(() => window.T.consumirAvisoLista()), 'Esta ficha não existe mais.');
 
+  // 9. Reexecutar (multi-select): list stays open while ticking, exclusives clear the others, button off with nothing ticked,
+  //    one call with the list, the ticks survive redraws and the list closes with Esc / outside tap
+  const ETAPAS = ['empresa_digital', 'empresa_registro', 'empresa_pessoas', 'empresa_noticias', 'setor', 'mercado'];
+  await page.evaluate((et) => { window.monta('analise_pronta'); window.dados.coleta = Object.fromEntries(et.map((k) => [k, { status: 'concluida' }])); window.redesenha(); }, ETAPAS);
+  assert.equal(await txt('#aReex .pk-val'), 'Escolha as etapas');
+  assert.equal(await page.isDisabled('[data-act="reexecutar"]'), true);
+  assert.equal(await page.isHidden('#aReex-l'), true);
+  assert.ok((await page.locator('.pk-note').innerText()).startsWith('Coleta: busca automática'));
+  await page.click('#aReex');
+  assert.equal(await page.getAttribute('#aReex', 'aria-expanded'), 'true');
+  await page.click('.pk-multi .pk-opt[data-v="setor"]');
+  await page.click('.pk-multi .pk-opt[data-v="mercado"]');
+  assert.equal(await page.getAttribute('#aReex', 'aria-expanded'), 'true', 'stays open while ticking');
+  assert.equal(await page.getAttribute('.pk-multi .pk-opt[data-v="setor"]', 'aria-checked'), 'true');
+  assert.equal(await txt('#aReex .pk-val'), 'Setor, Mercado');
+  assert.equal(await page.isDisabled('[data-act="reexecutar"]'), false);
+  await page.evaluate(() => window.redesenha()); // a snapshot arrives: ticks and open list survive
+  assert.equal(await page.getAttribute('.pk-multi .pk-opt[data-v="setor"]', 'aria-checked'), 'true');
+  assert.equal(await page.getAttribute('#aReex', 'aria-expanded'), 'true');
+  await page.click('.pk-multi .pk-opt[data-v="sintese"]');
+  assert.equal(await txt('#aReex .pk-val'), 'Síntese');
+  assert.equal(await page.locator('.pk-multi .pk-opt[aria-checked="true"]').count(), 1);
+  await page.click('.pk-multi .pk-opt[data-v="setor"]');
+  assert.equal(await page.getAttribute('.pk-multi .pk-opt[data-v="sintese"]', 'aria-checked'), 'false');
+  await page.click('.pk-multi .pk-opt[data-v="setor"]'); // untick: nothing left
+  assert.equal(await page.isDisabled('[data-act="reexecutar"]'), true);
+  await page.click('.pk-multi .pk-opt[data-v="setor"]');
+  await page.click('.pk-multi .pk-opt[data-v="empresa_digital"]');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.getAttribute('#aReex', 'aria-expanded'), 'false');
+  assert.equal(await txt('#aReex .pk-val'), 'Presença digital, Setor');
+  await page.click('[data-act="reexecutar"]');
+  assert.deepEqual((await chamadas()).at(-1), ['f1', 'reexecutar', { alvo: ['empresa_digital', 'setor'] }]);
+  assert.equal(await txt('[data-act="reexecutar"]'), 'Aguarde…');
+  await page.evaluate(() => window.pendente.res({ ok: true }));
+  await page.waitForFunction(() => document.querySelector('[data-act="reexecutar"]')?.textContent === 'Reexecutar');
+  assert.equal(await txt('#aReex .pk-val'), 'Escolha as etapas', 'ticks cleared after success');
+  // Refused: the ticks stay so the person can retry
+  await page.click('#aReex'); await page.click('.pk-multi .pk-opt[data-v="mercado"]'); await page.keyboard.press('Escape');
+  await page.click('[data-act="reexecutar"]');
+  await page.evaluate(() => window.pendente.rej({ details: { codigo: 'parametro_invalido', campo: 'alvo' } }));
+  await page.waitForSelector('[role="alert"]');
+  assert.equal(await txt('.acaoerr span'), 'O valor de Reexecutar não foi aceito.');
+  assert.equal(await txt('#aReex .pk-val'), 'Mercado');
+  // Outside tap closes the list; opening the door selector closes it too
+  await page.click('#aReex');
+  await page.mouse.click(2, 2);
+  assert.equal(await page.getAttribute('#aReex', 'aria-expanded'), 'false');
+  await page.click('#aReex'); await page.click('#aPorta');
+  assert.equal(await page.getAttribute('#aReex', 'aria-expanded'), 'false');
+  assert.equal(await page.getAttribute('#aPorta', 'aria-expanded'), 'true');
+
   console.log('test-admin-acoes-dom: ok');
 } finally {
   await browser.close();

@@ -32,10 +32,25 @@ export interface OpcaoReexecutar {
 }
 
 const ESTADOS_ANALISADOS = ['analise_pronta', 'analise_com_pendencias', 'aprovada'];
-const DESCRICAO_COLETA_MINIMA = 'Recomeça a coleta mínima desde o início.';
 
-const exclusiva = (alvo: string, rotulo: string, descricao = ''): OpcaoReexecutar => ({ alvo, rotulo, descricao, rodaJunto: false, exclusiva: true });
-const etapa = (alvo: string, rodaJunto = false): OpcaoReexecutar => ({ alvo, rotulo: ETAPA_COLETA[alvo] ?? alvo, descricao: '', rodaJunto, exclusiva: false });
+/** Short descriptions of the options, approved by Gon on 17/nov/2026 (spec 05 §5.7, v1.48). */
+export const DESCRICAO: Record<string, string> = {
+  coleta_minima: 'Recomeça a coleta mínima desde o início.',
+  sintese: 'Gera a análise de novo a partir da coleta, como nova versão.',
+  qualificacao: 'Refaz a qualificação e a triagem, sem refazer a coleta.',
+  empresa_digital: 'Refaz a leitura do site e dos perfis públicos da empresa.',
+  empresa_registro: 'Refaz a consulta ao registro da empresa na Receita Federal.',
+  empresa_pessoas: 'Refaz a busca do cargo do signatário e de outros decisores visíveis.',
+  empresa_noticias: 'Refaz a busca de notícias recentes sobre a empresa.',
+  setor: 'Refaz a leitura do setor da empresa.',
+  mercado: 'Refaz a leitura do mercado da empresa.',
+};
+/** Note under the selector, always visible, in `muted` (spec 05 §5.7, v1.48). */
+export const NOTA_REEXECUTAR = 'Coleta: busca automática de informações sobre a empresa e o contato, em etapas. Coleta mínima: só o site e o registro da empresa. Síntese: a análise escrita a partir da coleta.';
+export const TEXTO_VAZIO_REEXECUTAR = 'Escolha as etapas';
+
+const exclusiva = (alvo: string, rotulo: string): OpcaoReexecutar => ({ alvo, rotulo, descricao: DESCRICAO[alvo] ?? '', rodaJunto: false, exclusiva: true });
+const etapa = (alvo: string, rodaJunto = false): OpcaoReexecutar => ({ alvo, rotulo: ETAPA_COLETA[alvo] ?? alvo, descricao: DESCRICAO[alvo] ?? '', rodaJunto, exclusiva: false });
 
 /** Stages of the phase that the function accepts as targets in a long state: falhou, pendente or executando. */
 function etapasNaoConcluidas(fase: readonly string[], coleta: Record<string, Obj>): OpcaoReexecutar[] {
@@ -62,7 +77,7 @@ export function alvosReexecutar(estado: string, erro: { etapa?: string } | null 
   if (!erro) return [];
   switch (estado) {
     case 'recebida':
-      return [exclusiva('coleta_minima', 'Coleta mínima', DESCRICAO_COLETA_MINIMA)];
+      return [exclusiva('coleta_minima', 'Coleta mínima')];
     case 'coleta_minima': {
       const opcoes = etapasNaoConcluidas(ETAPAS_MINIMAS, coleta);
       if (ETAPAS_MINIMAS.every((k) => etapaUsavel(coleta[k]))) opcoes.push(exclusiva('qualificacao', 'Qualificação'));
@@ -81,4 +96,38 @@ export function alvosReexecutar(estado: string, erro: { etapa?: string } | null 
     default:
       return [];
   }
+}
+
+// ---------- Multiple-choice selector (spec 05 §5.7 and §5.9, variant) ----------
+const emOrdem = (opcoes: OpcaoReexecutar[], alvos: string[]) => opcoes.map((o) => o.alvo).filter((a) => alvos.includes(a));
+
+/**
+ * What is ticked, given the options and what the administrator chose so far (`null`: nothing chosen yet).
+ * Stages that run anyway (`rodaJunto`) are always ticked; with a single option and no choice made, it comes ticked;
+ * a choice is cut to the options that still exist, and an exclusive option stands alone.
+ */
+export function marcadasValidas(opcoes: OpcaoReexecutar[], escolha: string[] | null): string[] {
+  const travadas = opcoes.filter((o) => o.rodaJunto).map((o) => o.alvo);
+  if (escolha === null) return opcoes.length === 1 ? [opcoes[0].alvo] : travadas;
+  const validas = emOrdem(opcoes, [...escolha, ...travadas]);
+  const excl = validas.find((a) => opcoes.find((o) => o.alvo === a)?.exclusiva);
+  return excl && validas.length > 1 ? [excl] : validas;
+}
+
+/**
+ * Result of tapping an option: an exclusive option (Síntese, Qualificação, Coleta mínima) clears the others, a stage clears
+ * the exclusive ones, tapping a ticked option unticks it, and a locked stage (`rodaJunto`) does not change.
+ */
+export function marcar(opcoes: OpcaoReexecutar[], marcadas: string[], alvo: string): string[] {
+  const op = opcoes.find((o) => o.alvo === alvo);
+  if (!op || op.rodaJunto) return marcadas;
+  if (marcadas.includes(alvo)) return marcadas.filter((a) => a !== alvo);
+  if (op.exclusiva) return [alvo];
+  return emOrdem(opcoes, [...marcadas.filter((a) => !opcoes.find((o) => o.alvo === a)?.exclusiva), alvo]);
+}
+
+/** Value of the closed field: the ticked labels separated by commas, or "Escolha as etapas". */
+export function valorCampo(opcoes: OpcaoReexecutar[], marcadas: string[]): string {
+  const rotulos = opcoes.filter((o) => marcadas.includes(o.alvo)).map((o) => o.rotulo);
+  return rotulos.length ? rotulos.join(', ') : TEXTO_VAZIO_REEXECUTAR;
 }

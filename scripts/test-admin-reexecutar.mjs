@@ -11,7 +11,7 @@ const dir = mkdtempSync(join(tmpdir(), 'reexecutar-'));
 try {
   const out = join(dir, 'reexecutar.mjs');
   await build({ entryPoints: ['src/admin/leads/reexecutar.ts'], bundle: true, format: 'esm', platform: 'node', outfile: out, logLevel: 'silent' });
-  const { alvosReexecutar, etapaUsavel } = await import(pathToFileURL(out).href);
+  const { alvosReexecutar, etapaUsavel, marcar, marcadasValidas, valorCampo, DESCRICAO } = await import(pathToFileURL(out).href);
 
   const ETAPAS = ['empresa_digital', 'empresa_registro', 'empresa_pessoas', 'empresa_noticias', 'setor', 'mercado'];
   const c = { status: 'concluida' };
@@ -104,6 +104,38 @@ try {
   const copia = JSON.stringify(coleta);
   alvosReexecutar('coletando', erro, coleta);
   assert.equal(JSON.stringify(coleta), copia);
+
+  // Every option has a description (nine approved texts)
+  for (const k of ['coleta_minima', 'sintese', 'qualificacao', ...ETAPAS]) assert.ok(DESCRICAO[k] && DESCRICAO[k].length > 10, k);
+  for (const o of alvosReexecutar('analise_pronta', null, todas(c))) assert.ok(o.descricao, o.alvo);
+
+  // Multi-select rules: the options come from alvosReexecutar (no second copy of the rule)
+  const ops = alvosReexecutar('analise_pronta', null, todas(c));
+  const nomes = ops.map((o) => o.alvo);
+  assert.ok(nomes.includes('sintese') && ETAPAS.every((k) => nomes.includes(k)));
+  assert.deepEqual(marcadasValidas(ops, null), []);
+  assert.deepEqual(marcar(ops, [], 'setor'), ['setor']);
+  assert.deepEqual(marcar(ops, ['setor'], 'mercado'), ['setor', 'mercado']);
+  assert.deepEqual(marcar(ops, ['mercado'], 'setor'), ['setor', 'mercado'], 'order follows the options, not the taps');
+  assert.deepEqual(marcar(ops, ['setor', 'mercado'], 'setor'), ['mercado'], 'tapping a ticked option unticks it');
+  assert.deepEqual(marcar(ops, ['setor', 'mercado'], 'sintese'), ['sintese'], 'exclusive clears the others');
+  assert.deepEqual(marcar(ops, ['sintese'], 'setor'), ['setor'], 'a stage clears the exclusive');
+  const dois = [{ alvo: 'sintese', rotulo: 'S', descricao: 'x', rodaJunto: false, exclusiva: true }, { alvo: 'qualificacao', rotulo: 'Q', descricao: 'x', rodaJunto: false, exclusiva: true }];
+  assert.deepEqual(marcar(dois, ['sintese'], 'qualificacao'), ['qualificacao'], 'exclusive replaces exclusive');
+  assert.deepEqual(marcar(ops, ['setor'], 'inexistente'), ['setor']);
+  assert.deepEqual(marcadasValidas(ops, ['setor', 'sintese']), ['sintese'], 'invalid mix is reduced to the exclusive');
+  assert.deepEqual(marcadasValidas(ops, ['coleta_minima', 'setor']), ['setor'], 'option that no longer exists is dropped');
+  assert.equal(valorCampo(ops, []), 'Escolha as etapas');
+  assert.ok(valorCampo(ops, ['setor', 'mercado']).includes(', '));
+
+  // Single option: comes ticked; locked stage (rodaJunto) is always ticked and cannot be unticked
+  const so = alvosReexecutar('recebida', erro, {});
+  assert.equal(so.length, 1);
+  assert.deepEqual(marcadasValidas(so, null), ['coleta_minima']);
+  const travado = [{ alvo: 'a', rotulo: 'A', descricao: '', rodaJunto: true, exclusiva: false }, { alvo: 'b', rotulo: 'B', descricao: '', rodaJunto: false, exclusiva: false }];
+  assert.deepEqual(marcadasValidas(travado, null), ['a']);
+  assert.deepEqual(marcar(travado, ['a'], 'a'), ['a']);
+  assert.deepEqual(marcar(travado, ['a'], 'b'), ['a', 'b']);
 
   console.log('test-admin-reexecutar: ok');
 } finally {
