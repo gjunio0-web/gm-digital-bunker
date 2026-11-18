@@ -3,9 +3,10 @@
 // keeps it while the data arrives; the body is redrawn on every Firestore change, keeping the chosen analysis
 // version and the open accordions.
 import type { Firestore } from 'firebase/firestore';
-import { abertura, corpoHTML, esc, marcadasReexecutar, opcoesReexecutar, portaDoSeletor, rascunhoTexto, uiBarraVazia, versaoExibida, type DadosFicha, type UiBarra } from './detalhe';
+import { abertura, corpoHTML, esc, marcadasReexecutar, opcoesReexecutar, portaDoSeletor, rascunhoTexto, textoDoEditor, uiBarraVazia, versaoExibida, type DadosFicha, type UiBarra } from './detalhe';
 import { marcar } from './reexecutar';
-import { ACAO_DO_ITEM, definirAvisoLista, tratarErroAcao, type ChamaAcao, type ItemBarra } from './acoes';
+import { ACAO_DO_ITEM, TEXTO_CONFLITO_EDITAR, definirAvisoLista, tratarErroAcao, type ChamaAcao, type ItemBarra } from './acoes';
+import { contagemTxt, validaCorpo } from './editor';
 import { ouvirFicha } from './dadosFicha';
 
 /** State kept between redraws; `ui` is the action bar's (absent where the bar is not wanted, such as the read-only harness). */
@@ -38,7 +39,14 @@ export function desenharFicha(alvo: HTMLElement, d: DadosFicha | null, est: Esta
   alvo.querySelector('#fLead')!.textContent = ab.lead;
   const corpo = alvo.querySelector<HTMLElement>('#fCorpo')!;
   if (!d) { corpo.innerHTML = '<p class="empty" style="padding-bottom:var(--space-16)"><a href="/admin/leads" data-interno>Voltar à lista de leads</a></p>'; return; }
+  // A snapshot redraws the body: the text being typed keeps focus, caret and scroll
+  const ativo = document.activeElement as HTMLTextAreaElement | null;
+  const noEditor = ativo?.id === 'edTxt' ? { ini: ativo.selectionStart, fim: ativo.selectionEnd, topo: ativo.scrollTop } : null;
   corpo.innerHTML = corpoHTML(d, est.versao, hoje, est.ui);
+  if (noEditor) {
+    const t = corpo.querySelector<HTMLTextAreaElement>('#edTxt');
+    if (t) { t.focus({ preventScroll: true }); t.setSelectionRange(noEditor.ini, noEditor.fim); t.scrollTop = noEditor.topo; }
+  }
   corpo.querySelectorAll<HTMLDetailsElement>('details[data-k]').forEach((x) => { x.open = est.abertos.has(x.dataset.k!); });
 }
 
@@ -68,15 +76,19 @@ export function ligarFicha(alvo: HTMLElement, est: EstadoFicha, redesenhar: () =
       const r = tratarErroAcao(e, acao);
       if (r.tipo === 'erro') {
         if (r.voltarLista) { if (vivo) { definirAvisoLista(r.texto); acoes.ir('/admin/leads'); } return; }
-        ui.erro = r.texto;
+        // Conflict on Editar: the typed text stays on screen with the notice inside the editor (spec 05 §5.7)
+        if (acao === 'editar' && r.texto === TEXTO_CONFLITO_EDITAR && ui.ed) ui.ed.conflito = true;
+        else ui.erro = r.texto;
       }
     }
     if (!vivo) return;
     ui.apagando = false;
     ui.aguardando = null;
     if (item === 'reexecutar' && !ui.erro) { ui.reex = null; ui.reexAberto = false; }
+    const manteveEditor = item === 'editar' && !!ui.ed && (ui.ed.conflito || !!ui.erro);
+    if (item === 'editar' && !manteveEditor) ui.ed = null;
     redesenhar();
-    alvo.querySelector<HTMLElement>(`[data-act="${item}"]`)?.focus({ preventScroll: true });
+    alvo.querySelector<HTMLElement>(manteveEditor ? '#edTxt' : `[data-act="${item}"]`)?.focus({ preventScroll: true });
   };
   const reduz = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fechar = (btn: HTMLElement) => {
@@ -117,6 +129,16 @@ export function ligarFicha(alvo: HTMLElement, est: EstadoFicha, redesenhar: () =
       if (a === 'fechar-aviso') { est.ui.erro = null; redesenhar(); return; }
       if (DIRETAS.includes(a)) { void executar(a); return; }
       const foca = (sel: string) => alvo.querySelector<HTMLElement>(sel)?.focus({ preventScroll: true });
+      if (a === 'editar') {
+        const d = dados(); const v = d && versaoExibida(d, est.versao);
+        if (!d || !v) return;
+        if (!est.ui.ed) est.ui.ed = { base: v.id, secao: 's1', textos: {}, conflito: false };
+        redesenhar();
+        const ed = alvo.querySelector<HTMLElement>('#editor');
+        alvo.querySelector<HTMLElement>('#edTxt')?.focus({ preventScroll: true });
+        ed?.scrollIntoView({ block: 'center', behavior: reduz ? 'auto' : 'smooth' });
+        return;
+      }
       if (a === 'reexecutar') { const d = dados(); if (d) void executar('reexecutar', { alvo: marcadasReexecutar(d, est.ui) }); return; }
       if (a === 'porta') { void executar('porta', { porta: portaDoSeletor(dados()!, est.ui) }); return; }
       if (a === ('apagar-agora' as string)) { est.ui.apagarAgora = (bt as unknown as HTMLInputElement).checked; redesenhar(); foca('[data-act="apagar-agora"]'); return; }
@@ -143,6 +165,20 @@ export function ligarFicha(alvo: HTMLElement, est: EstadoFicha, redesenhar: () =
     }
     if (!t.closest('.pk')) {
       alvo.querySelectorAll<HTMLElement>('.pick[aria-expanded="true"]').forEach((p) => { if (p.id === 'aReex' && est.ui) { est.ui.reexAberto = false; redesenhar(); } else fechar(p); });
+    }
+
+    // Editor buttons: save the section as the next version, or discard
+    const edBt = t.closest<HTMLButtonElement>('[data-ed]');
+    if (edBt && alvo.contains(edBt) && est.ui?.ed) {
+      if (edBt.dataset.ed === 'cancelar') { est.ui.ed = null; redesenhar(); alvo.querySelector<HTMLElement>('[data-act="editar"]')?.focus({ preventScroll: true }); return; }
+      const d = dados();
+      if (d && edBt.dataset.ed === 'salvar') {
+        const corpo = textoDoEditor(d, est.ui);
+        if (!validaCorpo(corpo).ok) return;
+        est.ui.ed.conflito = false;
+        void executar('editar', { secao: est.ui.ed.secao, corpo, baseadaEm: est.ui.ed.base });
+      }
+      return;
     }
 
     // Accordions (Design System): height and opacity in dur-base, ease-in-out; no motion when reduced
@@ -181,9 +217,32 @@ export function ligarFicha(alvo: HTMLElement, est: EstadoFicha, redesenhar: () =
     if (b) { fechar(b); b.focus(); return; }
     if (est.ui?.confirmando) { est.ui.confirmando = false; redesenhar(); alvo.querySelector<HTMLElement>('[data-act="arquivar"]')?.focus(); }
   };
+  // Typing updates the state and the counter in place; a redraw here would take the caret away
+  const onTexto = (e: Event) => {
+    const t = e.target as HTMLElement;
+    if (!est.ui?.ed || !alvo.contains(t)) return;
+    if (t.id === 'edTxt') {
+      const v = (t as HTMLTextAreaElement).value;
+      est.ui.ed.textos[est.ui.ed.secao] = v;
+      const val = validaCorpo(v);
+      const c = alvo.querySelector('#edCount'); if (c) c.textContent = contagemTxt(val);
+      const b = alvo.querySelector<HTMLButtonElement>('#edSalvar'); if (b) b.disabled = !val.ok || !!est.ui.aguardando;
+    }
+  };
+  const onMuda = (e: Event) => {
+    const t = e.target as HTMLElement;
+    if (t.id === 'edSec' && est.ui?.ed && alvo.contains(t)) {
+      est.ui.ed.secao = (t as HTMLSelectElement).value;
+      est.ui.ed.conflito = false;
+      redesenhar();
+      alvo.querySelector<HTMLElement>('#edSec')?.focus({ preventScroll: true });
+    }
+  };
   document.addEventListener('click', onClick);
   document.addEventListener('keydown', onTecla);
-  return () => { vivo = false; document.removeEventListener('click', onClick); document.removeEventListener('keydown', onTecla); };
+  document.addEventListener('input', onTexto);
+  document.addEventListener('change', onMuda);
+  return () => { vivo = false; document.removeEventListener('click', onClick); document.removeEventListener('keydown', onTecla); document.removeEventListener('input', onTexto); document.removeEventListener('change', onMuda); };
 }
 
 export function renderFicha(alvo: HTMLElement, id: string, db: Firestore, acoes?: ContextoAcoes): () => void {

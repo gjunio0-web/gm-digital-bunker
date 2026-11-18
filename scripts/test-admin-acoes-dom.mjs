@@ -225,6 +225,83 @@ try {
   assert.equal(await page.getAttribute('#aReex', 'aria-expanded'), 'false');
   assert.equal(await page.getAttribute('#aPorta', 'aria-expanded'), 'true');
 
+  // 10. Editar análise: editor of one section, limit, per-section text, caret kept on redraw, save call, conflict keeps the text
+  const SECOES = { s1: { corpo: 'Texto da s1' }, s2: { corpo: 'Texto da s2' }, s6: { corpo: 'Texto da s6' } };
+  await page.evaluate((secoes) => { window.monta('analise_pronta'); window.dados.analises[0].d.secoes = secoes; window.redesenha(); }, SECOES);
+  assert.equal(await page.locator('#editor').count(), 0, 'closed at first');
+  await page.click('[data-act="editar"]');
+  assert.equal(await page.locator('#editor').count(), 1);
+  assert.deepEqual(await page.locator('#edSec option').allInnerTexts(), ['s1 · Qualificação imediata', 's2 · A empresa', 's3 · Setor', 's4 · Potencial de mercado', 's5 · Pessoas', 's6 · Enquadramento', 's7 · Preparação da primeira conversa']);
+  assert.equal(await page.inputValue('#edTxt'), 'Texto da s1');
+  assert.equal(await txt('#edCount'), '11 de 20.000 caracteres');
+  assert.equal(await txt('#edSalvar'), 'Salvar como v2 (autor humano)');
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'edTxt', 'focus goes to the text');
+  assert.equal(await page.locator('#edNote').count(), 0);
+  // Per-section text: typed text survives a switch of section and back; the s6 note shows only in s6
+  await page.fill('#edTxt', 'Editado na s1');
+  await page.selectOption('#edSec', 's6');
+  assert.equal(await page.inputValue('#edTxt'), 'Texto da s6');
+  assert.ok((await txt('#edNote')).startsWith('Editar o texto de s6 não altera os filtros'));
+  await page.selectOption('#edSec', 's1');
+  assert.equal(await page.inputValue('#edTxt'), 'Editado na s1');
+  assert.equal(await page.locator('#edNote').count(), 0);
+  // Limit: empty blocks, 20,000 passes, 20,001 blocks; the counter says why
+  await page.fill('#edTxt', '');
+  assert.equal(await page.isDisabled('#edSalvar'), true);
+  assert.equal(await txt('#edCount'), '0 de 20.000 caracteres · o texto não pode ficar vazio');
+  await page.fill('#edTxt', 'a'.repeat(20000));
+  assert.equal(await page.isDisabled('#edSalvar'), false);
+  await page.fill('#edTxt', 'a'.repeat(20001));
+  assert.equal(await page.isDisabled('#edSalvar'), true);
+  assert.equal(await txt('#edCount'), '20.001 de 20.000 caracteres · acima do limite');
+  // A snapshot redraws the body: text, focus and caret stay
+  await page.fill('#edTxt', 'abcdef');
+  await page.evaluate(() => { const t = document.getElementById('edTxt'); t.focus(); t.setSelectionRange(2, 4); window.redesenha(); });
+  assert.deepEqual(await page.evaluate(() => { const t = document.getElementById('edTxt'); return [document.activeElement === t, t.value, t.selectionStart, t.selectionEnd]; }), [true, 'abcdef', 2, 4]);
+  // Cancel discards and closes; reopening shows the base text again
+  await page.click('[data-ed="cancelar"]');
+  assert.equal(await page.locator('#editor').count(), 0);
+  await page.click('[data-act="editar"]');
+  assert.equal(await page.inputValue('#edTxt'), 'Texto da s1');
+  // Save: one call with the section, the text and the base version; "Aguarde…", read-only text; the editor closes on success
+  await page.fill('#edTxt', 'Novo texto');
+  await page.click('#edSalvar');
+  assert.deepEqual((await chamadas()).at(-1), ['f1', 'editar', { secao: 's1', corpo: 'Novo texto', baseadaEm: 'v1' }]);
+  assert.equal(await txt('#edSalvar'), 'Aguarde…');
+  assert.equal(await page.getAttribute('#edTxt', 'readonly'), '');
+  assert.equal(await txt('[data-act="editar"]'), 'Aguarde…');
+  await page.evaluate(() => window.pendente.res({ ok: true, estado: 'analise_pronta', analiseAtual: 'v2' }));
+  await page.waitForFunction(() => !document.getElementById('editor'));
+  assert.equal(await page.locator('[role="alert"]').count(), 0);
+  assert.equal(await txt('[data-act="editar"]'), 'Editar análise');
+  // Conflict: a new version is born while typing; the call still carries the version the text was based on; the answer keeps the text
+  await page.click('[data-act="editar"]');
+  await page.fill('#edTxt', 'Meu texto em conflito');
+  await page.evaluate(() => { window.dados.analises.unshift({ id: 'v2', num: 2, d: { secoes: { s1: { corpo: 'Texto da v2' } } } }); window.dados.f.analiseAtual = 'v2'; window.redesenha(); });
+  assert.equal(await page.inputValue('#edTxt'), 'Meu texto em conflito', 'the new version does not replace what is being typed');
+  assert.equal(await txt('#edSalvar'), 'Salvar como v3 (autor humano)');
+  await page.click('#edSalvar');
+  assert.deepEqual((await chamadas()).at(-1), ['f1', 'editar', { secao: 's1', corpo: 'Meu texto em conflito', baseadaEm: 'v1' }]);
+  await page.evaluate(() => window.pendente.rej({ details: { codigo: 'conflito' } }));
+  await page.waitForSelector('#editor [role="alert"]');
+  assert.equal(await txt('#editor [role="alert"]'), 'A análise mudou enquanto você editava. Seu texto foi mantido aqui; copie-o ou abra a versão atual.');
+  assert.equal(await page.locator('.acaoerr').count(), 0, 'one notice, inside the editor');
+  assert.equal(await page.inputValue('#edTxt'), 'Meu texto em conflito');
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'edTxt');
+  assert.equal(await page.isDisabled('#edSalvar'), false, 'the person can still copy, edit or save again');
+  // Other refusal: the bar alert names the field on screen and the editor stays
+  await page.click('#edSalvar');
+  await page.evaluate(() => window.pendente.rej({ details: { codigo: 'parametro_invalido', campo: 'corpo' } }));
+  await page.waitForSelector('.acaoerr');
+  assert.equal(await txt('.acaoerr span'), 'O valor de Texto não foi aceito.');
+  assert.equal(await page.inputValue('#edTxt'), 'Meu texto em conflito');
+  await page.click('[data-act="fechar-aviso"]');
+  await page.click('[data-ed="cancelar"]');
+  assert.equal(await page.locator('#editor').count(), 0);
+  // No Editar button, no editor in Respondida
+  await page.evaluate(() => window.monta('respondida'));
+  assert.equal(await page.locator('[data-act="editar"]').count(), 0);
+
   console.log('test-admin-acoes-dom: ok');
 } finally {
   await browser.close();

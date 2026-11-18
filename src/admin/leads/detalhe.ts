@@ -4,7 +4,8 @@
 // timestamps are converted to Date by the data layer (dadosFicha.ts) before they reach this file.
 import { CARGO, CONF, ESTADO, QUAD, dataCurta, dataLonga, erroTxt, restanteTxt } from './regras';
 import { alvosReexecutar, etapaUsavel, marcadasValidas, NOTA_REEXECUTAR, valorCampo } from './reexecutar';
-import { acaoPrincipal, acoesDaBarra, opcoesPorta, portaInicial, type ItemBarra } from './acoes';
+import { acaoPrincipal, acoesDaBarra, opcoesPorta, portaInicial, TEXTO_CONFLITO_EDITAR, type ItemBarra } from './acoes';
+import { NOTA_S6, SECOES_EDITAVEIS, contagemTxt, corpoDaSecao, proximaVersao, rotuloSecao, validaCorpo } from './editor';
 import {
   CHAMADA_CUSTO, CK_RES, DEDUCAO, DESTINO, ETAPA_COLETA, ETAPA_TEXTO, MAX_PORTE, MAX_TECNOLOGIA, PEND_TIPO, PORTA, PRAZO_DIAS,
   RETENCAO_CURTO, RETENCAO_MOTIVO, SO_NA_ANALISE, TECNOLOGIA, avisoTxt, linhaParcelas, modeloTxt, nomeRegra,
@@ -229,13 +230,14 @@ export function rascunhoTexto(r: Obj | undefined): string {
   if (typeof r === 'string') return r;
   return (r.assunto ? `Assunto: ${r.assunto}\n\n` : '') + String(r.corpo ?? '');
 }
-function avaliacaoHTML(d: DadosFicha, a: Analise | null): string {
+function avaliacaoHTML(d: DadosFicha, a: Analise | null, ui?: UiBarra): string {
   const f = d.f;
   let h = '<div class="panel"><h3>Avaliação preliminar</h3>';
   if (a) {
     h += `<div class="actions"><a class="btn secondary" href="/admin/leads/${encodeURIComponent(d.id)}/dossie" data-interno>Abrir dossiê completo</a>` +
       // "Salvar PDF" opens the dossier, which prints once drawn (spec 05 v1.18)
       `<a class="btn secondary" href="/admin/leads/${encodeURIComponent(d.id)}/dossie?imprimir=1" data-interno>Salvar PDF</a></div>` +
+      (ui ? editorHTML(d, ui) : '') +
       '<div class="facc">' +
       `<details data-k="resumo"><summary><span>Resumo executivo<small>análise ${esc(a.id)} · até 80 palavras</small></span><span class="pl" aria-hidden="true"></span></summary><div class="body"><div><p>${esc(a.d.resumoExecutivo ?? 'Sem resumo nesta versão.')}</p></div></div></details>` +
       `<details data-k="rascunho"><summary><span>Rascunho de resposta<small>análise ${esc(a.id)} · até 120 palavras</small></span><span class="pl" aria-hidden="true"></span></summary><div class="body"><div><p class="draft">${esc(rascunhoTexto(a.d.rascunhoResposta) || 'Sem rascunho nesta versão.')}</p>` +
@@ -249,6 +251,31 @@ function avaliacaoHTML(d: DadosFicha, a: Analise | null): string {
       : f.estado === 'resposta_breve' ? 'Sem análise completa: o quadrante da triagem foi Declinar.' : 'A análise ainda não terminou.'}</p>`;
   }
   return h + '</div>';
+}
+
+/** Text the editor shows for the chosen section: what was typed, else the text of the base version. */
+export function textoDoEditor(d: DadosFicha, ui: UiBarra): string {
+  if (!ui.ed) return '';
+  const typed = ui.ed.textos[ui.ed.secao];
+  if (typed !== undefined) return typed;
+  return corpoDaSecao(d.analises.find((x) => x.id === ui.ed!.base)?.d ?? {}, ui.ed.secao);
+}
+
+/** Editor of one section (spec 05 §5.7; mock-up .editor). Shown only while "Editar análise" is a valid action of the state. */
+export function editorHTML(d: DadosFicha, ui: UiBarra): string {
+  const ed = ui.ed;
+  if (!ed || !acoesDaBarra(d.f, d.coleta).includes('editar')) return '';
+  const v = validaCorpo(textoDoEditor(d, ui));
+  const espera = ui.aguardando === 'editar';
+  const opcoes = SECOES_EDITAVEIS.map((k) => `<option value="${k}"${k === ed.secao ? ' selected' : ''}>${esc(rotuloSecao(k))}</option>`).join('');
+  return '<div class="editor" id="editor">' +
+    `<label for="edSec" class="vh">Seção a editar</label><select id="edSec" class="edsel"${ui.aguardando ? ' disabled' : ''}>${opcoes}</select>` +
+    `<label for="edTxt" class="vh">Texto da seção</label><textarea id="edTxt"${espera ? ' readonly' : ''}>${esc(textoDoEditor(d, ui))}</textarea>` +
+    `<p class="help" id="edCount" aria-live="polite">${esc(contagemTxt(v))}</p>` +
+    (ed.secao === 's6' ? `<p class="help" id="edNote">${esc(NOTA_S6)}</p>` : '') +
+    (ed.conflito ? `<p class="qwarn" role="alert">${esc(TEXTO_CONFLITO_EDITAR)}</p>` : '') +
+    `<div class="actions"><button class="btn secondary" type="button" data-ed="salvar" id="edSalvar"${v.ok && !ui.aguardando ? '' : ' disabled'}>${espera ? 'Aguarde…' : `Salvar como v${proximaVersao(d.analises)} (autor humano)`}</button>` +
+    `<button class="btn text" type="button" data-ed="cancelar"${ui.aguardando ? ' disabled' : ''}>Cancelar</button></div></div>`;
 }
 
 // ---------- Qualification (spec 05 §5.4; spec 04, section 7) ----------
@@ -462,8 +489,11 @@ export interface UiBarra {
   porta: string | null; apagando: boolean;
   /** Reexecutar: what was ticked (null: nothing chosen yet) and whether the list is open (it stays open while ticking). */
   reex: string[] | null; reexAberto: boolean;
+  /** Editor open (null: closed): the version the text is based on (`baseadaEm`), the section chosen, what was typed per
+   *  section (a section never typed in shows the text of the base version) and the conflict notice. */
+  ed: { base: string; secao: string; textos: Record<string, string>; conflito: boolean } | null;
 }
-export const uiBarraVazia = (): UiBarra => ({ aguardando: null, erro: null, confirmando: false, apagarAgora: false, porta: null, apagando: false, reex: null, reexAberto: false });
+export const uiBarraVazia = (): UiBarra => ({ aguardando: null, erro: null, confirmando: false, apagarAgora: false, porta: null, apagando: false, reex: null, reexAberto: false, ed: null });
 
 /** Door the selector shows: the chosen one, else the decided one, else the probable one of the current analysis. */
 export function portaDoSeletor(d: DadosFicha, ui: UiBarra): string {
@@ -541,7 +571,7 @@ export function corpoHTML(d: DadosFicha, escolhida: string | null, hoje: Date, u
     h += `<div class="ver">${seletorHTML('aVer', 'Versão da análise', d.analises.map((x) => [x.id, x.id, versaoDesc(x)]), a!.id)}<span>nova versão a cada reexecução ou edição; as anteriores ficam guardadas</span></div>`;
   }
   h += '<div class="detail"><div style="display:flex;flex-direction:column;gap:var(--space-6);min-width:0">' +
-    (a ? pendenciasHTML(a) : '') + erroHTML(d) + fichaRecebidaHTML(d) + pessoasHTML(d) + preservadoHTML(d) + avaliacaoHTML(d, a) +
+    (a ? pendenciasHTML(a) : '') + erroHTML(d) + fichaRecebidaHTML(d) + pessoasHTML(d) + preservadoHTML(d) + avaliacaoHTML(d, a, ui) +
     '</div><div style="display:flex;flex-direction:column;gap:var(--space-6);min-width:0">' +
     qualificacaoHTML(d.f, atual, hoje) + pipelineHTML(d) + diagnosticoHTML(a, d.analises) + '</div></div>';
   return h;

@@ -451,3 +451,5 @@
 .adm .pk-multi .pk-lock{font:400 12px/1.3 var(--font-mono); text-transform:uppercase; letter-spacing:.04em; color:var(--muted)}
 .adm .pk-multi .pk-opt[aria-disabled="true"]{cursor:default}
 .adm .pk-note{margin:8px 0 0; font-size:13px; line-height:1.45; color:var(--muted)}
+/* Editar análise: section selector of the editor (mock-up #edSec, native select) */
+.adm .edsel{min-height:44px; padding:0 12px; background:var(--bg); border:1px solid var(--line-strong); border-radius:var(--radius-md); color:var(--ink); font:400 15px var(--font-sans); max-width:320px}
