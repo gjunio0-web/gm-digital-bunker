@@ -267,9 +267,9 @@ export function editorHTML(d: DadosFicha, ui: UiBarra): string {
   if (!ed || !acoesDaBarra(d.f, d.coleta).includes('editar')) return '';
   const v = validaCorpo(textoDoEditor(d, ui));
   const espera = ui.aguardando === 'editar';
-  const opcoes = SECOES_EDITAVEIS.map((k) => `<option value="${k}"${k === ed.secao ? ' selected' : ''}>${esc(rotuloSecao(k))}</option>`).join('');
+  const opcoes = SECOES_EDITAVEIS.map((k): [string, string, string] => [k, rotuloSecao(k), '']);
   return '<div class="editor" id="editor">' +
-    `<label for="edSec" class="vh">Seção a editar</label><select id="edSec" class="edsel"${ui.aguardando ? ' disabled' : ''}>${opcoes}</select>` +
+    seletorHTML('edSec', 'Seção a editar', opcoes, ed.secao) +
     `<label for="edTxt" class="vh">Texto da seção</label><textarea id="edTxt"${espera ? ' readonly' : ''}>${esc(textoDoEditor(d, ui))}</textarea>` +
     `<p class="help" id="edCount" aria-live="polite">${esc(contagemTxt(v))}</p>` +
     (ed.secao === 's6' ? `<p class="help" id="edNote">${esc(NOTA_S6)}</p>` : '') +

@@ -111,6 +111,7 @@ export function ligarFicha(alvo: HTMLElement, est: EstadoFicha, redesenhar: () =
       if (est.ui.reexAberto && lista && !reduz) lista.animate([{ height: '0px', opacity: 0 }, { height: lista.scrollHeight + 'px', opacity: 1 }], { duration: DUR, easing: EASE });
       return;
     }
+    if (pick && alvo.contains(pick) && pick.id === 'edSec' && est.ui?.aguardando) return;
     if (pick && alvo.contains(pick)) {
       if (est.ui) est.ui.reexAberto = false;
       const lista = document.getElementById(pick.getAttribute('aria-controls')!)!;
@@ -157,6 +158,11 @@ export function ligarFicha(alvo: HTMLElement, est: EstadoFicha, redesenhar: () =
     }
     if (opt && alvo.contains(opt)) {
       const campo = opt.closest('.pk')?.querySelector<HTMLElement>('.pick')?.id;
+      if (campo === 'edSec' && est.ui?.ed) {
+        if (est.ui.aguardando) return;
+        est.ui.ed.secao = opt.dataset.v ?? est.ui.ed.secao; est.ui.ed.conflito = false;
+        redesenhar(); alvo.querySelector<HTMLElement>('#edSec')?.focus({ preventScroll: true }); return;
+      }
       if (campo === 'aPorta' && est.ui) { est.ui.porta = opt.dataset.v ?? null; redesenhar(); alvo.querySelector<HTMLElement>('#aPorta')?.focus(); return; }
       est.versao = opt.dataset.v ?? null;
       redesenhar();
@@ -229,20 +235,10 @@ export function ligarFicha(alvo: HTMLElement, est: EstadoFicha, redesenhar: () =
       const b = alvo.querySelector<HTMLButtonElement>('#edSalvar'); if (b) b.disabled = !val.ok || !!est.ui.aguardando;
     }
   };
-  const onMuda = (e: Event) => {
-    const t = e.target as HTMLElement;
-    if (t.id === 'edSec' && est.ui?.ed && alvo.contains(t)) {
-      est.ui.ed.secao = (t as HTMLSelectElement).value;
-      est.ui.ed.conflito = false;
-      redesenhar();
-      alvo.querySelector<HTMLElement>('#edSec')?.focus({ preventScroll: true });
-    }
-  };
   document.addEventListener('click', onClick);
   document.addEventListener('keydown', onTecla);
   document.addEventListener('input', onTexto);
-  document.addEventListener('change', onMuda);
-  return () => { vivo = false; document.removeEventListener('click', onClick); document.removeEventListener('keydown', onTecla); document.removeEventListener('input', onTexto); document.removeEventListener('change', onMuda); };
+  return () => { vivo = false; document.removeEventListener('click', onClick); document.removeEventListener('keydown', onTecla); document.removeEventListener('input', onTexto); };
 }
 
 export function renderFicha(alvo: HTMLElement, id: string, db: Firestore, acoes?: ContextoAcoes): () => void {

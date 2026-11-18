@@ -231,7 +231,7 @@ try {
   assert.equal(await page.locator('#editor').count(), 0, 'closed at first');
   await page.click('[data-act="editar"]');
   assert.equal(await page.locator('#editor').count(), 1);
-  assert.deepEqual(await page.locator('#edSec option').allInnerTexts(), ['s1 · Qualificação imediata', 's2 · A empresa', 's3 · Setor', 's4 · Potencial de mercado', 's5 · Pessoas', 's6 · Enquadramento', 's7 · Preparação da primeira conversa']);
+  assert.deepEqual(await page.locator('#edSec-l .pk-n').allInnerTexts(), ['s1 · Qualificação imediata', 's2 · A empresa', 's3 · Setor', 's4 · Potencial de mercado', 's5 · Pessoas', 's6 · Enquadramento', 's7 · Preparação da primeira conversa']);
   assert.equal(await page.inputValue('#edTxt'), 'Texto da s1');
   assert.equal(await txt('#edCount'), '11 de 20.000 caracteres');
   assert.equal(await txt('#edSalvar'), 'Salvar como v2 (autor humano)');
@@ -239,10 +239,12 @@ try {
   assert.equal(await page.locator('#edNote').count(), 0);
   // Per-section text: typed text survives a switch of section and back; the s6 note shows only in s6
   await page.fill('#edTxt', 'Editado na s1');
-  await page.selectOption('#edSec', 's6');
+  await page.click('#edSec'); await page.click('#edSec-l [data-v="s6"]');
+  assert.equal(await txt('#edSec .pk-val'), 's6 · Enquadramento');
+  assert.equal(await page.getAttribute('#edSec', 'aria-expanded'), 'false', 'one tap chooses and closes');
   assert.equal(await page.inputValue('#edTxt'), 'Texto da s6');
   assert.ok((await txt('#edNote')).startsWith('Editar o texto de s6 não altera os filtros'));
-  await page.selectOption('#edSec', 's1');
+  await page.click('#edSec'); await page.click('#edSec-l [data-v="s1"]');
   assert.equal(await page.inputValue('#edTxt'), 'Editado na s1');
   assert.equal(await page.locator('#edNote').count(), 0);
   // Limit: empty blocks, 20,000 passes, 20,001 blocks; the counter says why

@@ -52,7 +52,8 @@ try {
   assert.equal(M.editorHTML(ficha('analise_pronta'), ui(null)), '');
   // Open on s1 of v2: option list s1..s7, text escaped, next version v3, base version kept apart from analiseAtual
   const h = M.editorHTML(ficha('analise_pronta'), ui({ base: 'v2', secao: 's1', textos: {}, conflito: false }));
-  assert.equal((h.match(/<option /g) ?? []).length, 7);
+  assert.equal((h.match(/class="pk-opt"/g) ?? []).length, 7);
+  assert.ok(h.includes('id="edSec" aria-expanded="false"') && h.includes('data-value="s1"'), 'selector in place (§5.9)');
   assert.ok(!/value="s0"|value="s8"/.test(h));
   assert.ok(h.includes('um &lt;b&gt;'));
   assert.ok(h.includes('Salvar como v3 (autor humano)'));
@@ -74,7 +75,7 @@ try {
   assert.ok(!/id="edSalvar" disabled/.test(M.editorHTML(ficha('analise_pronta'), ui({ base: 'v2', secao: 's1', textos: { s1: 'a'.repeat(20000) }, conflito: false }))));
   // While a call runs: button says Aguarde…, text read-only, selector and Cancelar off
   const he = M.editorHTML(ficha('analise_pronta'), { ...ui({ base: 'v2', secao: 's1', textos: {}, conflito: false }), aguardando: 'editar' });
-  assert.ok(he.includes('Aguarde…') && he.includes('readonly') && /id="edSec" class="edsel" disabled/.test(he));
+  assert.ok(he.includes('Aguarde…') && he.includes('readonly') && /data-ed="cancelar" disabled/.test(he));
   // Conflict: the approved text, inside the editor, with the typed text still there
   const hc = M.editorHTML(ficha('analise_pronta'), ui({ base: 'v1', secao: 's1', textos: { s1: 'meu texto' }, conflito: true }));
   assert.ok(hc.includes('role="alert"') && hc.includes(M.TEXTO_CONFLITO_EDITAR) && hc.includes('meu texto'));
