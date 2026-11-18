@@ -10,13 +10,17 @@ const dir = mkdtempSync(join(tmpdir(), 'sessao-'));
 try {
   const out = join(dir, 's.mjs');
   await build({ entryPoints: ['src/admin/sessao.ts'], bundle: true, format: 'esm', platform: 'node', outfile: out, logLevel: 'silent' });
-  const { mesmoUsuarioRoteado: m } = await import(pathToFileURL(out).href);
+  const { mesmoUsuarioRoteado: m, aoReceberNulo, ESPERA_SAIDA_MS } = await import(pathToFileURL(out).href);
   assert.equal(m(null, 'u1'), false, 'first sign-in routes');
   assert.equal(m('u1', 'u1'), true, 'same user again: no remount');
   assert.equal(m('u1', 'u2'), false, 'another user routes');
   assert.equal(m('u1', null), false);
   assert.equal(m('u1', undefined), false);
   assert.equal(m(null, null), false);
+  // A null user: at once when nothing was routed (first load, or after "Sair" cleared the uid); otherwise it waits
+  assert.equal(aoReceberNulo(null), 'sair-agora');
+  assert.equal(aoReceberNulo('u1'), 'esperar');
+  assert.ok(ESPERA_SAIDA_MS >= 2000 && ESPERA_SAIDA_MS <= 10000, 'longer than the ~850 ms gap seen, short enough to leave soon');
   // The shell wires it: the check comes before the role read, the uid is set before routing and cleared on sign-out and on no access
   const app = readFileSync('src/admin/app.ts', 'utf8');
   const i = app.indexOf('onAuthStateChanged(auth, async');
@@ -24,6 +28,9 @@ try {
   const pos = (t) => { const k = corpo.indexOf(t); assert.ok(k >= 0, 'missing in the shell: ' + t); return k; };
   assert.ok(pos('if (mesmoUsuarioRoteado(uidRoteado, user.uid)) return;') < pos('verificarAcesso('));
   assert.ok(pos('uidRoteado = user.uid;') < pos('rotear(db);'));
-  assert.equal((corpo.match(/uidRoteado = null;/g) ?? []).length, 2);
+  assert.equal((corpo.match(/uidRoteado = null;/g) ?? []).length, 2, 'sem-acesso and semSessao (the Sair click is checked below)');
+  assert.ok(pos("aoReceberNulo(uidRoteado) === 'sair-agora'") < pos('setTimeout(() => { if (!auth.currentUser) semSessao()'));
+  const sair = app.slice(app.indexOf("sairBtn.addEventListener('click'"), app.indexOf('onAuthStateChanged(auth, async'));
+  assert.ok(sair.indexOf('uidRoteado = null;') >= 0 && sair.indexOf('uidRoteado = null;') < sair.indexOf('signOut(auth)'), 'Sair clears the uid before signing out');
   console.log('test-admin-sessao: ok');
 } finally { rmSync(dir, { recursive: true, force: true }); }

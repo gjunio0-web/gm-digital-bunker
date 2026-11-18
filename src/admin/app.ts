@@ -10,7 +10,7 @@ import { getFirestore, doc, getDoc, type Firestore } from 'firebase/firestore';
 import { getFunctions, httpsCallable, type Functions } from 'firebase/functions';
 import type { Acao, ChamaAcao } from './leads/acoes';
 import { verificarAcesso } from './acesso';
-import { mesmoUsuarioRoteado } from './sessao';
+import { ESPERA_SAIDA_MS, aoReceberNulo, mesmoUsuarioRoteado } from './sessao';
 import { voltarConsumido } from './historico';
 import { MODULOS, type Modulo } from './registro';
 
@@ -25,6 +25,7 @@ const entrarBtn = form.querySelector<HTMLButtonElement>('button[type="submit"]')
 let desmontar: void | (() => void);
 // Uid of the user the shell has already routed: a re-emission for the same user must not remount the view (see ./sessao)
 let uidRoteado: string | null = null;
+let saidaPendente: ReturnType<typeof setTimeout> | undefined;
 
 // Single entry of the admin actions (spec 05 §5.7.1; spec 01 §4.1): `acaoAdmin`, region southamerica-east1.
 // The answer {ok, estado, analiseAtual} only confirms; the screen follows the Firestore listeners.
@@ -117,12 +118,20 @@ function iniciar(opcoes: FirebaseOptions) {
   });
 
   sairBtn.addEventListener('click', async () => {
+    uidRoteado = null; // an explicit sign-out leaves at once (see ./sessao)
     await signOut(auth);
     history.replaceState(null, '', '/admin');
   });
 
   onAuthStateChanged(auth, async (user) => {
-    if (!user) return semSessao();
+    if (!user) {
+      if (aoReceberNulo(uidRoteado) === 'sair-agora') return semSessao();
+      // Transient null while another tab rewrites the stored session: leave only if the user is still gone afterwards
+      clearTimeout(saidaPendente);
+      saidaPendente = setTimeout(() => { if (!auth.currentUser) semSessao(); }, ESPERA_SAIDA_MS);
+      return;
+    }
+    clearTimeout(saidaPendente);
     if (mesmoUsuarioRoteado(uidRoteado, user.uid)) return;
     const acesso = await verificarAcesso(() => lerPapel(db, user));
     if (acesso === 'sem-acesso') {
@@ -151,6 +160,7 @@ function iniciar(opcoes: FirebaseOptions) {
   });
 
   function semSessao() {
+    clearTimeout(saidaPendente);
     uidRoteado = null;
     if (typeof desmontar === 'function') desmontar();
     desmontar = undefined;
