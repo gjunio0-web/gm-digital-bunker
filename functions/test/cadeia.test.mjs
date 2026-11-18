@@ -31,12 +31,30 @@ test('cadeiaInvalida: refuses string chain, missing link, position outside the l
   assert.match(cadeiaInvalida(c3), /posicaoDaEmpresa\.elo/);
   const c4 = conteudoOk(); c4.setor.cadeiaDeValor.elos.push(elo('outro', { nomeDoElo: '  ' }));
   assert.match(cadeiaInvalida(c4), /nomeDoElo is required/);
-  const c5 = conteudoOk(); c5.setor.cadeiaDeValor.posicaoDaEmpresa = { elo: 'outro', nomeDoElo: null };
+  const c5 = conteudoOk(); c5.setor.cadeiaDeValor.posicaoDaEmpresa = { elo: 'outro', nomeDoElo: null, papel: 'p', tipo: 'inferencia', fonteIdx: [] };
   assert.match(cadeiaInvalida(c5), /posicaoDaEmpresa: nomeDoElo/);
   const c6 = conteudoOk(); c6.setor.cadeiaDeValor.elos.push(elo('outro', { nomeDoElo: 'Reciclagem' })); c6.setor.cadeiaDeValor.posicaoDaEmpresa = { elo: 'outro', nomeDoElo: 'Reciclagem', papel: 'p', tipo: 'fato', fonteIdx: [0] };
   assert.equal(cadeiaInvalida(c6), null);
   assert.match(cadeiaInvalida({ setor: null }), /must be an object/);
   assert.match(cadeiaInvalida({}), /must be an object/);
+});
+
+test('cadeiaInvalida (v0.37): tipo absent or outside the list is refused in elos[] and in posicaoDaEmpresa; valid tipos are accepted', () => {
+  const c1 = conteudoOk(); delete c1.setor.cadeiaDeValor.elos[2].tipo;
+  assert.match(cadeiaInvalida(c1), /elos\[2\]\.tipo must be fato, inferencia or nao_encontrado/);
+  const c2 = conteudoOk(); c2.setor.cadeiaDeValor.elos[0].tipo = 'estimativa';
+  assert.match(cadeiaInvalida(c2), /elos\[0\]\.tipo/);
+  const c3 = conteudoOk(); delete c3.setor.cadeiaDeValor.posicaoDaEmpresa.tipo;
+  assert.match(cadeiaInvalida(c3), /posicaoDaEmpresa\.tipo must be/);
+  const c4 = conteudoOk(); c4.setor.cadeiaDeValor.posicaoDaEmpresa.tipo = 'Fato';
+  assert.match(cadeiaInvalida(c4), /posicaoDaEmpresa\.tipo must be/);
+  for (const t of ['fato', 'inferencia', 'nao_encontrado']) {
+    const c = conteudoOk(); c.setor.cadeiaDeValor.elos.forEach((e) => { e.tipo = t; }); c.setor.cadeiaDeValor.posicaoDaEmpresa.tipo = t;
+    assert.equal(cadeiaInvalida(c), null, t);
+  }
+  // elo fato with no source is still accepted (it only lowers the stage confidence)
+  const c5 = conteudoOk(); c5.setor.cadeiaDeValor.elos[0] = elo('fornecedores_insumos', { tipo: 'fato', fonteIdx: [] });
+  assert.equal(cadeiaInvalida(c5), null);
 });
 
 test('the setor validator (as wired in the engine) refuses before and after the envelope check', () => {
@@ -219,5 +237,16 @@ test('setor: a second failure ends the call with "invalid answer after correctio
   try {
     await assert.rejects(chamaColeta(pedido()), (e) => e instanceof ErroColeta && /invalid answer after correction/.test(e.message) && e.parcial.uso.partes.length === 2);
     assert.equal(api.corpos.length, 2);
+  } finally { api.restaura(); }
+});
+
+test('setor: an invalid tipo gets the correction round, naming the elo in the message', async () => {
+  const ruim = conteudoOk(); delete ruim.setor.cadeiaDeValor.elos[1].tipo;
+  const api = simulaApi([envelope(ruim), envelope(conteudoOk())]);
+  try {
+    const r = await chamaColeta(pedido());
+    assert.equal(api.corpos.length, 2);
+    assert.match(api.corpos[1].messages.at(-1).content, /elos\[1\]\.tipo.*Sem novas buscas/s);
+    assert.equal(r.uso.partes.length, 2);
   } finally { api.restaura(); }
 });

@@ -64,11 +64,15 @@ export function cadeiaInvalida(conteudo: unknown): string | null {
     if (!e || typeof e !== 'object' || !ELOS_VALIDOS.includes(e.elo)) return `setor.cadeiaDeValor.elos has an elo outside the list (${ELOS_VALIDOS.join(', ')})`;
     if (e.elo === 'outro' && !textoCheio(e.nomeDoElo)) return 'setor.cadeiaDeValor.elos: nomeDoElo is required when elo = outro';
   }
+  // tipo (spec 02 v0.37): absent or outside the list is refused; without this an invalid tipo would escape the "elo sem fonte" rule.
+  const iTipo = cadeia.elos.findIndex((e: any) => !TIPOS_AFIRMACAO.includes(e.tipo));
+  if (iTipo >= 0) return `setor.cadeiaDeValor.elos[${iTipo}].tipo must be fato, inferencia or nao_encontrado`;
   const faltam = ELOS_OBRIGATORIOS.filter((k) => !cadeia.elos.some((e: any) => e.elo === k));
   if (faltam.length) return `setor.cadeiaDeValor.elos without the mandatory elo(s): ${faltam.join(', ')} (use tipo = nao_encontrado when there is no information)`;
   const pos = cadeia.posicaoDaEmpresa;
   if (!pos || typeof pos !== 'object' || !ELOS_VALIDOS.includes(pos.elo)) return 'setor.cadeiaDeValor.posicaoDaEmpresa.elo must be one of the list of elos';
   if (pos.elo === 'outro' && !textoCheio(pos.nomeDoElo)) return 'setor.cadeiaDeValor.posicaoDaEmpresa: nomeDoElo is required when elo = outro';
+  if (!TIPOS_AFIRMACAO.includes(pos.tipo)) return 'setor.cadeiaDeValor.posicaoDaEmpresa.tipo must be fato, inferencia or nao_encontrado';
   return null;
 }
 
