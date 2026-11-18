@@ -116,6 +116,9 @@ try {
   const { barraHTML, uiBarraVazia, corpoHTML } = D;
   const ficha = (f, coleta = {}) => ({ id: 'x', f, analises: [], eventos: [], coleta });
   const h1 = barraHTML(ficha({ estado: 'analise_pronta' }), uiBarraVazia());
+  // Simple buttons are direct children of .actbar (mock-up gap 12px), not inside .grp (gap 8px)
+  assert.ok(/<div class="actbar"[^>]*><button class="btn /.test(h1), 'first simple button is a direct child of .actbar');
+  assert.ok(!/<span class="grp"><button class="btn (primary|secondary)" type="button" data-act="(aprovar|editar|resposta|mandar)"/.test(h1), 'simple buttons are not wrapped in .grp');
   assert.ok(h1.includes('class="actbar" role="group" aria-label="Ações da ficha"'));
   assert.equal((h1.match(/class="btn primary"/g) ?? []).length, 1, 'um único botão cobalto');
   assert.ok(h1.includes('class="btn primary" type="button" data-act="aprovar"'));

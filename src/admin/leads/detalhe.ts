@@ -558,8 +558,9 @@ export function barraHTML(d: DadosFicha, ui: UiBarra): string {
     }
     return botao(i);
   };
+  // Simple buttons are direct children of .actbar (gap 12px), as in the mock-up; only porta/reexecutar/arquivar are .grp (gap 8px)
   const grupos = GRUPOS_BARRA.map((g) => g.filter((i) => itens.includes(i))).filter((g) => g.length)
-    .map((g) => `<span class="grp">${g.map(corpoGrupo).join('')}</span>`).join('<span class="sep" aria-hidden="true"></span>');
+    .map((g) => (GRUPOS_BARRA[0].includes(g[0]) ? g.map(corpoGrupo).join('') : `<span class="grp">${g.map(corpoGrupo).join('')}</span>`)).join('<span class="sep" aria-hidden="true"></span>');
   return `<div class="actbar" role="group" aria-label="Ações da ficha">${grupos}</div>${aviso}`;
 }
 
