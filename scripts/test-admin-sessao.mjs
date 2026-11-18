@@ -21,8 +21,9 @@ try {
   const app = readFileSync('src/admin/app.ts', 'utf8');
   const i = app.indexOf('onAuthStateChanged(auth, async');
   const corpo = app.slice(i, app.indexOf('async function lerPapel'));
-  assert.ok(corpo.indexOf('mesmoUsuarioRoteado(uidRoteado, user.uid)') < corpo.indexOf('verificarAcesso('));
-  assert.ok(corpo.indexOf('uidRoteado = user.uid;') < corpo.indexOf('rotear(db);'));
+  const pos = (t) => { const k = corpo.indexOf(t); assert.ok(k >= 0, 'missing in the shell: ' + t); return k; };
+  assert.ok(pos('if (mesmoUsuarioRoteado(uidRoteado, user.uid)) return;') < pos('verificarAcesso('));
+  assert.ok(pos('uidRoteado = user.uid;') < pos('rotear(db);'));
   assert.equal((corpo.match(/uidRoteado = null;/g) ?? []).length, 2);
   console.log('test-admin-sessao: ok');
 } finally { rmSync(dir, { recursive: true, force: true }); }
