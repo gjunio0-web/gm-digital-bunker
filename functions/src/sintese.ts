@@ -159,10 +159,32 @@ export const INSTRUCAO_CONVERSA =
 // correction in <regras-rascunho> (spec 02 v0.25, 4.3).
 export const REGRAS_RASCUNHO = INSTRUCAO_CONVERSA.slice(INSTRUCAO_CONVERSA.indexOf('Rascunho da resposta'));
 
+// Format of coleta/setor (spec 02 v0.35, 3.3): the code, not the model, chooses the s3 instruction. `objeto`: cadeiaDeValor is an
+// object with elos (v0.33 onwards); `texto`: cadeiaDeValor is a string, or setor is null or absent (collection before v0.33, or a
+// stage without content). The preserved content of a failed stage may be in either format; the choice follows the content that
+// enters the synthesis (`coletaDe`).
+export type FormatoCadeia = 'objeto' | 'texto';
+export function formatoDaCadeia(coleta: Coleta): FormatoCadeia {
+  const b = coleta.setor;
+  if (!(b.usavel ?? b.status === 'concluida')) return 'texto';
+  const setor = (b.conteudo as { setor?: { cadeiaDeValor?: unknown } } | null)?.setor;
+  const c = setor?.cadeiaDeValor;
+  return c && typeof c === 'object' && !Array.isArray(c) ? 'objeto' : 'texto';
+}
+// The two versions of the s3 label list: the current one (LISTAS_ROTULOS.s3, also read by the reviewer checklist) and the one
+// with the elos, which changes only the parenthesis of the label "Cadeia de valor e posição da empresa.".
+const CADEIA_TEXTO_S3 = '**Cadeia de valor e posição da empresa.** · ';
+const CADEIA_ELOS_S3 =
+  '**Cadeia de valor e posição da empresa.** (todos os elos dentro deste rótulo único, sem rótulo por elo: cada elo de `setor.cadeiaDeValor.elos`, em ordem – fornecedores e insumos, produção e operação, distribuição e canais, cliente final, e os elos `outro` ao fim –, com o elo da empresa destacado e o papel dela ali; a concentração de margem ou poder entre os elos, quando houver; não condense em uma frase genérica; a concentração de mercado fica na **Dinâmica.** da s4) · ';
+const LISTA_S3: Record<FormatoCadeia, string> = {
+  texto: LISTAS_ROTULOS.s3,
+  objeto: LISTAS_ROTULOS.s3.replace(CADEIA_TEXTO_S3, CADEIA_ELOS_S3),
+};
+
 // The grade names come from escopo-limites.md (section 6) of the published method, copied by the code into
 // the instruction ("[lista literal dos cinco graus, A0 a A4]").
-export const instrucaoMontar = (graus: string) =>
-  `Monte a análise preliminar em sete seções (s1 a s7); s0 e s8 são montadas pelo código. Cada conteúdo vai na seção a que pertence; não antecipe nem repita conteúdo de outra seção; quando precisar do que está em outra, remeta a ela ("ver s2"). A s1 é o resumo: traz em uma linha porte, situação e aderência, e o detalhe e as fontes ficam na seção do assunto (s2 e s6); isso não conta como repetição. As seções, na ordem:\n\n${SECOES_MODELO.map((s) => `- **${s} ${TITULOS[s]}** – ${PROPOSITOS[s]}`).join('\n')}\n\nCada seção tem um \`corpo\` em Markdown, de leitura diagonal: parágrafos curtos, listas só quando há enumeração real, nada de repetir a ficha. Cada subseção começa com um rótulo em negrito, terminado em ponto dentro do negrito, seguido do texto na mesma linha ("**Atividade.** Texto…"); os parágrafos seguintes da mesma subseção não levam rótulo. Use só os rótulos da lista da seção, nesta ordem, cada um uma vez e todos eles; subseção sem material aparece com uma linha que diga "não encontrado" ou a razão; seção inteira sem material recebe \`vazia = true\`, sem rótulos. Listas por seção:\n\n${SECOES_MODELO.map((s) => `- **${s}:** ${LISTAS_ROTULOS[s]}`).join('\n')}\n\nO rótulo é só o nome da subseção: o valor ("aprovado", "enxuta") vai no texto, nunca no rótulo. Cada afirmação factual no corpo termina com a marca de fonte \`[F:etapa:idx]\`, que o código converte em link; inferências terminam com \`[inferência]\`; o que não foi encontrado é dito em uma linha. Seção sem material: \`vazia = true\` e \`motivoVazia\`. Os graus da escala de aderência aparecem sempre com o nome, na forma "A3 (alta)"; os nomes são: ${graus}. As lentes (automação, otimização, aumentação) e os eixos críticos (Gravidade de Dados, Continuidade de Formato, Confiabilidade & Verificabilidade) indicam a origem (prática ou livro, com a seção) na primeira ocorrência da análise. Para comparar datas, escreva as duas por extenso na mesma frase. Todo número tirado dos arquivos do método termina com a marca \`[M:arquivo:seção]\` (por exemplo \`[M:escopo-limites:1]\`), no lugar da marca de fonte da coleta.`;
+export const instrucaoMontar = (graus: string, formatoCadeia: FormatoCadeia = 'texto') =>
+  `Monte a análise preliminar em sete seções (s1 a s7); s0 e s8 são montadas pelo código. Cada conteúdo vai na seção a que pertence; não antecipe nem repita conteúdo de outra seção; quando precisar do que está em outra, remeta a ela ("ver s2"). A s1 é o resumo: traz em uma linha porte, situação e aderência, e o detalhe e as fontes ficam na seção do assunto (s2 e s6); isso não conta como repetição. As seções, na ordem:\n\n${SECOES_MODELO.map((s) => `- **${s} ${TITULOS[s]}** – ${PROPOSITOS[s]}`).join('\n')}\n\nCada seção tem um \`corpo\` em Markdown, de leitura diagonal: parágrafos curtos, listas só quando há enumeração real, nada de repetir a ficha. Cada subseção começa com um rótulo em negrito, terminado em ponto dentro do negrito, seguido do texto na mesma linha ("**Atividade.** Texto…"); os parágrafos seguintes da mesma subseção não levam rótulo. Use só os rótulos da lista da seção, nesta ordem, cada um uma vez e todos eles; subseção sem material aparece com uma linha que diga "não encontrado" ou a razão; seção inteira sem material recebe \`vazia = true\`, sem rótulos. Listas por seção:\n\n${SECOES_MODELO.map((s) => `- **${s}:** ${s === 's3' ? LISTA_S3[formatoCadeia] : LISTAS_ROTULOS[s]}`).join('\n')}\n\nO rótulo é só o nome da subseção: o valor ("aprovado", "enxuta") vai no texto, nunca no rótulo. Cada afirmação factual no corpo termina com a marca de fonte \`[F:etapa:idx]\`, que o código converte em link; inferências terminam com \`[inferência]\`; o que não foi encontrado é dito em uma linha. Seção sem material: \`vazia = true\` e \`motivoVazia\`. Os graus da escala de aderência aparecem sempre com o nome, na forma "A3 (alta)"; os nomes são: ${graus}. As lentes (automação, otimização, aumentação) e os eixos críticos (Gravidade de Dados, Continuidade de Formato, Confiabilidade & Verificabilidade) indicam a origem (prática ou livro, com a seção) na primeira ocorrência da análise. Para comparar datas, escreva as duas por extenso na mesma frase. Todo número tirado dos arquivos do método termina com a marca \`[M:arquivo:seção]\` (por exemplo \`[M:escopo-limites:1]\`), no lugar da marca de fonte da coleta.`;
 export const listaDeGraus = (graus: Record<string, string>) =>
   ['A0', 'A1', 'A2', 'A3', 'A4'].filter((g) => graus[g]).map((g) => `${g} (${graus[g]})`).join(', ');
 
@@ -188,10 +210,10 @@ export function mensagemConversa(dados: string, enquadramento: unknown, lead: Pi
   ];
 }
 
-export function mensagemMontar(dados: string, enquadramento: unknown, conversa: unknown, lead: Pick<Lead, 'destino' | 'modificadores'>, graus: string) {
+export function mensagemMontar(dados: string, enquadramento: unknown, conversa: unknown, lead: Pick<Lead, 'destino' | 'modificadores'>, graus: string, formatoCadeia: FormatoCadeia = 'texto') {
   return [
     { texto: dados },
-    { texto: [`<enquadramento>\n${json(enquadramento)}\n</enquadramento>`, `<conversa>\n${json(conversa)}\n</conversa>`, blocoLead(lead), instrucaoMontar(graus), INSTRUCAO_FONTES, 'Responda no esquema.'].join('\n') },
+    { texto: [`<enquadramento>\n${json(enquadramento)}\n</enquadramento>`, `<conversa>\n${json(conversa)}\n</conversa>`, blocoLead(lead), instrucaoMontar(graus, formatoCadeia), INSTRUCAO_FONTES, 'Responda no esquema.'].join('\n') },
   ];
 }
 

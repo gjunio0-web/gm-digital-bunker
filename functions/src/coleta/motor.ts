@@ -12,7 +12,7 @@ import { custoDe, promptTotal, type Precos, type Uso } from '../custo.js';
 import { detalheSemPreco } from '../uso.js';
 import { esforcoApi, esforcoDe, modeloDe } from '../modelos.js';
 import { chamaColeta, chaveUrl, ErroColeta, type RespostaColeta } from './claudeColeta.js';
-import { formatoInvalido, normalizaEnvelope, type Envelope, type FonteColeta } from './envelope.js';
+import { cadeiaInvalida, formatoInvalido, normalizaEnvelope, type Envelope, type FonteColeta } from './envelope.js';
 import { CHAVES, INSTRUCAO_CANDIDATOS, LIMITES_DA_ETAPA, MAX_BUSCAS, MAX_LEITURAS, METODO_DA_ETAPA, mensagemDaEtapa, type BlocoContexto, type DadosFicha, type Etapa } from './etapas.js';
 import { leSite, type LeituraSite } from './site.js';
 import { cnpjValido, consultaBrasilApi, type RegistroBrasilApi } from './cnpj.js';
@@ -126,7 +126,7 @@ async function envelopeDaEtapa(c: Contexto, t: Rastro, etapa: Etapa, fontes: Fon
     const reg = (c.codigo.empresa_registro?.registros as { cnpj: string }[] | undefined)?.[0];
     if (etapa === 'empresa_registro' && reg) Object.assign((r.json as any).conteudo, { confirmado: true, escolhido: { cnpj: reg.cnpj, porteLegal: 'demais' } });
     t.rs.push(r);
-  } else r = await chama(c, t, etapa, usuario, maxBuscas, (j) => formatoInvalido(j, CHAVES[etapa]));
+  } else r = await chama(c, t, etapa, usuario, maxBuscas, (j) => formatoInvalido(j, CHAVES[etapa]) ?? (etapa === 'setor' ? cadeiaInvalida((j as { conteudo: unknown }).conteudo) : null));
   const verificadas = new Set([...fontes.map((f) => chaveUrl(f.url)), ...extraVerificadas.map(chaveUrl), ...r.urlsConsultadas]);
   return normalizaEnvelope(r.json as Record<string, any>, verificadas, agoraIso());
 }

@@ -23,7 +23,7 @@ import { CARGOS_ROTULO } from './textos.generated.js';
 import {
   ESQUEMA_CONVERSA, ESQUEMA_ENQUADRAR, ESQUEMA_MONTAR, ETAPAS_COLETA, SECOES_MODELO, blocoDados, coletaDe, enquadramentoGravado,
   enquadramentoDoModelo, linkaMarcas, listaDeGraus, mensagemConversa, normalizaEnquadramento, mensagemEnquadrar, mensagemMontar, secaoS0, secaoS8, simulaConversa, simulaEnquadrar, simulaMontar,
-  combinacaoConfere, comCombinacaoNormalizada, validaConversa, validaEnquadrar, validaMontar, type FichaSintese,
+  combinacaoConfere, comCombinacaoNormalizada, formatoDaCadeia, validaConversa, validaEnquadrar, validaMontar, type FichaSintese,
 } from './sintese.js';
 import type { Normalizado, Original } from './validacao.js';
 
@@ -138,7 +138,7 @@ export const sintetizar = onDocumentUpdated(
       const lead = await graduaAnalise(ref, p, enq, versao);
       const conversa = validaConversa(await chama('preparar_conversa', mensagemConversa(dados, enquadramentoDoModelo(enq), lead), ESQUEMA_CONVERSA, () => simulaConversa(original.nome, /reparo/i.test(original.mensagem ?? ''))));
       const comFalha = /pend[eê]ncia/i.test(original.mensagem ?? '');
-      const montagem = validaMontar(await chama('montar_analise', mensagemMontar(dados, enquadramentoDoModelo(enq), conversa, lead, graus), ESQUEMA_MONTAR, () => simulaMontar(comFalha)));
+      const montagem = validaMontar(await chama('montar_analise', mensagemMontar(dados, enquadramentoDoModelo(enq), conversa, lead, graus, formatoDaCadeia(coleta)), ESQUEMA_MONTAR, () => simulaMontar(comFalha)));
 
       // Usage per call and in total (spec 01 v0.11, uso); the revisor's entry is added by verificar.
       const chamadas = Object.values(registros);
