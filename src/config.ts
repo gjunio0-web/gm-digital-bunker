@@ -24,10 +24,16 @@ export const LINKEDIN = 'https://www.linkedin.com/in/gjunio0';
 export const HUB = EM_PRODUCAO ? 'https://ai-strat-hub.netlify.app' : 'https://quality-env--ai-strat-hub.netlify.app';
 // Admin hub (spec 05): public Firebase web configuration, one app per environment. These values identify
 // the Firebase project to the browser and are public by design; access is enforced by Firebase Auth and
-// the Firestore rules. The production app does not exist yet, so production builds get null and the hub
-// shows that it is not configured.
+// the Firestore rules. Production app registered on 2026-11-18 with the hub release.
 export const FIREBASE_WEB = EM_PRODUCAO
-  ? null
+  ? {
+      apiKey: 'AIzaSyDfZGLzlasoWRKPambyRLjARoPoxkHTsPk',
+      authDomain: 'gmdb-producao.firebaseapp.com',
+      projectId: 'gmdb-producao',
+      storageBucket: 'gmdb-producao.firebasestorage.app',
+      messagingSenderId: '1013681622438',
+      appId: '1:1013681622438:web:15f69badb8d178ceca1367',
+    }
   : {
       apiKey: 'AIzaSyAKGjUHAjPXpJphfrmc9JhUJzh7jkicyWo',
       authDomain: 'gmdb-qualidade.firebaseapp.com',
