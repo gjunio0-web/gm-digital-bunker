@@ -109,10 +109,11 @@ export function etapaUsavel<T extends { status?: unknown; preservado?: { blocos?
   return d.status === 'falhou' && Array.isArray(d.preservado?.blocos) && (d.preservado?.blocos as unknown[]).includes('etapa');
 }
 
-// Every stage of a set is usable for what comes next (the triagem, or the synthesis): concluida, nao_aplicavel, or
-// falhou with the whole stage preserved. A missing document ({}), pendente or executando makes it false.
+// Every stage of a set is usable for what comes next (the triagem, or the synthesis): concluida, or falhou with the
+// whole stage preserved. A missing document ({}), pendente, executando or nao_aplicavel (nothing writes it; spec 01
+// v0.45) makes it false.
 export function etapasUsaveis(etapas: { status?: unknown; preservado?: { blocos?: unknown } | null }[]): boolean {
-  return etapas.every((d) => ['concluida', 'nao_aplicavel'].includes(d.status as string) || etapaUsavel(d));
+  return etapas.every((d) => etapaUsavel(d));
 }
 
 // What the engine tried for a block in this run. "nao_consultado": provider off, no key or cap reached.

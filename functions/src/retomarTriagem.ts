@@ -24,8 +24,8 @@ export function deveRetomar(antes: Ficha, depois: Ficha): 'qualificar' | 'gradua
   return null;
 }
 
-// The triagem can go on when every minimal stage is concluida or nao_aplicavel, or usable (falhou with the whole stage
-// preserved; spec 01 v0.33). A stage pendente, executando or falhou without preservado makes it give up.
+// The triagem can go on when every minimal stage is usable: concluida, or falhou with the whole stage preserved
+// (spec 01 v0.33 and v0.45). A stage pendente, executando or falhou without preservado makes it give up.
 export function triagemPodeSeguir(etapas: { status?: unknown; preservado?: { blocos?: unknown } | null }[]): boolean {
   return etapasUsaveis(etapas);
 }

@@ -123,11 +123,11 @@ test('validaAlvo: coleta_minima only alone and only in recebida with erro (spec 
   assert.equal(campoDe(() => validaAlvo(['empresa_digital'], { estado: 'recebida', erro })), 'parametro_invalido:alvo'); // no stage document yet
 });
 
-test('etapasUsaveis: concluida, nao_aplicavel or preserved whole; a missing document, pendente, executando or falhou alone are not', () => {
+test('etapasUsaveis: concluida or preserved whole; nao_aplicavel (nothing writes it), a missing document, pendente, executando or falhou alone are not', () => {
   const c = { status: 'concluida' };
   assert.equal(etapasUsaveis([c, c, c, c, c, c]), true);
   assert.equal(etapasUsaveis([c, { status: 'falhou', preservado: { blocos: ['etapa'] } }]), true);
-  assert.equal(etapasUsaveis([c, { status: 'nao_aplicavel' }]), true);
+  assert.equal(etapasUsaveis([c, { status: 'nao_aplicavel' }]), false);
   assert.equal(etapasUsaveis([c, {}]), false);
   assert.equal(etapasUsaveis([c, { status: 'falhou', preservado: { blocos: ['apollo'] } }]), false);
   for (const status of ['pendente', 'executando', 'falhou']) assert.equal(etapasUsaveis([c, { status }]), false, status);
@@ -216,10 +216,10 @@ test('deveRetomarColeta: erro filled to null in coleta_minima only', () => {
   assert.equal(deveRetomarColeta({ estado: 'coleta_minima', erro }, undefined), false);
 });
 
-test('triagemPodeSeguir: concluida, nao_aplicavel or preserved whole; pendente, executando or falhou alone make it give up', () => {
+test('triagemPodeSeguir: concluida or preserved whole; nao_aplicavel, pendente, executando or falhou alone make it give up', () => {
   const c = { status: 'concluida' };
   assert.equal(triagemPodeSeguir([c, c]), true);
-  assert.equal(triagemPodeSeguir([c, { status: 'nao_aplicavel' }]), true);
+  assert.equal(triagemPodeSeguir([c, { status: 'nao_aplicavel' }]), false);
   assert.equal(triagemPodeSeguir([c, { status: 'falhou', preservado: { blocos: ['etapa'] } }]), true);
   assert.equal(triagemPodeSeguir([c, { status: 'falhou', preservado: { blocos: ['apollo'] } }]), false);
   for (const status of ['pendente', 'executando', 'falhou']) assert.equal(triagemPodeSeguir([c, { status }]), false, status);
