@@ -1,6 +1,7 @@
 // Single place for constants shared by the functions (spec 01, section 4).
 import { defineSecret } from 'firebase-functions/params';
 import { PESOS_PADRAO, type Pesos } from './graduacao.js';
+import { LIMITES_CADEIA_PADRAO } from './coleta/cadeia.js';
 
 // Region of every function (the Firestore database lives in the same region).
 export const REGIAO = 'southamerica-east1';
@@ -84,6 +85,9 @@ export const PIPELINE_PADRAO = {
   },
   // Lead grading weights (spec 04, sections 2.1 to 2.4; spec 01, config/pipeline), versioned.
   pesosQualificacao: PESOS_PADRAO,
+  // Structural limits of the setor value chain (spec 01 v0.46 to v0.48; spec 02, 2.5): tetoCaracteresItemCadeia,
+  // maxItensListaCadeia, maxElosCadeia, maxAtividadesApoio, tetoCaracteresNomeElo. Missing means the default.
+  ...LIMITES_CADEIA_PADRAO,
 } as const;
 
 export interface Pipeline {
@@ -101,6 +105,11 @@ export interface Pipeline {
   limiteFichasPorIpPorHora: number;
   fontes: Record<Fornecedor, Fonte>;
   pesosQualificacao: Pesos;
+  tetoCaracteresItemCadeia: number;
+  maxItensListaCadeia: number;
+  maxElosCadeia: number;
+  maxAtividadesApoio: number;
+  tetoCaracteresNomeElo: number;
 }
 
 export const DIA_MS = 24 * 60 * 60 * 1000;

@@ -6,6 +6,7 @@
 // company address from a personal one.
 import { EQUIVALENTES_ROTULO, ROTULOS, SECOES_MODELO, type Coleta, type SecaoModelo } from './sintese.js';
 import { secaoDoMetodo, type RegraChecklist, type RegrasMetodo } from './metodoRegras.js';
+import { avisosDaCadeia } from './coleta/cadeia.js';
 
 // Issue of the verification (spec 01 v0.11, verificacao): from the reviewer, trecho is the literal excerpt
 // and correcaoSugerida the proposed fix; from the code checks (tipo "mecanica"), trecho is the excerpt that
@@ -423,8 +424,12 @@ function marcasSemDestino(t: string, coleta: Coleta): string[] {
 
 // Stages of the collection without a source list (rule etapa_sem_fontes, informative): a warning, not an
 // issue of the analysis.
-export const avisosDaColeta = (coleta: Coleta): string[] =>
-  Object.entries(coleta).filter(([, b]) => !b.fontes?.length).map(([e]) => `etapa_sem_fontes: ${e}`);
+// elo_sem_atores_e_objetos (spec 02 v0.39, informative): elos fato or inferencia of a format (c) chain with atores and
+// objetos both empty, one warning per elo, from coleta/setor as it enters the synthesis.
+export const avisosDaColeta = (coleta: Coleta): string[] => [
+  ...Object.entries(coleta).filter(([, b]) => !b.fontes?.length).map(([e]) => `etapa_sem_fontes: ${e}`),
+  ...avisosDaCadeia(coleta.setor?.conteudo),
+];
 
 // Scope items removed by origin before graduar (spec 02 v0.12, 3.1): a nao_faz item that does not come from the
 // ficha, kept in enquadramento.detalhe.escopo.itensRemovidos.

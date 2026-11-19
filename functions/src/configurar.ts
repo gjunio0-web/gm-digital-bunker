@@ -6,6 +6,7 @@
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { ESFORCOS, ETAPAS_MODELO, PIPELINE_PADRAO } from './config.js';
+import { LIMITES_CADEIA_PADRAO } from './coleta/cadeia.js';
 
 const [projectId, ...pares] = process.argv.slice(2);
 if (!projectId || !pares.length) {
@@ -33,6 +34,13 @@ for (const par of pares) {
   if (chave === 'maxAnalisesPorDia') {
     const valor = bruto === 'null' ? null : Number(bruto);
     if (valor !== null && (!Number.isInteger(valor) || valor < 0)) throw new Error(`Invalid value for ${chave}: ${bruto}`);
+    campos[chave] = valor;
+    continue;
+  }
+  // Value chain limits (spec 01 v0.46 to v0.48): positive integers only.
+  if (chave in LIMITES_CADEIA_PADRAO) {
+    const valor = Number(bruto);
+    if (!Number.isInteger(valor) || valor < 1) throw new Error(`Invalid value for ${chave}: ${bruto}`);
     campos[chave] = valor;
     continue;
   }

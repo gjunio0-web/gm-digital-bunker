@@ -5,6 +5,7 @@
 import type { Lead } from './graduacao.js';
 import { DEFINICOES_TECNOLOGIA } from './qualificacao.js';
 import { etapaUsavel } from './coleta/preservacao.js';
+import { comCadeiaOrdenada, formatoDoConteudo, type FormatoCadeia } from './coleta/cadeia.js';
 
 export const ETAPAS_COLETA = ['empresa_registro', 'empresa_digital', 'empresa_pessoas', 'empresa_noticias', 'setor', 'mercado'] as const;
 export type EtapaColeta = (typeof ETAPAS_COLETA)[number];
@@ -82,7 +83,8 @@ export function coletaDe(docs: Partial<Record<EtapaColeta, Record<string, any> |
     return [e, {
       status: d?.status ?? null,
       usavel,
-      conteudo: usavel ? d?.conteudo ?? null : null,
+      // setor in format (c) goes with the elos in chain order (spec 02 v0.40, 2.5 and 3.3).
+      conteudo: usavel ? (e === 'setor' ? comCadeiaOrdenada(d?.conteudo ?? null) : d?.conteudo ?? null) : null,
       afirmacoes: usavel && Array.isArray(d?.afirmacoes) ? d.afirmacoes : [],
       fontes: usavel && Array.isArray(d?.fontes) ? d.fontes : [],
       ...(p && Array.isArray(p.blocos) && p.blocos.length ? { anterior: { blocos: p.blocos as string[], desde: desde?.toDate ? desde.toDate().toISOString() : typeof desde === 'string' ? desde : null } } : {}),
@@ -159,26 +161,27 @@ export const INSTRUCAO_CONVERSA =
 // correction in <regras-rascunho> (spec 02 v0.25, 4.3).
 export const REGRAS_RASCUNHO = INSTRUCAO_CONVERSA.slice(INSTRUCAO_CONVERSA.indexOf('Rascunho da resposta'));
 
-// Format of coleta/setor (spec 02 v0.35, 3.3): the code, not the model, chooses the s3 instruction. `objeto`: cadeiaDeValor is an
-// object with elos (v0.33 onwards); `texto`: cadeiaDeValor is a string, or setor is null or absent (collection before v0.33, or a
-// stage without content). The preserved content of a failed stage may be in either format; the choice follows the content that
-// enters the synthesis (`coletaDe`).
-export type FormatoCadeia = 'objeto' | 'texto';
+// Format of coleta/setor (spec 02 v0.38, 3.3): the code, not the model, chooses the s3 instruction. (a) `texto`: cadeiaDeValor is a
+// string, or setor is null or absent (collection before v0.33, or a stage without content); (b) `objeto`: object without
+// clienteFinal (v0.33 to v0.37); (c) `atividades`: object with clienteFinal (v0.38 onwards). The preserved content of a failed
+// stage may be in any format; the choice follows the content that enters the synthesis (`coletaDe`).
+export type { FormatoCadeia };
 export function formatoDaCadeia(coleta: Coleta): FormatoCadeia {
   const b = coleta.setor;
   if (!(b.usavel ?? b.status === 'concluida')) return 'texto';
-  const setor = (b.conteudo as { setor?: { cadeiaDeValor?: unknown } } | null)?.setor;
-  const c = setor?.cadeiaDeValor;
-  return c && typeof c === 'object' && !Array.isArray(c) ? 'objeto' : 'texto';
+  return formatoDoConteudo(b.conteudo);
 }
-// The two versions of the s3 label list: the current one (LISTAS_ROTULOS.s3, also read by the reviewer checklist) and the one
-// with the elos, which changes only the parenthesis of the label "Cadeia de valor e posição da empresa.".
+// The three versions of the s3 label list: the current one (LISTAS_ROTULOS.s3, also read by the reviewer checklist) and the two
+// with the elos, which change only the parenthesis of the label "Cadeia de valor e posição da empresa." (literal texts of 3.3).
 const CADEIA_TEXTO_S3 = '**Cadeia de valor e posição da empresa.** · ';
 const CADEIA_ELOS_S3 =
   '**Cadeia de valor e posição da empresa.** (todos os elos dentro deste rótulo único, sem rótulo por elo: cada elo de `setor.cadeiaDeValor.elos`, em ordem – fornecedores e insumos, produção e operação, distribuição e canais, cliente final, e os elos `outro` ao fim –, com o elo da empresa destacado e o papel dela ali; a concentração de margem ou poder entre os elos, quando houver; não condense em uma frase genérica; a concentração de mercado fica na **Dinâmica.** da s4) · ';
+const CADEIA_ATIVIDADES_S3 =
+  '**Cadeia de valor e posição da empresa.** (todos os elos dentro deste rótulo único, sem rótulo por elo, nesta ordem: cada elo de `setor.cadeiaDeValor.elos`, na ordem da cadeia (seção 2.5) – suprimento, produção e operação, distribuição e comercialização, serviço e relacionamento, com cada elo `outro` depois do elo indicado em `depoisDe`, ou ao fim quando `depoisDe` é nulo –, com a atividade, os atores e os objetos; depois as atividades de apoio, quando houver; depois o cliente final, como destino da cadeia; depois a posição da empresa, destacada, com o papel dela em cada elo em que atua; por fim a concentração de margem ou poder entre os elos, quando houver; não condense em uma frase genérica; a concentração de mercado fica na **Dinâmica.** da s4) · ';
 const LISTA_S3: Record<FormatoCadeia, string> = {
   texto: LISTAS_ROTULOS.s3,
   objeto: LISTAS_ROTULOS.s3.replace(CADEIA_TEXTO_S3, CADEIA_ELOS_S3),
+  atividades: LISTAS_ROTULOS.s3.replace(CADEIA_TEXTO_S3, CADEIA_ATIVIDADES_S3),
 };
 
 // The grade names come from escopo-limites.md (section 6) of the published method, copied by the code into

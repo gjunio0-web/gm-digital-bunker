@@ -2,6 +2,7 @@
 // required content keys and the user message of each call.
 import type { ArquivoMetodo } from '../metodoArquivos.js';
 import { ESQUEMAS, INSTRUCOES } from './textosSpec.js';
+import { comLimites, type LimitesCadeia } from './cadeia.js';
 import type { FonteColeta } from './envelope.js';
 
 export const ETAPAS = ['empresa_digital', 'empresa_registro', 'empresa_pessoas', 'empresa_noticias', 'setor', 'mercado'] as const;
@@ -78,6 +79,11 @@ export interface BlocoContexto {
   rotulo: 'sinais' | 'qualificacao';
   valor: unknown;
 }
+
+// Instruction of a stage as sent to the model: the setor clause carries ⟨name⟩ markers for the value chain limits
+// of config/pipeline, replaced here (spec 02 v0.39, 2.5); the other stages are sent as written.
+export const instrucaoDaEtapa = (etapa: Etapa, limites: LimitesCadeia): string =>
+  etapa === 'setor' ? comLimites(INSTRUCOES.setor, limites) : INSTRUCOES[etapa];
 
 // User message: same ficha and context block for every stage, the code-provided sources
 // with their indices, the stage inputs, the instruction and the answer format.
