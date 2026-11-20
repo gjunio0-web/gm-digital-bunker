@@ -1,0 +1,97 @@
+# Cloud Functions: unit tests and emulator on every push of the working branch; deploy and seed only when a
+# deploy branch is pushed (implantar/qualidade, implantar/producao) or when started by hand in the Actions tab.
+# Google credentials come from Workload Identity Federation (no key stored in GitHub); the one-time setup is in
+# scripts/ci/configurar-implantacao.sh and functions/README.md ("Implantação pelo GitHub Actions").
+name: Funções
+
+on:
+  push:
+    branches: [quality-env, implantar/qualidade, implantar/producao]
+  workflow_dispatch:
+    inputs:
+      ambiente:
+        description: Ambiente de destino
+        type: choice
+        options: [qualidade, producao]
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  FIREBASE_TOOLS: firebase-tools@15.35.0
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: functions } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: functions/package-lock.json }
+      - run: npm ci
+      - run: npm test
+
+  emulador:
+    needs: testes
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: functions } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: functions/package-lock.json }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: emuladores-${{ env.FIREBASE_TOOLS }}
+      - run: npm ci && npm i -g ${{ env.FIREBASE_TOOLS }}
+      # The emulator reads the function secrets from .secret.local; no real value is needed (no external call).
+      - name: Segredos fictícios do emulador
+        run: |
+          for s in SMTP2GO_API_KEY CLAUDE_API_KEY APOLLO_API_KEY APIFY_TOKEN HUNTER_API_KEY; do echo "$s=emulator-not-used"; done > .secret.local
+          echo "IP_HASH_SALT=emulator-salt" >> .secret.local
+      - run: npm run emulador
+
+  implantar:
+    needs: [testes, emulador]
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/implantar/')
+    runs-on: ubuntu-latest
+    # The GitHub environment holds the identity variables of each project; producao requires Gon's approval.
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.ambiente || (github.ref == 'refs/heads/implantar/producao' && 'producao' || 'qualidade') }}
+    concurrency:
+      group: implantar-${{ github.event_name == 'workflow_dispatch' && inputs.ambiente || github.ref_name }}
+      cancel-in-progress: false
+    permissions: { contents: read, id-token: write }
+    defaults: { run: { working-directory: functions } }
+    steps:
+      - name: Ambiente e projeto
+        id: alvo
+        working-directory: .
+        env:
+          ENTRADA: ${{ inputs.ambiente }}
+          REF: ${{ github.ref }}
+        run: |
+          if [ -n "$ENTRADA" ]; then ambiente="$ENTRADA"; elif [ "$REF" = refs/heads/implantar/producao ]; then ambiente=producao; else ambiente=qualidade; fi
+          # Production only from main or its deploy branch.
+          if [ "$ambiente" = producao ] && [ "$REF" != refs/heads/main ] && [ "$REF" != refs/heads/implantar/producao ]; then
+            echo "Produção só a partir de main ou implantar/producao (ref: $REF)"; exit 1
+          fi
+          echo "ambiente=$ambiente" >> "$GITHUB_OUTPUT"
+          echo "projeto=gmdb-$ambiente" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: functions/package-lock.json }
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.CONTA_IMPLANTACAO }}
+      - run: npm ci && npm i -g ${{ env.FIREBASE_TOOLS }}
+      # No --force: a function present in the project and missing in the code stops the deploy instead of being deleted.
+      - name: Implantar as funções
+        working-directory: .
+        run: firebase deploy --only functions --project ${{ steps.alvo.outputs.ambiente }} --non-interactive
+      # Re-runnable: adds only the fields missing from config/pipeline and never overwrites (functions/src/seed.ts).
+      - name: Seed de config/pipeline
+        run: npm run seed -- ${{ steps.alvo.outputs.projeto }}

@@ -134,6 +134,25 @@ O deploy roda o build antes (`predeploy`). `--only functions:receberFicha,functi
 
 Produção: só por pedido explícito de Gon, na ordem da lista abaixo.
 
+## Implantação pelo GitHub Actions
+
+O fluxo `.github/workflows/funcoes.yml` roda em três situações:
+
+| Gatilho | O que roda |
+|---|---|
+| push em `quality-env` | `npm test` e o emulador (com segredos fictícios); não implanta |
+| push em `implantar/qualidade` | testes, emulador, implantação das funções em `gmdb-qualidade` e `npm run seed` |
+| push em `implantar/producao`, ou "Run workflow" na aba Actions | o mesmo em `gmdb-producao`, só a partir de `main` ou `implantar/producao` e só depois da aprovação de Gon no ambiente `producao` do GitHub |
+
+A implantação não usa `--force`: uma função que exista no projeto e não no código para a implantação, em vez de ser apagada. O seed só acrescenta campos ausentes. As regras do Firestore e do Storage não são implantadas por este fluxo.
+
+As credenciais do Google vêm da federação de identidade de cargas de trabalho (Workload Identity Federation): o GitHub prova a identidade do repositório a cada execução, e nenhuma chave fica guardada no GitHub.
+
+Configuração única, por projeto, feita por um proprietário do projeto:
+
+1. No Cloud Shell, na raiz do repositório: `bash scripts/ci/configurar-implantacao.sh gmdb-qualidade`, e depois o mesmo com `gmdb-producao`. O script cria a conta de serviço `github-implantacao`, concede os papéis de implantação e cria o provedor de identidade aceito só para este repositório. A lista de papéis é hipótese: se faltar uma permissão, a primeira implantação falha e o erro diz qual é.
+2. No GitHub, em Settings → Environments, criar os ambientes `qualidade` e `producao`. Em cada um, criar as variáveis `WIF_PROVIDER` e `CONTA_IMPLANTACAO`, com os valores que o script imprimiu para o projeto correspondente. No ambiente `producao`, marcar Gon em "Required reviewers".
+
 ## Lista de entrada em produção (`gmdb-producao`)
 
 Na ordem; cada passo só depois do anterior. Comandos a partir da raiz do repositório.
