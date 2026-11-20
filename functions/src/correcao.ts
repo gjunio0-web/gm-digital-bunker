@@ -94,7 +94,7 @@ export function validaCorrecao(v: unknown, n: number) {
   const c = v as Record<string, any>;
   if (!c || typeof c !== 'object' || !Array.isArray(c.tratamentos)) throw new Error('corrigir: output does not match the schema');
   const montagem = validaMontar(Object.fromEntries([...SECOES_MODELO, 'resumoExecutivo'].map((k) => [k, c[k]])));
-  const conv = validaConversa({ ...(c.conversa ?? {}), rascunhoResposta: c.rascunhoResposta });
+  const conv = validaConversa({ ...(c.conversa ?? {}), rascunhoResposta: c.rascunhoResposta }, false);
   const porIndice = new Map<number, TratamentoDado>();
   for (const t of c.tratamentos) {
     if (!Number.isInteger(t?.indice) || t.indice < 0 || t.indice >= n || porIndice.has(t.indice) || !(TRATAMENTOS as readonly unknown[]).includes(t.tratamento)) continue;

@@ -196,3 +196,39 @@ export function avisosDaCadeia(conteudo: unknown): string[] {
     .filter((e) => ehObjeto(e) && (e.tipo === 'fato' || e.tipo === 'inferencia') && vazio(e.atores) && vazio(e.objetos))
     .map((e) => `elo_sem_atores_e_objetos: ${e.elo === 'outro' ? `outro (${String(e.nomeDoElo ?? '').trim()})` : e.elo}`);
 }
+
+// --- setor.pressoes (spec 02 v0.43, 2.5) ------------------------------------------------------------------------
+// Each pressure is {texto, tipo: fato | inferencia, fonteIdx}. Group 15 of the validation refuses an item that is not
+// an object with texto filled and a valid tipo; a `fato` with no source is not refused (it lowers the stage
+// confidence with "campos sem fonte", see pressaoFatoSemFonte).
+const TIPOS_PRESSAO = ['fato', 'inferencia'];
+export function pressoesInvalidas(conteudo: unknown): string | null {
+  const p = (conteudo as Record<string, any> | null)?.pressoes;
+  if (!Array.isArray(p)) return 'pressoes must be a list of {texto, tipo, fonteIdx} (an empty list is valid)';
+  for (const [i, x] of p.entries()) {
+    if (!ehObjeto(x) || !textoCheio(x.texto)) return `pressoes[${i}] must be an object with texto filled`;
+    if (!TIPOS_PRESSAO.includes(x.tipo)) return `pressoes[${i}].tipo must be fato or inferencia`;
+  }
+  return null;
+}
+// Full validation of the setor output: the value chain (groups 1 to 14), then the pressures (group 15).
+export const setorInvalido = (conteudo: unknown, l: LimitesCadeia = LIMITES_CADEIA_PADRAO): string | null =>
+  cadeiaInvalida(conteudo, l) ?? pressoesInvalidas(conteudo);
+// A `fato` pressure without sources follows the fill rule of section 2.
+export const pressaoFatoSemFonte = (conteudo: unknown): boolean => {
+  const p = (conteudo as Record<string, any> | null)?.pressoes;
+  return Array.isArray(p) && p.some((x) => ehObjeto(x) && x.tipo === 'fato' && !(Array.isArray(x.fonteIdx) && x.fonteIdx.length));
+};
+// Tolerant reading: a collection before v0.43 has pressoes as a list of strings; each string reads as
+// {texto, tipo: inferencia, fonteIdx: []}, with no refusal and without rewriting the stored document.
+export function pressoesLidas(p: unknown): unknown {
+  if (!Array.isArray(p)) return p;
+  return p.map((x) => (typeof x === 'string' ? { texto: x, tipo: 'inferencia', fonteIdx: [] } : x));
+}
+
+// coleta/setor as the code reads it: the chain in chain order (format (c)) and the pressures in the v0.43 form.
+export function setorLido<C>(conteudo: C): C {
+  const c = comCadeiaOrdenada(conteudo) as any;
+  if (!ehObjeto(c) || !Array.isArray(c.pressoes) || !c.pressoes.some((x: unknown) => typeof x === 'string')) return c;
+  return { ...c, pressoes: pressoesLidas(c.pressoes) } as C;
+}

@@ -403,9 +403,9 @@ test('avisosDaColeta adds the elo warnings after etapa_sem_fontes, from the seto
 
 const hash = (v) => createHash('sha256').update(JSON.stringify(v)).digest('hex');
 
-test('output schemas of enquadrar, preparar_conversa and montar_analise did not change with the value chain (hash)', () => {
+test('output schemas of enquadrar, preparar_conversa and montar_analise did not change with the value chain; preparar_conversa changed only by ligadaA (hash)', () => {
   assert.equal(hash(ESQUEMA_ENQUADRAR), 'c987f7901152fe0981e292867f869baf039cfc08e1f859555c94886a640c40a7');
-  assert.equal(hash(ESQUEMA_CONVERSA), 'f0de247b1a9c16563a7a0ca76ccb81b137d0efc45c17ca6a3f89723cba2b3bbb');
+  assert.equal(hash(ESQUEMA_CONVERSA), 'acd9ec21945464d47cd8b3970e37e4aafc52d29706ce214e1e39308a5da8c27e'); // changed on purpose by ligadaA (spec 02 v0.43)
   assert.equal(hash(ESQUEMA_MONTAR), '9f63dc8c6160e7516a0d080684ed91ec52e0fcf9e60f553d6bd1afb1d2b4ed9c');
 });
 

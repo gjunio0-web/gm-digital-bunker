@@ -17,7 +17,8 @@ export const INSTRUCAO_REPARAR =
 
 export const ESQUEMA_DA_ETAPA: Record<EtapaTexto, object> = { enquadrar: ESQUEMA_ENQUADRAR, preparar_conversa: ESQUEMA_CONVERSA, montar_analise: ESQUEMA_MONTAR };
 export const MAX_TOKENS_REPARO: Record<EtapaTexto, number> = { enquadrar: 32_000, preparar_conversa: 32_000, montar_analise: 48_000 };
-const VALIDA: Record<EtapaTexto, (v: unknown) => unknown> = { enquadrar: validaEnquadrar, preparar_conversa: validaConversa, montar_analise: validaMontar };
+// The repair may run on a correction version whose questions predate ligadaA (spec 02 v0.43): absent is accepted.
+const VALIDA: Record<EtapaTexto, (v: unknown) => unknown> = { enquadrar: validaEnquadrar, preparar_conversa: (v) => validaConversa(v, false), montar_analise: validaMontar };
 
 // Fields of analise/vN that the repair reads and may rewrite.
 export interface VersaoTextos {

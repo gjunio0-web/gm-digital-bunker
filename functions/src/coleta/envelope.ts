@@ -4,7 +4,7 @@
 // with value needs a sourced statement; since statements do not name their field, the code checks
 // that sourced statements exist whenever the content has values ("campos sem fonte" otherwise).
 import { chaveUrl } from './claudeColeta.js';
-import { reindexaCadeia } from './cadeia.js';
+import { pressaoFatoSemFonte, reindexaCadeia } from './cadeia.js';
 
 export interface FonteColeta {
   url: string;
@@ -85,6 +85,8 @@ export function normalizaEnvelope(bruto: Record<string, any>, verificadas: Set<s
   if (semFonte) motivos.push(`${semFonte} afirmação(ões) sem fonte`);
   const comFonte = afirmacoes.some((a) => a.fonteIdx.length);
   if (Object.values(bruto.conteudo).some(temValor) && !comFonte) motivos.push('campos sem fonte');
+  // A `fato` pressure of setor without sources counts as a field without source (spec 02 v0.43, 2.5, group 15).
+  else if (pressaoFatoSemFonte(bruto.conteudo)) motivos.push('campos sem fonte');
 
   // Re-indexing of the value chain (spec 02, section 2; cadeia.ts). The other content fields with fonteIdx are still
   // not re-indexed (spec pendency).

@@ -5,7 +5,7 @@
 import type { Lead } from './graduacao.js';
 import { DEFINICOES_TECNOLOGIA } from './qualificacao.js';
 import { etapaUsavel } from './coleta/preservacao.js';
-import { comCadeiaOrdenada, formatoDoConteudo, type FormatoCadeia } from './coleta/cadeia.js';
+import { formatoDoConteudo, setorLido, type FormatoCadeia } from './coleta/cadeia.js';
 
 export const ETAPAS_COLETA = ['empresa_registro', 'empresa_digital', 'empresa_pessoas', 'empresa_noticias', 'setor', 'mercado'] as const;
 export type EtapaColeta = (typeof ETAPAS_COLETA)[number];
@@ -83,8 +83,9 @@ export function coletaDe(docs: Partial<Record<EtapaColeta, Record<string, any> |
     return [e, {
       status: d?.status ?? null,
       usavel,
-      // setor in format (c) goes with the elos in chain order (spec 02 v0.40, 2.5 and 3.3).
-      conteudo: usavel ? (e === 'setor' ? comCadeiaOrdenada(d?.conteudo ?? null) : d?.conteudo ?? null) : null,
+      // setor as the code reads it: format (c) with the elos in chain order (spec 02 v0.40) and pressoes as
+      // {texto, tipo, fonteIdx}, strings of a collection before v0.43 included (v0.43).
+      conteudo: usavel ? (e === 'setor' ? setorLido(d?.conteudo ?? null) : d?.conteudo ?? null) : null,
       afirmacoes: usavel && Array.isArray(d?.afirmacoes) ? d.afirmacoes : [],
       fontes: usavel && Array.isArray(d?.fontes) ? d.fontes : [],
       ...(p && Array.isArray(p.blocos) && p.blocos.length ? { anterior: { blocos: p.blocos as string[], desde: desde?.toDate ? desde.toDate().toISOString() : typeof desde === 'string' ? desde : null } } : {}),
@@ -156,7 +157,7 @@ export const INSTRUCAO_ENQUADRAR =
   ', com evidência da coleta completa; `sem_sinal` só quando não houver nenhum sinal; com sinais contraditórios, classifique pelo sinal mais recente – o da coleta atual (site, vagas abertas) vale como o mais recente, e o datado (notícia, nota) vale pela data – e registre a contradição na evidência; o porte não é avaliado aqui, é calculado em código. Hipóteses de alavanca: no máximo três, cada uma ligada a um sinal concreto da coleta e classificada pelos critérios do Mapa; nunca com número de retorno. Riscos do lead: só os sustentados por sinal; não especule. Não reformule pedidos fora do escopo para que caibam. Setor: combine CNAE principal, CNAEs secundários e a descrição do site; se o registro e o site divergirem, registre a divergência sem escolher um lado; o setor do Apollo entra só como dado secundário, atribuído ao fornecedor (spec 03, seção 3.4). Com porta provável `combinacao`, diga em `porta.combinacao` quais portas e em que sequência (por exemplo, "Projeto seguido de Conselho de IA como continuidade"); com outra porta, `porta.combinacao` é null. Cada item avaliado do escopo e cada risco do lead declara a sua origem: `ficha` (consta do pedido ou da dor na mensagem), `hipotese` (vem de uma hipótese de alavanca desta análise) ou `coleta` (vem de um sinal da coleta, com fonte). Só itens de origem `ficha` podem ser classificados como `nao_faz`; só riscos de origem `ficha` ou `coleta` entram na lista principal. Não crie itens para o que ninguém pediu: se a prática não faz algo que a empresa não pediu, isso não é item de escopo nem risco. O risco `outro` exige `sinal` com fonte e não é pontuado. A direção do potencial vem com grau de confiança; sem dado de receita, margem ou volume da própria empresa, a confiança é `baixa` ou a direção é `indeterminado`.';
 
 export const INSTRUCAO_CONVERSA =
-  'Com o enquadramento, prepare a primeira conversa. Perguntas: de três a cinco, cada uma ligada a uma lacuna declarada na coleta (campo `nao_encontrado` ou `indeterminado`) ou a uma hipótese a validar; formule-as como perguntas abertas que o decisor consiga responder sem preparação. Materiais: de portas-materiais.md seção 3, coerentes com a porta provável, na quantidade do destino (Convidar: dois; Verificar a aderência: um; Nutrir: um, de entrada; Encerrar com cortesia: nenhum ou a página Serviços). Rascunho da resposta, seguindo as regras de portas-materiais.md seção 5: saudação com o primeiro nome do signatário ("Olá, Nome,"); escreva conforme o destino informado em `<lead>` – convite direto com os marcadores literais `[opção de horário 1]` e `[opção de horário 2]`, nunca com dia ou hora concretos; convite condicionado a uma pergunta sobre porte e estrutura; nutrição sem agenda; ou cortesia. Com escopo barrado, encaminhamento para o que a prática oferece; com ressalva, só a parte do pedido que cabe. Quadrante, grau, pontos, porte numérico e preço nunca aparecem, nem os termos internos da análise – porta, porta provável, destino, aderência, lente e eixo crítico; fale do caminho de trabalho pelo nome do serviço ("o Conselho de IA pode ser o caminho, a confirmar na conversa"). Até 120 palavras; no idioma da ficha (`lang`); assinatura "GM Digital Bunker™" sem nome de pessoa. Sobre a prática e seus casos, diga apenas o que consta de escopo-limites.md e portas-materiais.md; não atribua ao caso Elite 90 Pro autorização, porte do cliente, redução de tempo ou efeito em receita. Cada ponto de atenção que cite um limite de escopo nomeia o limite (\'limite 4 – execução técnica em software de terceiros\').';
+  'Com o enquadramento, prepare a primeira conversa. Perguntas: de três a cinco, cada uma ligada a uma lacuna declarada na coleta (campo `nao_encontrado` ou `indeterminado`) ou a uma hipótese a validar; formule-as como perguntas abertas que o decisor consiga responder sem preparação. Classifique cada pergunta em `ligadaA` (v0.43): `pessoa` quando ela trata de cargo, função, quem decide ou quem participa; `divergencia_de_fonte` quando nasce de duas fontes que se contradizem; `negocio` nos demais casos (empresa, processo, tecnologia, pedido, mercado). Pergunta que reúna duas classes recebe a mais restritiva, na ordem `pessoa`, `divergencia_de_fonte`, `negocio`. Materiais: de portas-materiais.md seção 3, coerentes com a porta provável, na quantidade do destino (Convidar: dois; Verificar a aderência: um; Nutrir: um, de entrada; Encerrar com cortesia: nenhum ou a página Serviços). Rascunho da resposta, seguindo as regras de portas-materiais.md seção 5: saudação com o primeiro nome do signatário ("Olá, Nome,"); escreva conforme o destino informado em `<lead>` – convite direto com os marcadores literais `[opção de horário 1]` e `[opção de horário 2]`, nunca com dia ou hora concretos; convite condicionado a uma pergunta sobre porte e estrutura; nutrição sem agenda; ou cortesia. Com escopo barrado, encaminhamento para o que a prática oferece; com ressalva, só a parte do pedido que cabe. Quadrante, grau, pontos, porte numérico e preço nunca aparecem, nem os termos internos da análise – porta, porta provável, destino, aderência, lente e eixo crítico; fale do caminho de trabalho pelo nome do serviço ("o Conselho de IA pode ser o caminho, a confirmar na conversa"). Até 120 palavras; no idioma da ficha (`lang`); assinatura "GM Digital Bunker™" sem nome de pessoa. Sobre a prática e seus casos, diga apenas o que consta de escopo-limites.md e portas-materiais.md; não atribua ao caso Elite 90 Pro autorização, porte do cliente, redução de tempo ou efeito em receita. Cada ponto de atenção que cite um limite de escopo nomeia o limite (\'limite 4 – execução técnica em software de terceiros\').';
 // The draft rules of preparar_conversa, from "Rascunho da resposta" to the end of the instruction, copied for the
 // correction in <regras-rascunho> (spec 02 v0.25, 4.3).
 export const REGRAS_RASCUNHO = INSTRUCAO_CONVERSA.slice(INSTRUCAO_CONVERSA.indexOf('Rascunho da resposta'));
@@ -261,8 +262,12 @@ export const ESQUEMA_ENQUADRAR = objeto({
   leituraDoPotencial: objeto({ direcao: escolha(DIRECOES), confianca: escolha(CONFIANCAS), comoOrientaAPorta: texto }),
 });
 
+// Class of each question (spec 02 v0.43, 3.2): the deck's question slide keeps only `negocio`.
+export const LIGADA_A = ['pessoa', 'divergencia_de_fonte', 'negocio'] as const;
+export type LigadaA = (typeof LIGADA_A)[number];
+
 export const ESQUEMA_CONVERSA = objeto({
-  perguntas: lista(objeto({ pergunta: texto, lacunaOuHipotese: texto, origem: texto })),
+  perguntas: lista(objeto({ pergunta: texto, lacunaOuHipotese: texto, origem: texto, ligadaA: escolha(LIGADA_A) })),
   materiais: lista(objeto({ nome: texto, url: texto, porQue: texto })),
   rascunhoResposta: objeto({ assunto: texto, corpo: texto }),
   pontosDeAtencaoParaOConsultor: lista(texto),
@@ -314,16 +319,20 @@ export function validaEnquadrar(v: unknown): Enquadramento {
 }
 
 export interface Conversa {
-  perguntas: { pergunta: string; lacunaOuHipotese: string; origem: string }[];
+  // ligadaA is absent in analyses before spec 02 v0.43 (and may be absent after a correction, see validaConversa).
+  perguntas: { pergunta: string; lacunaOuHipotese: string; origem: string; ligadaA?: LigadaA }[];
   materiais: { nome: string; url: string; porQue: string }[];
   rascunhoResposta: { assunto: string; corpo: string };
   pontosDeAtencaoParaOConsultor: string[];
 }
 
-export function validaConversa(v: unknown): Conversa {
+// ligadaA is required in the output of preparar_conversa; the correction may leave it out (the base version may
+// predate spec 02 v0.43), but a value it gives must be one of LIGADA_A.
+export function validaConversa(v: unknown, exigeLigadaA = true): Conversa {
   const c = v as Record<string, any>;
+  const ligadaOk = (x: unknown) => (LIGADA_A as readonly unknown[]).includes(x) || (!exigeLigadaA && x === undefined);
   const ok = c && typeof c === 'object' &&
-    Array.isArray(c.perguntas) && c.perguntas.every((p: any) => p && ehTexto(p.pergunta) && ehTexto(p.lacunaOuHipotese) && ehTexto(p.origem)) &&
+    Array.isArray(c.perguntas) && c.perguntas.every((p: any) => p && ehTexto(p.pergunta) && ehTexto(p.lacunaOuHipotese) && ehTexto(p.origem) && ligadaOk(p.ligadaA)) &&
     Array.isArray(c.materiais) && c.materiais.every((m: any) => m && ehTexto(m.nome) && ehTexto(m.url) && ehTexto(m.porQue)) &&
     c.rascunhoResposta && ehTexto(c.rascunhoResposta.assunto) && ehTexto(c.rascunhoResposta.corpo) &&
     Array.isArray(c.pontosDeAtencaoParaOConsultor) && c.pontosDeAtencaoParaOConsultor.every(ehTexto);
@@ -472,7 +481,7 @@ export function simulaEnquadrar(): Enquadramento {
 // "reparo" in the message makes the simulated draft carry concrete times and no name, so the repair runs.
 export function simulaConversa(nome = '', comReparo = false): Conversa {
   return {
-    perguntas: [{ pergunta: 'Como a equipe organiza hoje as planilhas?', lacunaOuHipotese: 'hipótese', origem: 'qualificacao.pedido' }],
+    perguntas: [{ pergunta: 'Como a equipe organiza hoje as planilhas?', lacunaOuHipotese: 'hipótese', origem: 'qualificacao.pedido', ligadaA: 'negocio' }],
     materiais: [{ nome: 'Conselho de IA', url: 'https://gmdigitalbunker.com.br/servicos/conselho-de-ia', porQue: 'porta provável' }],
     rascunhoResposta: { assunto: 'Sua mensagem à GM Digital Bunker™', corpo: comReparo
         ? 'Obrigado pela mensagem. Podemos conversar na terça às 10h ou na quinta às 15h? GM Digital Bunker™'
