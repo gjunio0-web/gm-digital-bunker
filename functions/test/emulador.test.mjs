@@ -382,6 +382,9 @@ test('vigiar release: held fichas leave in order of retencao.desde, count in the
     // Fichas held by the earlier tests (autoAnalisar off, daily ceiling) are also in qualificada with retencao and
     // would be released or postponed here: start from a clean state.
     for (const d of (await db.collection('fichas').where('estado', '==', 'qualificada').get()).docs) await db.recursiveDelete(d.ref);
+    // The earlier tests count analyses in the real current day: when the run happens on one of the two fixed days
+    // below, their counter would already be filled. Start both from zero.
+    for (const dia of ['2026-11-20', '2026-11-21']) await db.doc(`controle/analises-${dia}`).delete();
     // The ceiling of 2 fits the two oldest; the newest has the first id alphabetically, so the order is not the id order.
     await db.doc('fichas/lib-zeta-antiga').set(ficha(teto('2026-11-19T10:00:00Z', '2026-11-20T03:00:00Z')));
     await db.doc('fichas/lib-meio').set(ficha(teto('2026-11-19T14:00:00Z', '2026-11-20T03:00:00Z')));
